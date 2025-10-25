@@ -4,12 +4,12 @@ import "../styles/navbar.css";
 
 const Navbar = () => {
   return (
-    <nav className="navbar">
-      <div className="navbar-logo">
+    <nav class="navbar">
+      <div class="navbar-logo">
         <Link to="/">TaskManager</Link>
       </div>
 
-      <div className="navbar-auth">
+      <div class="navbar-auth">
         <Link to="/login" className="login-btn">Login</Link>
       </div>
     </nav>
