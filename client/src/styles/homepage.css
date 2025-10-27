@@ -1,0 +1,19 @@
+body{
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20px, 1fr));
+    gap: 20px;
+    padding: 40px;
+}
+
+.grid-container .intro-box{
+    background-color: #f9f9f9;
+    color: black;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}

@@ -1,37 +1,57 @@
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: "Poppins", Arial, sans-serif;
+  background-color: #f3f4f6;
 }
 
 .navbar {
-  background-color: #24292e;
+  height: 60px;
+  background: linear-gradient(135deg, #12365a, #1e40af);
   color: white;
   display: flex;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 0 40px;
   align-items: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
 }
 
-.navbar a {
+
+.navbar-logo a {
   color: white;
   text-decoration: none;
-  font-weight: bold;
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: 1px;
 }
 
-.navbar a:hover {
-  text-decoration: underline;
+.navbar-links {
+  display: flex;
+  gap: 20px;
 }
 
-.navbar-right button {
-  background: #f14e32;
-  border: none;
-  padding: 6px 12px;
+.navbar-links a {
+  color: #e0e7ff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.25s ease;
+}
+
+.navbar-links a:hover {
+  color: #fff;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+
+.navbar-auth .login-btn {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  padding: 8px 18px;
+  border-radius: 20px;
   color: white;
-  cursor: pointer;
-  border-radius: 4px;
-  margin-left: 10px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
 }
 
-.navbar-right button:hover {
-  background: #d93b24;
+.navbar-auth .login-btn:hover {
+  background: linear-gradient(135deg, #7c3aed,#2563eb);
 }
