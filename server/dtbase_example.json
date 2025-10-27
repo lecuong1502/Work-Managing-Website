@@ -1,0 +1,96 @@
+{
+    "Users": [
+        {
+            "id": "u1",
+            "name": "Taylor Swift",
+            "email": "a@example.com",
+            "password_after_hashing": "$2a$10$...",
+            "role": "admin",
+            "avatar_url": "/avatars/u1.png"
+        },
+        {
+            "id": "u2",
+            "name": "Antony Taylor",
+            "email": "tay@example.com",
+            "password_after_hashing": "$2a$10$...",
+            "role": "member",
+            "avatar_url": "/avatars/u2.png"
+        }
+    ],
+    "Projects": [
+        {
+            "id": "p1",
+            "name": "Web Quản Lý Công Việc",
+            "description": "Dự án tạo hệ thống quản lý công việc giống Jira",
+            "created_by": "u1",
+            "created_at": "2025-10-27T13:00:00Z",
+            "members": [
+                {
+                    "user_id": "u1",
+                    "role": "admin"
+                },
+                {
+                    "user_id": "u2",
+                    "role": "developer"
+                }
+            ]
+        }
+    ],
+    "Issues": [
+        {
+            "id": "i1",
+            "project_id": "p1",
+            "title": "Thiết kế database",
+            "description": "Xây dựng cấu trúc database và mô hình quan hệ",
+            "type": "task",
+            "status": "in_progress",
+            "priority": "high",
+            "assignee_id": "u2",
+            "reporter_id": "u1",
+            "created_at": "2025-10-27T14:00:00Z",
+            "updated_at": "2025-10-27T15:30:00Z",
+            "deadline": "2025-10-27T17:30:00Z"
+        },
+        {
+            "id": "i2",
+            "project_id": "p1",
+            "title": "Thiết kế giao diện React",
+            "description": "Xây dựng component cho trang Dashboard",
+            "type": "task",
+            "status": "todo",
+            "priority": "medium",
+            "assignee_id": "u2",
+            "reporter_id": "u1",
+            "created_at": "2025-10-27T14:20:00Z",
+            "updated_at": "2025-10-27T14:20:00Z",
+            "deadline": "2025-10-27T17:30:00Z"
+        }
+    ],
+    "Comments": [
+        {
+            "id": "c1",
+            "issue_id": "i1",
+            "user_id": "u2",
+            "content": "Em đã hoàn thành phần thiết kế bảng issues.",
+            "created_at": "2025-10-27T16:00:00Z"
+        }
+    ],
+    "activities": [
+        {
+            "id": "a1",
+            "issue_id": "i1",
+            "user_id": "u2",
+            "action": "Đã cập nhật trạng thái từ 'todo' -> 'in_progress'",
+            "created_at": "2025-10-27T15:40:00Z"
+        }
+    ],
+    "attachments": [
+        {
+            "id": "att1",
+            "issue_id": "i1",
+            "file_url": "/uploads/db_design.png",
+            "uploaded_by": "u2",
+            "created_at": "2025-10-27T15:10:00Z"
+        }
+    ]
+}

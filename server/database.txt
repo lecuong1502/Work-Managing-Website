@@ -1,0 +1,49 @@
+Table: Users
+    - id: id of user (maybe "friendly" name) 
+    - name: name of user
+    - email: Gmail, Facebook, phone number, GitHub or personal username (use email to get better security) 
+    - password_after_hashing: Save hashed password instead of real password
+    - role: admin/member/manager/developer/tester
+    - avatar_url: avatar of user
+
+Table: Projects
+    - id: id of project
+    - name: Name of project (Only one name, one project)
+    - description: description for project
+    - created_by: person who created the project (id: Users)
+    - created_at: the time that the project was created
+    - members: Users(id)
+
+Table: Issues
+    - id: id of task
+    - project_id: id of project
+    - title: title of project
+    - description: description of task
+    - type: task
+    - status: None/Done/In-Progress/Todo
+    - priority: high/medium/low
+    - assignee_id: Users(id) => person is assigned
+    - created_at: the time that the task was created
+    - updated_at: the time that the task was updated
+    - deadline: the time that the task must be finished
+
+Table: Comments            // Like commit in GitHub
+    - id: id of comment
+    - issue_id: Issues(id)
+    - user_id: Users(id)
+    - content: main comment
+    - created_at: the time that the comment was created
+
+Table: History
+    - id: id of process
+    - issue_id: Issues(id)
+    - user_id: Users(id)
+    - action: use status of Issues
+    - created_at: the time that the history was created
+
+Table: Attachments (File or Folder)
+    - id: id of file
+    - issue_id: file related to issue
+    - file_url: the address of file
+    - uploaded_by: Users(id)
+    - created_at: the time that the file was created
