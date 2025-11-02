@@ -1,9 +1,206 @@
-import express from 'express';
+import express from 'express'
+import validator from 'validator';
+// import session from 'express-session'
+// import passport from 'passport';
+// import { Strategy as LocalStrategy } from 'passport-local';
+// import { Strategy as GoogleStrategy } from 'passport-google-oauth20';   // Google Acc
+// import { Strategy as GitHubStrategy } from 'passport-github2';          // GitHub Acc
+// import { Strategy as MicrosoftStrategy } from 'passport-microsoft';     // Microsoft Acc
+import bcrypt from 'bcryptjs'       // hash password
+import jwt from 'jsonwebtoken'      // transfer client and server: header + payload + signature (JSON File)
+
 const app = express();
+app.use(express.json())     // Server reads body of request in JSON
 
 // PORT = 3000
 const PORT = process.env.PORT || 3000; 
 
 app.listen(PORT, () => {
     console.log(`Server đang chạy (listening) tại http://localhost:${PORT}`);
+});
+
+process.env.JWT_SECRET = '4_ong_deu_ten_Cuong';
+
+// Create simple database
+const users = [];
+let userIdCounter = 1;
+
+// Route (API ENDPOINTS)
+app.get('/', (req, res) => {
+    res.send(`
+        <h1>Backend Quản lý Công việc</h1>
+        <p>Server đang chạy. Các endpoint có sẵn:</p>
+        <ul>
+            <li><b>POST /register</b>: { name, email, password, avatar_url? }</li>
+            <li><b>POST /login</b>: { email, password }</li>
+            <li><b>GET /api/profile</b>: (Yêu cầu token xác thực)</li>
+            <li><b>GET /api/admin/data</b>: (Yêu cầu token xác thực của ADMIN)</li>
+        </ul>
+        <p><b>Database (Users):</b></p>
+        <pre>${JSON.stringify(users, null, 2)}</pre>
+    `);
+});
+
+// Register new account
+app.post('/register', async (req, res) => {
+    const { name, email, password, avatar_url } = req.body;
+
+    if (!name || !email || !password) {
+        return res.status(400).json({ message: 'Vui lòng cung cấp đủ name, email, và password.' });
+    }
+
+    // Check format of email
+    if (!validator.isEmail(email)) {
+        return res.status(400).json({ message: 'Định dạng email không hợp lệ. Vui lòng kiểm tra lại.' });
+    }
+
+    // How strong is the password
+    const passwordOptions = {
+        minLength: 8,
+        maxLength: 20,
+        minNumbers: 1,
+        minUppercase: 1,
+        minSymbols: 1,
+        minLowercase: 0,
+        returnScore: false
+    };
+
+    if (!validator.isStrongPassword(password, passwordOptions)) {
+        const errorMessage = `Mật khẩu không đủ mạnh. Yêu cầu: Dài từ 8 đến 20 ký tự, có ít nhất 1 chữ số (0-9), có ít nhất 1 chữ cái viết hoa (A-Z), có ít nhất 1 ký tự đặc biệt (ví dụ: !@#$%^&*).`;
+        return res.status(400).json({ message: errorMessage });
+    }
+
+    try {
+        // Email existed ?
+        const existingUser = users.find(user => user.email === email);
+        if (existingUser) {
+            return res.status(400).json({ message: 'Email đã được đăng ký.' });
+        }
+
+        // Hashing password
+        // Salting: add random strings into password
+        const salt = await bcrypt.genSalt(10); // Create Salt
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        // Create new user
+        const newUser = {
+            id: (userIdCounter++).toString(),
+            name: name,
+            email: email,
+            passwordHash: passwordHash,
+            role: 'member',         // Default role
+            avatar_url: avatar_url || `https://placehold.co/400x400/EEE/31343C?text=${name.charAt(0)}`,
+            createdAt: new Date()
+        };
+        
+        // Save to database
+        users.push(newUser);
+
+        console.log('Users database sau khi đăng ký:', users);
+
+        // Successful
+        res.status(201).json({
+            message: 'Đăng ký thành công!',
+            user: {
+                id: newUser.id,
+                name: newUser.name,
+                email: newUser.email,
+                role: newUser.role,
+                avatar_url: newUser.avatar_url
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server', error: err.message });
+    }
+})
+
+// Login
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Vui lòng cung cấp email và password.' });
+    }
+
+    try {
+        const user = users.find(user => user.email === email);
+        if (!user) {
+            return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng.' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.passwordHash);
+        
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng.' });
+        }
+        
+        console.log(users)
+
+        const payload = {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            avatar_url: user.avatar_url,
+            role: user.role
+        };
+
+        const token = jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        res.status(200).json({
+            message: 'Đăng nhập thành công!',
+            token: token
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi server', error: err.message });
+    }
+});
+
+// Middleware: confirm token, only for one user, each user have a different token
+const authMiddleware = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Truy cập bị từ chối. Không tìm thấy token.' });
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+        const decodedPayload = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decodedPayload;
+        next();
+    } catch (err) {
+        res.status(401).json({ message: 'Token không hợp lệ hoặc đã hết hạn.' });
+    }
+};
+
+// Middleware to check admin
+const adminOnlyMiddleware = (req, res, next) => {
+    if (req.user && req.user.role === 'admin') {
+        next();
+    } else {
+        res.status(403).json({ message: 'Truy cập bị cấm. Yêu cầu quyền Admin.' });
+    }
+};
+
+// Route for all users (not change)
+app.get('/api/profile', authMiddleware, (req, res) => {
+    const userInfo = req.user;
+    res.status(200).json({
+        message: 'Đây là thông tin profile của bạn',
+        user: userInfo
+    });
+});
+
+// Route for admin (not change)
+app.get('/api/admin/data', authMiddleware, adminOnlyMiddleware, (req, res) => {
+    res.status(200).json({
+        message: `Chào mừng Admin ${req.user.name}! Đây là dữ liệu bí mật của admin.`,
+        sensitiveData: [
+            { id: 1, info: "Dữ liệu chỉ admin thấy" },
+            { id: 2, info: "Toàn bộ danh sách người dùng" }
+        ]
+    });
 });
