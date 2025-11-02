@@ -1,7 +1,7 @@
 import React from "react";
 import "../styles/homepage.css";
 
-function HomePage() {
+const HomePage =()=> {
   return (
     <div className="home">
       <h1>Welcome to TaskManager</h1>
