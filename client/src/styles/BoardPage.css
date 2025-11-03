@@ -1,0 +1,28 @@
+.board-container {
+  padding: 20px;
+}
+
+.board-columns {
+  display: flex;
+  gap: 16px;
+}
+
+.board-column {
+  background: #f0f2f5;
+  padding: 10px;
+  border-radius: 8px;
+  width: 250px;
+  min-height: 200px;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.board-column:hover {
+  transform: translateY(-4px);
+  background-color: #e3e6ea;
+}
+
+.board-column h3 {
+  margin-top: 0;
+  color: #333;
+  font-size: 18px;
+}
