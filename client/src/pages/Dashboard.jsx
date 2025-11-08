@@ -1,30 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import "../styles/Dashboard.css";
+import SearchBar from "../components/SearchBar";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [boards, setBoards] = useState([]);
-  const [showAlert, setShowAlert] = React.useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    // giả lập lấy danh sách boards
-    const savedBoards = JSON.parse(localStorage.getItem("boards")) || [
-      { id: 1, name: "Công việc nhóm" },
-      { id: 2, name: "Dự án React" },
-      { id: 3, name: "Việc cá nhân" },
-    ];
-    setBoards(savedBoards);
-  }, []);
-
-  const handleLogout = () => {
-    sessionStorage.removeItem("loggedIn");
-    setShowAlert(true);
-    setTimeout(() => {
-      setShowAlert(false);    
+    const isLoggedIn = sessionStorage.getItem("loggedIn");
+    if (!isLoggedIn) {
       navigate("/");
-      window.location.reload();
-    }, 1000);
-  };
+      return;
+    }
+
+    // Giả lập lấy danh sách boards
+    const savedBoards =
+      JSON.parse(sessionStorage.getItem("boards")) || [
+        { id: 1, name: "Công việc nhóm" },
+        { id: 2, name: "Dự án React" },
+        { id: 3, name: "Việc cá nhân" },
+      ];
+    setBoards(savedBoards);
+  }, [navigate]);
+
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
@@ -36,20 +36,29 @@ const Dashboard = () => {
       const newBoard = { id: Date.now(), name };
       const updatedBoards = [...boards, newBoard];
       setBoards(updatedBoards);
-      localStorage.setItem("boards", JSON.stringify(updatedBoards));
+      sessionStorage.setItem("boards", JSON.stringify(updatedBoards));
     }
   };
 
-  return (
+  const filteredBoards = boards.filter((b) =>
+    b.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+return (
     <div className="dashboard">
-      <div className="dashboard-header">
+      <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm}/>
+
+      <div className="dashboard-header">      
         <h1>📋 My Boards</h1>
-        <button onClick={handleAddBoard}>+ Thêm board</button>
-        <button onClick={handleLogout}>Đăng xuất</button>
+        <div>
+          <button className="dashboard-button" onClick={handleAddBoard}>
+            + Thêm board
+          </button>
+        </div>
       </div>
 
       <div className="board-list">
-        {boards.map((board) => (
+        {filteredBoards.map((board) => (
           <div
             key={board.id}
             className="board-card"
@@ -59,11 +68,7 @@ const Dashboard = () => {
           </div>
         ))}
       </div>
-      {showAlert && (
-        <div style={styles.alertBox}>
-          <p style={{ margin: 0 }}>Đăng xuất thành công!</p>
-        </div>
-      )}
+
     </div>
   );
 };

@@ -10,7 +10,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
 
-  const handleSubmit =  async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     //đợi test API
     const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
@@ -26,16 +26,16 @@ const LoginPage = () => {
 
     const data = await res.json();
 
-    if(res.ok){
+    if (res.ok) {
       sessionStorage.setItem("loggedIn", "true");
       setError("");
       setMessage("Đăng nhập thành công!");
       setTimeout(() => {
         setMessage("");
         navigate("/dashboard");
-        window.location.reload();  
+        window.location.reload();
       }, 1000);
-    }else{
+    } else {
       setError(data.error || "Đăng nhập thất bại");
     }
     // if (Username === "Cuong" && Password === "12345") {
@@ -92,8 +92,7 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
-    backgroundImage:
-      "url('https://images.unsplash.com/photo-1508780709619-79562169bc64?auto=format&fit=crop&w=1470&q=80')",
+    backgroundImage: "url('/assets/backgroundLogin.jpg')",
     backgroundSize: "cover",
     backgroundPosition: "center",
     overflow: "hidden",
@@ -105,7 +104,7 @@ const styles = {
     width: "100%",
     height: "100%",
     background:
-      "linear-gradient(135deg, rgba(59,130,246,0.65), rgba(147,51,234,0.65))",
+      "linear-gradient(135deg, rgba(193, 212, 243, 0.65), rgba(147,51,234,0.65))",
     zIndex: 1,
   },
   form: {

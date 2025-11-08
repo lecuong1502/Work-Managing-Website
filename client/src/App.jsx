@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import LoginPage from "./pages/Login-Page";
 import HomePage from "./pages/Home-Page";
 import DashboardPage from "./pages/Dashboard";
+import BoardPage from "./pages/BoardPage";
 
 function App() {
   const isLoggedIn = sessionStorage.getItem("loggedIn") === "true";
@@ -13,6 +14,7 @@ function App() {
       {isLoggedIn ? (
         <Routes>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/board/:boardId" element={<BoardPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       ) : (
