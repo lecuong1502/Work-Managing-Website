@@ -20,6 +20,7 @@ const Navbar = () => {
   return (
     <nav class="navbar">
       <div class="navbar-logo">
+        <img src ="./assets/Logo.png" className="logo-img"/>
         <Link to="/">TaskManager</Link>
       </div>
 
