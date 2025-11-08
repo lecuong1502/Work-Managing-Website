@@ -38,18 +38,7 @@ const LoginPage = () => {
     } else {
       setError(data.error || "Đăng nhập thất bại");
     }
-    // if (Username === "Cuong" && Password === "12345") {
-    //   localStorage.setItem("loggedIn", "true");
-    //   setError("");
-    //   setMessage("Đăng nhập thành công!");
-    //   setTimeout(() => {
-    //     setMessage("");
-    //     navigate("/");
-    //     window.location.reload();  
-    //   }, 2000);
-    // } else {
-    //   setError("Sai mật khẩu hoặc tên đăng nhập");
-    // }
+    //Check
   };
 
   return (

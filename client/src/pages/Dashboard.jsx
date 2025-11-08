@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { data, useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import SearchBar from "../components/SearchBar";
 
@@ -8,23 +8,37 @@ const Dashboard = () => {
   const [boards, setBoards] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   const isLoggedIn = sessionStorage.getItem("loggedIn");
+  //   if (!isLoggedIn) {
+  //     navigate("/");
+  //     return;
+  //   }
+
+  //   // Giả lập lấy danh sách boards
+  //   const savedBoards =
+  //     JSON.parse(sessionStorage.getItem("boards")) || [
+  //       { id: 1, name: "Công việc nhóm" },
+  //       { id: 2, name: "Dự án React" },
+  //       { id: 3, name: "Việc cá nhân" },
+  //     ];
+  //   setBoards(savedBoards);
+  // }, [navigate]);
+
+  useEffect(()=>{
     const isLoggedIn = sessionStorage.getItem("loggedIn");
-    if (!isLoggedIn) {
+    if(!isLoggedIn){
       navigate("/");
       return;
     }
 
-    // Giả lập lấy danh sách boards
-    const savedBoards =
-      JSON.parse(sessionStorage.getItem("boards")) || [
-        { id: 1, name: "Công việc nhóm" },
-        { id: 2, name: "Dự án React" },
-        { id: 3, name: "Việc cá nhân" },
-      ];
-    setBoards(savedBoards);
-  }, [navigate]);
-
+    fetch("Board.json")
+    .then((res)=>res.json())
+    .then((data)=>{
+      setBoards(data.boards);
+      sessionStorage.setItem("boards",JSON.stringify(data.boards));
+    }).catch((err)=>console.error("Lỗi tải board",err));
+  },[navigate]);
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
