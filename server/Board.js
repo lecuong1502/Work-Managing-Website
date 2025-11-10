@@ -1,5 +1,4 @@
-{
-  "boards": [
+[
     {
       "id": 1,
       "name": "Công việc nhóm",
@@ -61,5 +60,4 @@
       "description": "Danh sách việc riêng trong tuần.",
       "lists": []
     }
-  ]
-}
+]
