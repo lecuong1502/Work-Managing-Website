@@ -1,4 +1,4 @@
-import express from 'express'
+import express, { json } from 'express'
 import validator from 'validator';
 // import session from 'express-session'
 // import passport from 'passport';
@@ -25,6 +25,72 @@ process.env.JWT_SECRET = '4_ong_deu_ten_Cuong';
 const users = [];
 let userIdCounter = 1;
 
+const DEFAULT_BOARDS_TEMPLATE = [
+    {
+      "id": 1,
+      "name": "Công việc nhóm",
+      "description": "Các công việc cần hoàn thành theo nhóm.",
+      "lists": [
+        {
+          "id": "list_1",
+          "title": "To Do",
+          "cards": [
+            {
+              "id": "card_1",
+              "title": "Thiết kế giao diện trang chủ",
+              "description": "Dùng Figma để tạo layout cơ bản.",
+              "labels": ["design"],
+              "dueDate": "2025-11-10"
+            },
+            {
+              "id": "card_2",
+              "title": "Phân công nhiệm vụ",
+              "description": "Chia việc cho từng thành viên.",
+              "labels": ["management"]
+            }
+          ]
+        },
+        {
+          "id": "list_2",
+          "title": "In Progress",
+          "cards": []
+        },
+        {
+          "id": "list_3",
+          "title": "Done",
+          "cards": []
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Dự án React",
+      "description": "Làm project web quản lý công việc bằng React.",
+      "lists": [
+        {
+          "id": "list_4",
+          "title": "To Do",
+          "cards": [
+            {
+              "id": "card_3",
+              "title": "Tạo component Login",
+              "description": "Form đăng nhập với validation.",
+              "labels": ["frontend"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Việc cá nhân",
+      "description": "Danh sách việc riêng trong tuần.",
+      "lists": []
+    }
+];
+
+let userBoards = {};
+
 // Route (API ENDPOINTS)
 app.get('/', (req, res) => {
     res.send(`
@@ -38,6 +104,7 @@ app.get('/', (req, res) => {
         </ul>
         <p><b>Database (Users):</b></p>
         <pre>${JSON.stringify(users, null, 2)}</pre>
+        <pre>${JSON.stringify(userBoards, null, 2)}</pre>
     `);
 });
 
@@ -95,8 +162,10 @@ app.post('/register', async (req, res) => {
         
         // Save to database
         users.push(newUser);
+        userBoards[newUser.id] = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
 
         console.log('Users database sau khi đăng ký:', users);
+        console.log('UserBoards database sau khi đăng ký:', userBoards);
 
         // Successful
         res.status(201).json({
@@ -204,3 +273,37 @@ app.get('/api/admin/data', authMiddleware, adminOnlyMiddleware, (req, res) => {
         ]
     });
 });
+
+/**
+ * @route   GET /api/boards
+ * @desc    Lấy tất cả các board của user đã đăng nhập
+ * @access  Private
+ */
+app.get('/api/boards', authMiddleware, (req, res) => {
+    const userID = req.user.id;
+    const boards = userBoards[userID] || [];
+
+    res.status(200).json(boards);
+})
+
+/**
+ * @route   GET /api/boards/:boardId
+ * @desc    Lấy một board cụ thể bằng ID, 
+ * @access  Private
+ */
+
+app.get('/api/boards/:boardID', authMiddleware, (req, res) => {
+    const userID = req.user.id;
+    const { boardID } = req.params;
+
+    const boardsOfUser = userBoards[userID] || [];
+    console.log("boardsOfUser", boardsOfUser)
+
+    const board = boardsOfUser.find(b => b.id.toString() === boardID);
+
+    if (!board) {
+        return res.status(404).json({ message: 'Không tìm thấy board hoặc bạn không có quyền truy cập.' });
+    }
+
+    res.status(200).json(board);
+})
