@@ -7,7 +7,6 @@
 
 .dashboard-header {
   display: flex;
-  padding-top: 50px;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
