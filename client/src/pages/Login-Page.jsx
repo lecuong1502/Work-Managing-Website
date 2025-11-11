@@ -28,6 +28,7 @@ const LoginPage = () => {
 
     if (res.ok) {
       sessionStorage.setItem("loggedIn", "true");
+      sessionStorage.setItem("userId", 101);
       setError("");
       setMessage("Đăng nhập thành công!");
       setTimeout(() => {

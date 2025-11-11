@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "../styles/BoardPage.css";
+import SearchBar from "../components/SearchBar";
 
 const BoardPage = () => {
   const { boardId } = useParams();
   const navigate = useNavigate();
   const [board, setBoard] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
@@ -22,7 +24,7 @@ const BoardPage = () => {
   if (!board) return <p>Đang tải...</p>;
 
   return (
-    <div className="board-page">
+    <div className="board-page" style={{background:board.colors}}>
       <div className="board-header">
         <button className="back-btn" onClick={() => navigate("/dashboard")}>
           Trở lại

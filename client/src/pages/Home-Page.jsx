@@ -53,7 +53,7 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* Slide ảnh chạy giới thiệu chức năng wed */}
+      {}
       <section className="feature-showcase">
         <div className="feature-left">
           <h2>{slides[current].title}</h2>

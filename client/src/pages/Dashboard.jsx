@@ -7,75 +7,143 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [boards, setBoards] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [newBoardName, setNewBoardName] = useState("");
+  const [newBoardColor, setNewBoardColor] = useState("");
+  const [boardVisibility, setBoardVisibility] = useState("Private");
+  const [availableColors, setAvailableColors] = useState([]);
 
-  // useEffect(() => {
-  //   const isLoggedIn = sessionStorage.getItem("loggedIn");
-  //   if (!isLoggedIn) {
-  //     navigate("/");
-  //     return;
-  //   }
-
-  //   // Giả lập lấy danh sách boards
-  //   const savedBoards =
-  //     JSON.parse(sessionStorage.getItem("boards")) || [
-  //       { id: 1, name: "Công việc nhóm" },
-  //       { id: 2, name: "Dự án React" },
-  //       { id: 3, name: "Việc cá nhân" },
-  //     ];
-  //   setBoards(savedBoards);
-  // }, [navigate]);
-
-  useEffect(()=>{
+  useEffect(() => {
+    const userId = Number(sessionStorage.getItem("userId"));
     const isLoggedIn = sessionStorage.getItem("loggedIn");
-    if(!isLoggedIn){
+    if (!isLoggedIn) {
       navigate("/");
       return;
     }
 
     fetch("Board.json")
-    .then((res)=>res.json())
-    .then((data)=>{
-      setBoards(data.boards);
-      sessionStorage.setItem("boards",JSON.stringify(data.boards));
-    }).catch((err)=>console.error("Lỗi tải board",err));
-  },[navigate]);
+      .then((res) => res.json())
+      .then((data) => {
+        const allBoards = data.boards;
+        const userBoards = allBoards.filter(b => b.userId === userId);
+        setBoards(userBoards);
+        sessionStorage.setItem("boards", JSON.stringify(data.boards));
+      }).catch((err) => console.error("Lỗi tải board", err));
+
+    fetch("colors.json")
+      .then((res) => res.json())
+      .then((data) => setAvailableColors(data.colors))
+      .catch((err) => console.error("Lỗi tải colors", err));
+
+  }, [navigate]);
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
   };
 
-  const handleAddBoard = () => {
-    const name = prompt("Nhập tên board mới:");
-    if (name) {
-      const newBoard = { id: Date.now(), name };
-      const updatedBoards = [...boards, newBoard];
-      setBoards(updatedBoards);
-      sessionStorage.setItem("boards", JSON.stringify(updatedBoards));
-    }
+  const handleAddBoard = (e) => {
+    e.preventDefault();
+    if (!newBoardName.trim() || !newBoardColor) return;
+
+    const userId = Number(sessionStorage.getItem("userId"));
+    const newBoard = {
+      id: Date.now(),
+      name: newBoardName.trim(),
+      userId,
+      color: newBoardColor,
+      visibility: boardVisibility,
+    };
+
+    const updatedBoards = [...boards, newBoard];
+    setBoards(updatedBoards);
+    sessionStorage.setItem("boards", JSON.stringify(updatedBoards));
+
+    setNewBoardName("");
+    setNewBoardColor("");
+    setShowForm(false);
   };
 
   const filteredBoards = boards.filter((b) =>
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-return (
+  return (
     <div className="dashboard">
-      <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm}/>
+      <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
-      <div className="dashboard-header">      
+      <div className="dashboard-header">
         <h1>📋 My Boards</h1>
         <div>
-          <button className="dashboard-button" onClick={handleAddBoard}>
+          <button className="dashboard-button" onClick={() => setShowForm(!showForm)}>
             + Thêm board
           </button>
         </div>
       </div>
+
+      {showForm && (
+        <>
+          <div className="modal-overlay" onClick={() => setShowForm(false)}></div>
+          <form className="add-board-form" onSubmit={handleAddBoard}>
+            <input
+              type="text"
+              value={newBoardName}
+              onChange={(e) => setNewBoardName(e.target.value)}
+              placeholder="Tên board mới"
+              required
+            />
+
+            <div>
+              <p>Background</p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {availableColors.map((color) => (
+                  <div
+                    key={color}
+                    onClick={() => setNewBoardColor(color)}
+                    style={{
+                      width: "30px",
+                      height: "30px",
+                      borderRadius: "6px",
+                      background: color,
+                      cursor: "pointer",
+                      border: newBoardColor === color ? "3px solid #000" : "2px solid #fff"
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="visibility-selection">
+              <p>Chọn quyền truy cập:</p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div
+                  className={`visibility-option ${boardVisibility === "Private" ? "selected" : ""}`}
+                  onClick={() => setBoardVisibility("Private")}
+                >
+                  Private
+                </div>
+                <div
+                  className={`visibility-option ${boardVisibility === "Workspace" ? "selected" : ""}`}
+                  onClick={() => setBoardVisibility("Workspace")}
+                >
+                  Workspace
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+              <button type="submit">Thêm</button>
+              <button type="button" onClick={() => setShowForm(false)}>Hủy</button>
+            </div>
+          </form>
+        </>
+      )}
+
 
       <div className="board-list">
         {filteredBoards.map((board) => (
           <div
             key={board.id}
             className="board-card"
+            style={{ background: board.colors || "#fff" }}
             onClick={() => handleBoardClick(board.id)}
           >
             {board.name}
