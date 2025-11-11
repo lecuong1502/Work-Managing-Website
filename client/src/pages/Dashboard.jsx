@@ -68,89 +68,90 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="dashboard">
+    <div>
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-
-      <div className="dashboard-header">
-        <h1>📋 My Boards</h1>
-        <div>
-          <button className="dashboard-button" onClick={() => setShowForm(!showForm)}>
-            + Thêm board
-          </button>
-        </div>
-      </div>
-
-      {showForm && (
-        <>
-          <div className="modal-overlay" onClick={() => setShowForm(false)}></div>
-          <form className="add-board-form" onSubmit={handleAddBoard}>
-            <input
-              type="text"
-              value={newBoardName}
-              onChange={(e) => setNewBoardName(e.target.value)}
-              placeholder="Tên board mới"
-              required
-            />
-
-            <div>
-              <p>Background</p>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {availableColors.map((color) => (
-                  <div
-                    key={color}
-                    onClick={() => setNewBoardColor(color)}
-                    style={{
-                      width: "30px",
-                      height: "30px",
-                      borderRadius: "6px",
-                      background: color,
-                      cursor: "pointer",
-                      border: newBoardColor === color ? "3px solid #000" : "2px solid #fff"
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="visibility-selection">
-              <p>Chọn quyền truy cập:</p>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div
-                  className={`visibility-option ${boardVisibility === "Private" ? "selected" : ""}`}
-                  onClick={() => setBoardVisibility("Private")}
-                >
-                  Private
-                </div>
-                <div
-                  className={`visibility-option ${boardVisibility === "Workspace" ? "selected" : ""}`}
-                  onClick={() => setBoardVisibility("Workspace")}
-                >
-                  Workspace
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-              <button type="submit">Thêm</button>
-              <button type="button" onClick={() => setShowForm(false)}>Hủy</button>
-            </div>
-          </form>
-        </>
-      )}
-
-
-      <div className="board-list">
-        {filteredBoards.map((board) => (
-          <div
-            key={board.id}
-            className="board-card"
-            style={{ background: board.colors || "#fff" }}
-            onClick={() => handleBoardClick(board.id)}
-          >
-            {board.name}
+      <div className="dashboard">
+        <div className="dashboard-header">
+          <h1>📋 My Boards</h1>
+          <div>
+            <button className="dashboard-button" onClick={() => setShowForm(!showForm)}>
+              + Thêm board
+            </button>
           </div>
-        ))}
-      </div>
+        </div>
 
+        {showForm && (
+          <>
+            <div className="modal-overlay" onClick={() => setShowForm(false)}></div>
+            <form className="add-board-form" onSubmit={handleAddBoard}>
+              <input
+                type="text"
+                value={newBoardName}
+                onChange={(e) => setNewBoardName(e.target.value)}
+                placeholder="Tên board mới"
+                required
+              />
+
+              <div>
+                <p>Background</p>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {availableColors.map((color) => (
+                    <div
+                      key={color}
+                      onClick={() => setNewBoardColor(color)}
+                      style={{
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "6px",
+                        background: color,
+                        cursor: "pointer",
+                        border: newBoardColor === color ? "3px solid #000" : "2px solid #fff"
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="visibility-selection">
+                <p>Chọn quyền truy cập:</p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <div
+                    className={`visibility-option ${boardVisibility === "Private" ? "selected" : ""}`}
+                    onClick={() => setBoardVisibility("Private")}
+                  >
+                    Private
+                  </div>
+                  <div
+                    className={`visibility-option ${boardVisibility === "Workspace" ? "selected" : ""}`}
+                    onClick={() => setBoardVisibility("Workspace")}
+                  >
+                    Workspace
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                <button type="submit">Thêm</button>
+                <button type="button" onClick={() => setShowForm(false)}>Hủy</button>
+              </div>
+            </form>
+          </>
+        )}
+
+
+        <div className="board-list">
+          {filteredBoards.map((board) => (
+            <div
+              key={board.id}
+              className="board-card"
+              style={{ background: board.colors || "#fff" }}
+              onClick={() => handleBoardClick(board.id)}
+            >
+              {board.name}
+            </div>
+          ))}
+        </div>
+
+      </div>
     </div>
   );
 };

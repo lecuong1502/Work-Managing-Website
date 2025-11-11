@@ -6,6 +6,8 @@ import { useState } from "react";
 const SearchBar = ({ searchTerm, setSearchTerm }) => {
     const navigate = useNavigate();
     const [showAlert, setShowAlert] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+
 
     const handleLogout = () => {
         sessionStorage.removeItem("loggedIn");
@@ -20,7 +22,7 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
     return (
         <div className="search-bar-container">
             <div className="logo">
-                <img src="./assets/Logo.png" className="logo-img" />
+                <img src="/assets/Logo.png" className="logo-img" />
                 <Link to="/">TaskManager</Link>
             </div>
 
@@ -35,12 +37,19 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
                 />
             </div>
 
-            <button
-                className="btn-logout"
-                onClick={handleLogout}
-            >
-                Logout
-            </button>
+            <div className="avatar-container" onClick={() => setDropdownOpen(!dropdownOpen)}>
+                <img
+                    src="/assets/avatar.avif"
+                    className="avatar-img"
+                    alt="avatar"
+                />
+                {dropdownOpen && (
+                    <div className="dropdown-menu">
+                        <p onClick={handleLogout}>Logout</p>
+                        {}
+                    </div>
+                )}
+            </div>
 
             {showAlert && (
                 <div className="alert-box">
