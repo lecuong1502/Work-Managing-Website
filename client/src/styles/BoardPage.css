@@ -1,13 +1,20 @@
 .board-page {
   padding: 20px;
-  background-color: #3b82f6;
 }
 
 .board-header {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-bottom: 20px;
+  justify-content: space-between;
+  background-color: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 15px 20px;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  height: fit-content;
 }
 
 .back-btn {
@@ -25,18 +32,28 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.board-desc {
-  color: #666;
-  margin-top: 4px;
+.board-header h2 {
+  margin: 0;
+  font-size: 25px;
+  font-weight: 600;
+}
+
+.board-desc, .board-header p {
+  margin: 0;
+  font-size: 12px;
+  color: #444;
 }
 
 .lists-container {
   display: flex;
-  gap: 20px;
+  gap: 10px;
   overflow-x: auto;
-  background-color: #818ce8;
-  border-radius: 10px;
-  padding: 20px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
 }
 
 .list-column:hover{
@@ -44,10 +61,13 @@
 }
 
 .list-column {
-  background: #d0d9e2;
+  background: #e8ecf1;
   border-radius: 8px;
   padding: 10px;
   min-width: 250px;
+  max-height: 500px;
+  height: fit-content;
+  overflow-y: auto;
 }
 
 .card-item {
@@ -77,3 +97,38 @@
   text-align: center;
   margin: 10px 0;
 }
+
+.add-card-btn {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.add-card-btn:hover {
+  background: #e6f7ff;
+}
+
+.add-list {
+  background: rgba(255,255,255,0.4);
+  border: 2px dashed #ccc;
+  color: #333;
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 200px;
+  height: fit-content;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.add-list:hover {
+  background: rgba(255,255,255,0.6);
+}
+
+.card-item h4, .card-item p, .card-item small {
+    margin: 0 0 2px 0; 
+}
+

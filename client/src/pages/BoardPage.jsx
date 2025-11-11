@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import "../styles/BoardPage.css";
 import SearchBar from "../components/SearchBar";
 
+
 const BoardPage = () => {
   const { boardId } = useParams();
   const navigate = useNavigate();
@@ -24,41 +25,49 @@ const BoardPage = () => {
   if (!board) return <p>Đang tải...</p>;
 
   return (
-    <div className="board-page" style={{background:board.colors}}>
-      <div className="board-header">
-        <button className="back-btn" onClick={() => navigate("/dashboard")}>
-          Trở lại
-        </button>
-        <h2>{board.name}</h2>
-        <p className="description">{board.description}</p>
-      </div>
-      <div className="lists-container">
-        {board.lists.map((list) => (
-          <div key={list.id} className="list-column">
-            <h3>{list.title}</h3>
-            <div className="card-container">
-              {list.cards.length ===0 && (
-                <p className="empty">Không có thẻ nào</p>
-              )}
-              {list.cards.map((card)=>(
-                <div key={card.id} className="card-item">
-                  <h4>{card.title}</h4>
-                  <p>{card.description}</p>
-                  {card.dueDate && (
-                    <small>Hạn:{card.dueDate}</small>
-                  )}
-                  {card.labels&&(
-                    <div className="labels">
-                      {card.labels.map((label,idx)=>(
-                        <span key={idx} className="label">{label}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+    <div>
+      <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+      <div className="board-page" style={{ background: board.colors }}>
+        <div className="board-header">
+          <div>
+            <h2>{board.name}</h2>
+            <p className="description">{board.description}</p>
           </div>
-        ))}
+        </div>
+        <div className="lists-container">
+          {board.lists.map((list) => (
+            <div key={list.id} className="list-column">
+              <h3>{list.title}</h3>
+              <div className="card-container">
+                {list.cards.length === 0 && (
+                  <p className="empty">Không có thẻ nào</p>
+                )}
+                {list.cards.map((card) => (
+                  <div key={card.id} className="card-item">
+                    <h4>{card.title}</h4>
+                    <p>{card.description}</p>
+                    {card.dueDate && (
+                      <small>Hạn:{card.dueDate}</small>
+                    )}
+                    {card.labels && (
+                      <div className="labels">
+                        {card.labels.map((label, idx) => (
+                          <span key={idx} className="label">{label}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                <button className="add-card-btn">+ Add a card</button>
+              </div>
+            </div>
+          ))}
+
+          <div className="add-list">
+            + Add another list
+          </div>
+        </div>
       </div>
     </div>
   );
