@@ -1,5 +1,5 @@
 {
-  "boards": [
+  [
     {
       "id": 1,
       "name": "Công việc nhóm",
