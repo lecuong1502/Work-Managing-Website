@@ -85,3 +85,88 @@
     transform: translateY(-10px);
   }
 }
+
+
+.add-board-form {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 30px 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 300px;
+}
+
+
+.add-board-form input {
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  outline: none;
+}
+
+.add-board-form input:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.add-board-form button {
+  padding: 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.add-board-form button[type="submit"] {
+  background: #1890ff;
+  color: #fff;
+}
+
+.add-board-form button[type="submit"]:hover {
+  background: #40a9ff;
+}
+
+.add-board-form button[type="button"] {
+  background: #ff4d4f;
+  color: #fff;
+}
+
+.add-board-form button[type="button"]:hover {
+  background: #ff7875;
+}
+
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+}
+
+.visibility-option {
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #f0f0f0;
+  transition: transform 0.2s, background 0.2s, border 0.2s;
+  border: 2px solid transparent;
+}
+
+.visibility-option.selected {
+  border: 2px solid #1890ff;
+  background: #e6f7ff;
+  transform: translateY(-1px);
+}
+
