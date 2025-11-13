@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "../styles/BoardPage.css";
 import SearchBar from "../components/SearchBar";
+import CardModal from "../components/CardModal"
 
 
 const BoardPage = () => {
@@ -9,6 +10,9 @@ const BoardPage = () => {
   const navigate = useNavigate();
   const [board, setBoard] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [addingCard, setAddingCard] = useState({})
+  const [addingList, setAddingList] = useState(false)
+  const [selectedCard, setSelectedCard] = useState(null)
 
   useEffect(() => {
     const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
@@ -43,7 +47,7 @@ const BoardPage = () => {
                   <p className="empty">Không có thẻ nào</p>
                 )}
                 {list.cards.map((card) => (
-                  <div key={card.id} className="card-item">
+                  <div key={card.id} className="card-item" onClick={() => setSelectedCard(card)}>
                     <h4>{card.title}</h4>
                     <p>{card.description}</p>
                     {card.dueDate && (
@@ -58,16 +62,37 @@ const BoardPage = () => {
                     )}
                   </div>
                 ))}
+                {addingCard[list.id] ? (
+                  <div className="add-card-form">
+                    <input type="text" placeholder="Card title..." />
+                    <button onClick={() => setAddingCard(prev => ({ ...prev, [list.id]: false }))}>Cancel</button>
+                    <button>Add</button>
+                  </div>
+                ) : (<button
+                  className="add-card-btn"
+                  onClick={() => setAddingCard(prev => ({ ...prev, [list.id]: true }))}
+                >
+                  + Add a card
+                </button>
+                )}
 
-                <button className="add-card-btn">+ Add a card</button>
               </div>
             </div>
           ))}
-
-          <div className="add-list">
-            + Add another list
-          </div>
+          {addingList ? (
+            <div className="add-list-form">
+              <input type="text" placeholder="List title..." />
+              <button onClick={() => setAddingList(false)}>Cancel</button>
+              <button>Add</button>
+            </div>
+          ) : (
+            <div className="add-list" onClick={() => setAddingList(true)}>
+              + Add another list
+            </div>)}
         </div>
+        {selectedCard && (
+          <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
+        )}
       </div>
     </div>
   );

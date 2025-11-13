@@ -1,5 +1,6 @@
 .board-page {
   padding: 20px;
+  height: 100vh;
 }
 
 .board-header {
@@ -131,4 +132,134 @@
 .card-item h4, .card-item p, .card-item small {
     margin: 0 0 2px 0; 
 }
+
+.add-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-top: 8px;
+}
+
+.add-card-form input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+}
+
+.add-card-form input:focus {
+  border-color: #3b82f6;
+}
+
+.add-card-form button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.add-card-form button:nth-child(2) {
+  background-color: #9ca3af;
+  color: white;
+}
+
+.add-card-form button:nth-child(2):hover {
+  background-color: #6b7280;
+}
+
+.add-card-form button:nth-child(3) {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.add-card-form button:nth-child(3):hover {
+  background-color: #2563eb;
+}
+
+.add-card-btn {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #858181;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.add-card-btn:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.add-list-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  height: fit-content;
+}
+
+.add-list-form input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+}
+
+.add-list-form input:focus {
+  border-color: #3b82f6;
+}
+
+.add-list-form button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.add-list-form button:nth-child(2) {
+  background-color: #9ca3af;
+  color: rgb(199, 191, 191);
+}
+
+.add-list-form button:nth-child(2):hover {
+  background-color: #6b7280;
+}
+
+.add-list-form button:nth-child(3) {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.add-list-form button:nth-child(3):hover {
+  background-color: #2563eb;
+}
+
+.add-list {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #918989;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  min-width: 250px;
+  text-align: center;
+  margin-left: 8px;
+  transition: background 0.2s;
+}
+
+.add-list:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
 
