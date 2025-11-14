@@ -11,9 +11,12 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-
+    const payload = {
+      email: Username,
+      password: Password,
+    };
     //"https://jsonplaceholder.typicode.com/posts"
-    //""http://localhost:3000/login""
+    //"http://localhost:3000/login"
     try {
       const res = await fetch("http://localhost:3000/login", {
         method: "POST",
@@ -39,7 +42,7 @@ const LoginPage = () => {
       } else {
         setError(data.message || "Đăng nhập thất bại");
       }
-    } catch(err) {
+    } catch (err) {
       console.error("Không kết nối được server:", err);
       alert("Không kết nối được server");
     }
