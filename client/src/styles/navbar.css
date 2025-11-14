@@ -14,7 +14,6 @@ body {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
 }
 
-
 .navbar-logo a {
   color: white;
   text-decoration: none;
@@ -28,7 +27,6 @@ body {
   align-items: center;
   gap: 10px;
 }
-
 
 .logo-img {
   width: 40px;
@@ -65,5 +63,9 @@ body {
 }
 
 .navbar-auth .login-btn:hover {
-  background: linear-gradient(135deg, #7c3aed,#2563eb);
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+}
+.navbar-auth {
+  display: flex;
+  gap: 12px;
 }
