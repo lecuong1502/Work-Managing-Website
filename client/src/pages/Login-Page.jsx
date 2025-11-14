@@ -11,31 +11,37 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: Username,
-        password: Password,
-      }),
-    });
 
-    const data = await res.json();
+    //"https://jsonplaceholder.typicode.com/posts"
+    //""http://localhost:3000/login""
+    try {
+      const res = await fetch("http://localhost:3000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (res.ok) {
-      sessionStorage.setItem("loggedIn", "true");
-      sessionStorage.setItem("userId", 101);
 
-      setError("");
-      setMessage("Đăng nhập thành công!");
+      const data = await res.json();
 
-      setTimeout(() => {
-        setMessage("");
-        navigate("/dashboard");
-        window.location.reload();
-      }, 1000);
-    } else {
-      setError(data.error || "Đăng nhập thất bại");
+      if (res.ok) {
+        sessionStorage.setItem("loggedIn", "true");
+        sessionStorage.setItem("userId", 101);
+        setError("");
+        setMessage("Đăng nhập thành công!");
+        setTimeout(() => {
+          setMessage("");
+          navigate("/dashboard");
+          window.location.reload();
+        }, 1000);
+      } else {
+        setError(data.message || "Đăng nhập thất bại");
+      }
+    } catch(err) {
+      console.error("Không kết nối được server:", err);
+      alert("Không kết nối được server");
     }
   };
 
@@ -52,7 +58,11 @@ const LoginPage = () => {
           placeholder="Username"
           style={styles.input}
           value={Username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={(e) => {
+            setUsername(e.target.value);
+            setError("");
+            setMessage("");
+          }}
           required
         />
 
@@ -61,7 +71,11 @@ const LoginPage = () => {
           placeholder="Password"
           style={styles.input}
           value={Password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setError("");
+            setMessage("");
+          }}
           required
         />
 
