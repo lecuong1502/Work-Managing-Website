@@ -1,0 +1,109 @@
+.auth-page {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-image: url("/assets/backgroundLogin.jpg");
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.auth-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(200, 220, 255, 0.45),
+    rgba(147, 51, 234, 0.45)
+  );
+  z-index: 1;
+}
+
+.auth-card {
+  width: 360px;
+  padding: 32px 34px;
+  background: rgba(255, 255, 255, 0.33);
+  border-radius: 22px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+
+.auth-title {
+  font-size: 1.9rem;
+  color: #ffffff;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.auth-subtitle {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.88);
+  margin-bottom: 22px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 13px 12px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  transition: 0.25s ease;
+}
+
+.auth-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-input:focus {
+  background: rgba(255, 255, 255, 0.33);
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+}
+
+.auth-btn {
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: 0.25s ease;
+}
+
+.auth-btn.primary {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: white;
+  box-shadow: 0 5px 18px rgba(37, 99, 235, 0.4);
+}
+
+.auth-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.55);
+}
+
+.auth-btn.secondary {
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  margin-top: 4px;
+}
+
+.auth-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.32);
+}

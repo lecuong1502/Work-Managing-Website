@@ -1,7 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-
 const LoginPage = () => {
   const [Username, setUsername] = React.useState("");
   const [Password, setPassword] = React.useState("");
@@ -9,15 +8,12 @@ const LoginPage = () => {
   const [Message, setMessage] = React.useState("");
   const navigate = useNavigate();
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    //đợi test API
+
     const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: Username,
         password: Password,
@@ -29,8 +25,10 @@ const LoginPage = () => {
     if (res.ok) {
       sessionStorage.setItem("loggedIn", "true");
       sessionStorage.setItem("userId", 101);
+
       setError("");
       setMessage("Đăng nhập thành công!");
+
       setTimeout(() => {
         setMessage("");
         navigate("/dashboard");
@@ -39,12 +37,12 @@ const LoginPage = () => {
     } else {
       setError(data.error || "Đăng nhập thất bại");
     }
-    //Check
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.overlay}></div>
+
       <form style={styles.form} onSubmit={handleSubmit}>
         <h2 style={styles.title}>Login</h2>
         <p style={styles.subtitle}>Login to manage your tasks efficiently</p>
@@ -57,6 +55,7 @@ const LoginPage = () => {
           onChange={(e) => setUsername(e.target.value)}
           required
         />
+
         <input
           type="password"
           placeholder="Password"
@@ -65,10 +64,20 @@ const LoginPage = () => {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+
         {Error && <p style={{ color: "red" }}>{Error}</p>}
-        {Message && <p style={{ color: "green" }}>{Message}</p>}
-        <button type="submit" style={styles.button}>
+        {Message && <p style={{ color: "limegreen" }}>{Message}</p>}
+
+        <button type="submit" className="auth-btn primary">
           Login
+        </button>
+
+        <button
+          type="button"
+          className="auth-btn secondary"
+          onClick={() => navigate("/register")}
+        >
+          Don't have an account? Register
         </button>
       </form>
     </div>
@@ -87,63 +96,60 @@ const styles = {
     backgroundPosition: "center",
     overflow: "hidden",
   },
+
   overlay: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
+    inset: 0,
     background:
-      "linear-gradient(135deg, rgba(193, 212, 243, 0.65), rgba(147,51,234,0.65))",
+      "linear-gradient(135deg, rgba(200,220,255,0.45), rgba(147,51,234,0.45))",
     zIndex: 1,
   },
+
   form: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     gap: "14px",
-    width: "320px",
-    background: "rgba(255,255,255,0.5)",
-    padding: "32px 24px",
-    borderRadius: "16px",
-    backdropFilter: "blur(12px)",
-    boxShadow: "0 8px 20px rgba(0,0,0,0.25)",
+    width: "340px",
+
+    background: "rgba(255,255,255,0.33)",
+    padding: "36px 32px",
+    borderRadius: "22px",
+
+    backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
+
+    boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
     zIndex: 2,
   },
+
   title: {
-    fontSize: "1.8rem",
+    fontSize: "1.9rem",
     color: "#fff",
-    marginBottom: "4px",
+    fontWeight: "700",
+    marginBottom: "6px",
   },
+
   subtitle: {
     fontSize: "0.95rem",
-    color: "#e0e7ff",
-    marginBottom: "16px",
+    color: "rgba(255,255,255,0.88)",
+    marginBottom: "20px",
     textAlign: "center",
+    lineHeight: 1.4,
   },
+
   input: {
     width: "100%",
-    padding: "15px 12px",
-    fontSize: "1rem",
-    borderRadius: "8px",
-    border: "1px solid rgba(255,255,255,0.4)",
-    backgroundColor: "rgba(255,255,255,0.3)",
+    padding: "13px 12px",
+    fontSize: "0.95rem",
+
+    borderRadius: "10px",
+    border: "1px solid rgba(255,255,255,0.35)",
+    backgroundColor: "rgba(255,255,255,0.22)",
     color: "#fff",
+
     outline: "none",
     transition: "all 0.25s ease",
-  },
-  button: {
-    width: "100%",
-    background: "linear-gradient(135deg, #2563eb, #7c3aed)",
-    color: "white",
-    padding: "10px",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "1rem",
-    marginTop: "8px",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
   },
 };
 

@@ -10,25 +10,35 @@ const Navbar = () => {
   const handleLogout = () => {
     sessionStorage.removeItem("loggedIn");
     setShowAlert(true);
+
     setTimeout(() => {
-      setShowAlert(false);    
+      setShowAlert(false);
       navigate("/");
       window.location.reload();
     }, 1000);
   };
 
   return (
-    <nav class="navbar">
-      <div class="navbar-logo">
-        <img src ="./assets/Logo.png" className="logo-img"/>
+    <nav className="navbar">
+      <div className="navbar-logo">
+        <img src="/assets/Logo.png" className="logo-img" alt="logo" />
         <Link to="/">TaskManager</Link>
       </div>
 
-      <div class="navbar-auth">
+      <div className="navbar-auth">
         {isLoggedIn ? (
-          <button onClick={handleLogout} className="login-btn">Logout</button>
+          <button onClick={handleLogout} className="login-btn">
+            Logout
+          </button>
         ) : (
-          <Link to="/login" className="login-btn">Login</Link>
+          <>
+            <Link to="/login" className="login-btn">
+              Login
+            </Link>
+            <Link to="/register" className="login-btn">
+              Register
+            </Link>
+          </>
         )}
       </div>
 

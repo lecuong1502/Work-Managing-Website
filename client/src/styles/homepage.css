@@ -156,3 +156,17 @@ body {
     max-width: 85%;
   }
 }
+.btn-register {
+  padding: 12px 22px;
+  background-color: #4a80ff;
+  color: white;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 15px;
+}
+
+.btn-register:hover {
+  background-color: #3465d9;
+}
