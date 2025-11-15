@@ -320,6 +320,7 @@ app.get('/api/boards/:boardID', authMiddleware, (req, res) => {
 // Auto-increasingly Id for board
 let nextBoardId = userBoards.reduce((maxId, board) => Math.max(maxId, board.id), 0) + 1;
 
+// Post new boards
 app.post('/api/boards', authMiddleware,(req, res) => {
     const userId = req.user.id;
     
@@ -356,6 +357,7 @@ app.post('/api/boards', authMiddleware,(req, res) => {
     res.status(201).json(newBoard);
 })
 
+// Edit new boards
 app.put('/api/boards/:id', authMiddleware,(req, res) => {
     const userId = req.user.id; 
     if (!userId) {
@@ -402,6 +404,7 @@ app.put('/api/boards/:id', authMiddleware,(req, res) => {
     res.json(updatedBoard);
 });
 
+// Delete boards
 app.delete('/api/boards/:id', authMiddleware,(req, res) => {
     const userId = req.user.id;
     if (!userId) {
