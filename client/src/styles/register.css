@@ -36,16 +36,17 @@
 }
 
 .auth-title {
-  font-size: 1.9rem;
+  font-size: 2rem;
+  font-weight: 800;
   color: #ffffff;
-  font-weight: 700;
-  margin-bottom: 6px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
 .auth-subtitle {
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.88);
-  margin-bottom: 22px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
 }
 
 .auth-form {
@@ -67,7 +68,8 @@
 }
 
 .auth-input::placeholder {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
 }
 
 .auth-input:focus {
