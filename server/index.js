@@ -14,10 +14,10 @@ const app = express();
 app.use(express.json())     // Server reads body of request in JSON
 
 // PORT = 3000
-const PORT = process.env.PORT || 3000; 
+const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: 'http://localhost:5173', // Cho phép frontend truy cập từ port 5173
+    origin: 'http://localhost:5173', // Cho phép frontend truy cập từ port 5173
 }));
 
 app.listen(PORT, () => {
@@ -32,69 +32,70 @@ let userIdCounter = 1;
 
 const DEFAULT_BOARDS_TEMPLATE = [
     {
-      "id": 1,
-      "name": "Công việc nhóm",
-      "description": "Các công việc cần hoàn thành theo nhóm.",
-      "lists": [
-        {
-          "id": "list_1",
-          "title": "To Do",
-          "cards": [
+        "id": 1,
+        "name": "Công việc nhóm",
+        "description": "Các công việc cần hoàn thành theo nhóm.",
+        "lists": [
             {
-              "id": "card_1",
-              "title": "Thiết kế giao diện trang chủ",
-              "description": "Dùng Figma để tạo layout cơ bản.",
-              "labels": ["design"],
-              "dueDate": "2025-11-10"
+                "id": "list_1",
+                "title": "To Do",
+                "cards": [
+                    {
+                        "id": "card_1",
+                        "title": "Thiết kế giao diện trang chủ",
+                        "description": "Dùng Figma để tạo layout cơ bản.",
+                        "labels": ["design"],
+                        "dueDate": "2025-11-10"
+                    },
+                    {
+                        "id": "card_2",
+                        "title": "Phân công nhiệm vụ",
+                        "description": "Chia việc cho từng thành viên.",
+                        "labels": ["management"]
+                    }
+                ]
             },
             {
-              "id": "card_2",
-              "title": "Phân công nhiệm vụ",
-              "description": "Chia việc cho từng thành viên.",
-              "labels": ["management"]
-            }
-          ]
-        },
-        {
-          "id": "list_2",
-          "title": "In Progress",
-          "cards": []
-        },
-        {
-          "id": "list_3",
-          "title": "Done",
-          "cards": []
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "name": "Dự án React",
-      "description": "Làm project web quản lý công việc bằng React.",
-      "lists": [
-        {
-          "id": "list_4",
-          "title": "To Do",
-          "cards": [
+                "id": "list_2",
+                "title": "In Progress",
+                "cards": []
+            },
             {
-              "id": "card_3",
-              "title": "Tạo component Login",
-              "description": "Form đăng nhập với validation.",
-              "labels": ["frontend"]
+                "id": "list_3",
+                "title": "Done",
+                "cards": []
             }
-          ]
-        }
-      ]
+        ]
     },
     {
-      "id": 3,
-      "name": "Việc cá nhân",
-      "description": "Danh sách việc riêng trong tuần.",
-      "lists": []
+        "id": 2,
+        "name": "Dự án React",
+        "description": "Làm project web quản lý công việc bằng React.",
+        "lists": [
+            {
+                "id": "list_4",
+                "title": "To Do",
+                "cards": [
+                    {
+                        "id": "card_3",
+                        "title": "Tạo component Login",
+                        "description": "Form đăng nhập với validation.",
+                        "labels": ["frontend"]
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "name": "Việc cá nhân",
+        "description": "Danh sách việc riêng trong tuần.",
+        "lists": []
     }
 ];
 
-let userBoards = {};
+// let userBoards = {};
+let userBoards = DEFAULT_BOARDS_TEMPLATE.map(board => ({ ...board }));
 
 // Route (API ENDPOINTS)
 app.get('/', (req, res) => {
@@ -164,7 +165,7 @@ app.post('/register', async (req, res) => {
             avatar_url: avatar_url || `https://placehold.co/400x400/EEE/31343C?text=${name.charAt(0)}`,
             createdAt: new Date()
         };
-        
+
         // Save to database
         users.push(newUser);
         userBoards[newUser.id] = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
@@ -204,11 +205,11 @@ app.post('/login', async (req, res) => {
         }
 
         const isMatch = await bcrypt.compare(password, user.passwordHash);
-        
+
         if (!isMatch) {
             return res.status(400).json({ message: 'Email hoặc mật khẩu không đúng.' });
         }
-        
+
         console.log(users)
 
         const payload = {
@@ -312,3 +313,120 @@ app.get('/api/boards/:boardID', authMiddleware, (req, res) => {
 
     res.status(200).json(board);
 })
+
+// Add, edit, delete boards in database
+// let userBoardsCopy = DEFAULT_BOARDS_TEMPLATE.map(board => ({ ...board }));
+
+// Auto-increasingly Id for board
+let nextBoardId = userBoards.reduce((maxId, board) => Math.max(maxId, board.id), 0) + 1;
+
+app.post('/api/boards', authMiddleware,(req, res) => {
+    const userId = req.user.id;
+    
+    if (!userId) {
+        return res.status(401).json({ message: "Chưa xác thực" });
+    }
+
+    const { name, description } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ message: 'Tên board là bắt buộc' });
+    }
+
+    const boardsOfThisUser = userBoards[userId];
+
+    if (!boardsOfThisUser) {
+        return res.status(404).json({ message: 'Không tìm thấy dữ liệu board cho user này' });
+    }
+
+    const newBoardId = boardsOfThisUser.length
+        ? Math.max(...boardsOfThisUser.map(b => b.id)) + 1
+        : 1;
+
+    const newBoard = {
+        id: newBoardId,
+        name: name,
+        description: description || '',
+        lists: [] // Board mới mặc định không có list
+    };
+
+    boardsOfThisUser.push(newBoard);
+    console.log(`UserBoards của user ${userId} sau khi thêm:`, userBoards[userId]);
+
+    res.status(201).json(newBoard);
+})
+
+app.put('/api/boards/:id', authMiddleware,(req, res) => {
+    const userId = req.user.id; 
+    if (!userId) {
+        return res.status(401).json({ message: "Chưa xác thực" });
+    }
+
+    // Lấy boardId từ URL params
+    const boardId = parseInt(req.params.id, 10);
+    if (isNaN(boardId)) {
+        return res.status(400).json({ message: 'Board ID không hợp lệ' });
+    }
+    
+    // Lấy dữ liệu mới từ body
+    const { name, description } = req.body;
+    if (!name) {
+        return res.status(400).json({ message: 'Tên board là bắt buộc' });
+    }
+
+    // Lấy mảng board của user
+    const boardsOfThisUser = userBoards[userId];
+    if (!boardsOfThisUser) {
+        return res.status(404).json({ message: 'Không tìm thấy dữ liệu board cho user này' });
+    }
+
+    // Tìm index của board cần cập nhật
+    const boardIndex = boardsOfThisUser.findIndex(b => b.id === boardId);
+
+    if (boardIndex === -1) {
+        // Board ID này không tồn tại trong mảng của user
+        return res.status(404).json({ message: 'Không tìm thấy board' });
+    }
+
+    // Cập nhật board tại index đó
+    const originalBoard = boardsOfThisUser[boardIndex];
+    const updatedBoard = {
+        ...originalBoard, // Giữ lại ID và lists cũ
+        name: name,
+        description: description !== undefined ? description : originalBoard.description
+    };
+
+    boardsOfThisUser[boardIndex] = updatedBoard;
+    
+    console.log(`UserBoards của user ${userId} sau khi SỬA:`, userBoards[userId]);
+    res.json(updatedBoard);
+});
+
+app.delete('/api/boards/:id', authMiddleware,(req, res) => {
+    const userId = req.user.id;
+    if (!userId) {
+        return res.status(401).json({ message: "Chưa xác thực" });
+    }
+
+    const boardId = parseInt(req.params.id, 10);
+    if (isNaN(boardId)) {
+        return res.status(400).json({ message: 'Board ID không hợp lệ' });
+    }
+
+    const boardsOfThisUser = userBoards[userId];
+    if (!boardsOfThisUser) {
+        return res.status(404).json({ message: 'Không tìm thấy dữ liệu board cho user này' });
+    }
+
+    const boardIndex = boardsOfThisUser.findIndex(b => b.id === boardId);
+
+    if (boardIndex === -1) {
+        // Board ID này không tồn tại trong mảng của user
+        return res.status(404).json({ message: 'Không tìm thấy board' });
+    }
+
+    boardsOfThisUser.splice(boardIndex, 1);
+    
+    console.log(`UserBoards của user ${userId} sau khi XOÁ:`, userBoards[userId]);
+    res.status(204).send();
+});
