@@ -1,4 +1,5 @@
 import express, { json } from 'express'
+import cors from 'cors';
 import validator from 'validator';
 // import session from 'express-session'
 // import passport from 'passport';
@@ -14,6 +15,10 @@ app.use(express.json())     // Server reads body of request in JSON
 
 // PORT = 3000
 const PORT = process.env.PORT || 3000; 
+
+app.use(cors({
+  origin: 'http://localhost:5173', // Cho phép frontend truy cập từ port 5173
+}));
 
 app.listen(PORT, () => {
     console.log(`Server đang chạy (listening) tại http://localhost:${PORT}`);

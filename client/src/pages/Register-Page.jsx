@@ -18,7 +18,7 @@ const RegisterPage = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (form.password !== form.confirmPassword) {
@@ -27,10 +27,35 @@ const RegisterPage = () => {
     }
 
     const { username, email, password } = form;
+
+    try {
+      const res = await fetch("http://localhost:3000/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: username, email, password }),
+      });
+
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setTimeout(() => {
+          alert("Đăng ký thành công!");
+          navigate("/login");
+          window.location.reload();
+        }, 1000);
+      } else {
+        console.log("Đăng ký thất bại:", data);
+      }
+    } catch (err) {
+      console.error("Không kết nối được server:", err);
+      alert("Không kết nối được server");
+    }
+
     localStorage.setItem("user", JSON.stringify({ username, email, password }));
 
-    alert("Đăng ký thành công!");
-    navigate("/login");
   };
 
   return (
