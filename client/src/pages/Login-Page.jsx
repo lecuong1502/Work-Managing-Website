@@ -26,7 +26,6 @@ const LoginPage = () => {
         body: JSON.stringify(payload),
       });
 
-
       const data = await res.json();
 
       if (res.ok) {
@@ -141,29 +140,33 @@ const styles = {
   },
 
   title: {
-    fontSize: "1.9rem",
-    color: "#fff",
-    fontWeight: "700",
-    marginBottom: "6px",
+    fontSize: "2rem",
+    fontWeight: "800",
+    color: "rgba(255,255,255,0.98)",
+    marginBottom: "8px",
+    textShadow: "0 2px 10px rgba(0,0,0,0.45)",
   },
 
   subtitle: {
-    fontSize: "0.95rem",
-    color: "rgba(255,255,255,0.88)",
-    marginBottom: "20px",
+    fontSize: "1rem",
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.95)",
+    marginBottom: "22px",
     textAlign: "center",
-    lineHeight: 1.4,
+    lineHeight: 1.45,
+    textShadow: "0 1px 6px rgba(0,0,0,0.4)",
   },
 
   input: {
     width: "100%",
     padding: "13px 12px",
-    fontSize: "0.95rem",
+    fontSize: "1rem",
+    fontWeight: "600",
 
     borderRadius: "10px",
-    border: "1px solid rgba(255,255,255,0.35)",
-    backgroundColor: "rgba(255,255,255,0.22)",
-    color: "#fff",
+    border: "1px solid rgba(255,255,255,0.45)",
+    backgroundColor: "rgba(255,255,255,0.25)",
+    color: "rgba(255,255,255,0.97)",
 
     outline: "none",
     transition: "all 0.25s ease",
