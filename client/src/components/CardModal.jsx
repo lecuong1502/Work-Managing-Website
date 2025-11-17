@@ -9,6 +9,12 @@ const CardModal = ({ card, onClose }) => {
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <h2>{card.title}</h2>
                 <p>{card.description}</p>
+                <div className="feature">
+                    <button>+ Add</button>
+                    <button> Label </button>
+                    <button> Checklist </button>
+                    <button> Attachment </button>
+                </div>
 
                 {card.dueDate && (
                     <p><strong>Due:</strong>{card.dueDate}</p>

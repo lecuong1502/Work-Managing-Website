@@ -9,10 +9,93 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
+  const [description, setDescription] = useState("")
   const [newBoardColor, setNewBoardColor] = useState("");
   const [boardVisibility, setBoardVisibility] = useState("Private");
   const [availableColors, setAvailableColors] = useState([]);
 
+  const token = sessionStorage.getItem("token");
+
+  // useEffect(() => {
+  //   const userId = Number(sessionStorage.getItem("userId"));
+  //   const isLoggedIn = sessionStorage.getItem("loggedIn");
+  //   if (!isLoggedIn) {
+  //     navigate("/");
+  //     return;
+  //   }
+
+  //   //Chưa chạy BackEnd thì dùng "Board.json"
+  //   fetch("http://localhost:3000/api/boards",{
+  //     headers:{
+  //       "Content-Type": "application/json",
+  //       "Authorization": `Bearer ${token}`
+  //     }
+  //   })
+  //     .then((res) => res.json())
+  //     .then((data) => {
+  //       setBoards(data)
+  //       sessionStorage.setItem("boards", JSON.stringify(data));
+        
+  //     }).catch((err) => console.error("Lỗi tải board", err));
+
+  //   fetch("colors.json")
+  //     .then((res) => res.json())
+  //     .then((data) => setAvailableColors(data.colors))
+  //     .catch((err) => console.error("Lỗi tải colors", err));
+
+  // }, [navigate]);
+
+  // const handleBoardClick = (boardId) => {
+  //   navigate(`/board/${boardId}`);
+  // };
+
+
+  // const handleAddBoard = async (e) => {
+  //   e.preventDefault();
+  //   if (!newBoardName.trim() || !newBoardColor) return;
+
+  //   const userId = Number(sessionStorage.getItem("userId"));
+
+  //   const newBoard = {
+  //     name: newBoardName.trim(),
+  //     description: description,
+  //     color: newBoardColor,
+  //     visibility: boardVisibility,
+  //   };
+
+  //   try {
+  //     const res = await fetch("http://localhost:3000/api/boards", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         "Authorization": `Bearer ${token}`
+  //       },
+  //       body: JSON.stringify(newBoard)
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (!res.ok) {
+  //       alert(data.message || "Lỗi tạo board");
+  //       return;
+  //     }
+
+  //     setBoards(prev => [...prev, {
+  //       id: data.id,        
+  //       name: data.name,
+  //       color: data.color || newBoardColor,
+  //       visibility: data.visibility || boardVisibility
+  //     }]);
+
+  //     setNewBoardName("");
+  //     setNewBoardColor("");
+  //     setShowForm(false);
+  //   } catch (err) {
+  //     alert(data.message || "Lỗi khi tạo Board")
+  //   }
+  // };
+
+  //------Ko chạy backend
   useEffect(() => {
     const userId = Number(sessionStorage.getItem("userId"));
     const isLoggedIn = sessionStorage.getItem("loggedIn");
@@ -32,7 +115,7 @@ const Dashboard = () => {
 
     fetch("colors.json")
       .then((res) => res.json())
-      .then((data) => setAvailableColors(data.colors))
+      .then((data) => setAvailableColors(data.color))
       .catch((err) => console.error("Lỗi tải colors", err));
 
   }, [navigate]);
@@ -61,8 +144,8 @@ const Dashboard = () => {
     setNewBoardName("");
     setNewBoardColor("");
     setShowForm(false);
-  };
-
+  }
+//------------ko chạy backend
   const filteredBoards = boards.filter((b) =>
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -89,6 +172,14 @@ const Dashboard = () => {
                 value={newBoardName}
                 onChange={(e) => setNewBoardName(e.target.value)}
                 placeholder="Tên board mới"
+                required
+              />
+
+               <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description"
                 required
               />
 
@@ -143,7 +234,7 @@ const Dashboard = () => {
             <div
               key={board.id}
               className="board-card"
-              style={{ background: board.colors || "#fff" }}
+              style={{ background: board.color || "#fff" }}
               onClick={() => handleBoardClick(board.id)}
             >
               {board.name}

@@ -69,3 +69,26 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+.feature {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.feature button {
+  background: #f4f5f7;
+  border: 1px solid slategray;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #172b4d;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.feature button:hover {
+  background: #e3e4e7;
+}
+

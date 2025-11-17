@@ -31,7 +31,7 @@ const BoardPage = () => {
   return (
     <div>
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-      <div className="board-page" style={{ background: board.colors }}>
+      <div className="board-page" style={{ background: board.color }}>
         <div className="board-header">
           <div>
             <h2>{board.name}</h2>

@@ -1,24 +1,60 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import LoadingOverlay from "../components/LoadingOverlay";
 
 const LoginPage = () => {
   const [Username, setUsername] = React.useState("");
   const [Password, setPassword] = React.useState("");
   const [Error, setError] = React.useState("");
   const [Message, setMessage] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     const payload = {
       email: Username,
       password: Password,
     };
-    //"https://jsonplaceholder.typicode.com/posts"
-    //"http://localhost:3000/login"
+  
+    // try {
+    //   const res = await fetch("http://localhost:3000/login", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //     },
+    //     body: JSON.stringify(payload),
+    //   });
+
+    //   const data = await res.json();
+
+    //   if (res.ok) {
+    //     sessionStorage.setItem("loggedIn", "true");
+    //     sessionStorage.setItem("userId", data.userId);
+    //     sessionStorage.setItem("token",data.token)
+
+    //     setError("");
+    //     setMessage("Đăng nhập thành công!");
+    //     setTimeout(() => {
+    //       setMessage("");
+    //       navigate("/dashboard");
+    //       window.location.reload();
+    //     }, 1000);
+    //   } else {
+    //     setError(data.message || "Đăng nhập thất bại");
+    //   }
+    // } catch (err) {
+    //   console.error("Không kết nối được server:", err);
+    //   alert("Không kết nối được server");
+    // } finally{
+    //   setLoading(false); 
+    // }
+//-------ko chạy backend
     try {
-      const res = await fetch("http://localhost:3000/login", {
+      const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,13 +80,17 @@ const LoginPage = () => {
     } catch (err) {
       console.error("Không kết nối được server:", err);
       alert("Không kết nối được server");
+    } finally{
+      setLoading(false);
     }
+    //-----------ko chạy backend
   };
 
   return (
     <div style={styles.container}>
+      {loading && <LoadingOverlay message="Đang đăng nhập..." />}
       <div style={styles.overlay}></div>
-
+      
       <form style={styles.form} onSubmit={handleSubmit}>
         <h2 style={styles.title}>Login</h2>
         <p style={styles.subtitle}>Login to manage your tasks efficiently</p>

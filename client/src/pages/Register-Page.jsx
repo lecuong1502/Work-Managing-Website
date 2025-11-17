@@ -4,6 +4,7 @@ import "../styles/register.css";
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const [Error, setError] = React.useState("");
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -47,7 +48,7 @@ const RegisterPage = () => {
           window.location.reload();
         }, 1000);
       } else {
-        console.log("Đăng ký thất bại:", data);
+        setError(data.message);
       }
     } catch (err) {
       console.error("Không kết nối được server:", err);
@@ -112,6 +113,7 @@ const RegisterPage = () => {
           <button type="submit" className="auth-btn primary">
             Register
           </button>
+          {Error && <p style={{ color: "red" }}>{Error}</p>}
 
           <button
             type="button"

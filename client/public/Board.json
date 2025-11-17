@@ -5,7 +5,7 @@
       "userId": 101,
       "name": "Công việc nhóm",
       "description": "Các công việc cần hoàn thành theo nhóm.",
-      "colors": "linear-gradient(135deg, #667eea, #764ba2)",
+      "color": "linear-gradient(135deg, #667eea, #764ba2)",
       "visibility":"Workspace",
       "lists": [
         {
@@ -44,7 +44,7 @@
       "userId": 101,
       "name": "Dự án React",
       "description": "Làm project web quản lý công việc bằng React.",
-      "colors": "linear-gradient(135deg, #fddb92, #d1fdff)",
+      "color": "linear-gradient(135deg, #fddb92, #d1fdff)",
       "visibility":"Workspace",
       "lists": [
         {
@@ -66,7 +66,7 @@
        "userId": 102,
       "name": "Việc cá nhân",
       "description": "Danh sách việc riêng trong tuần.",
-      "colors": "#722ed1",
+      "color": "#722ed1",
       "visibility":"Workspace",
       "lists": []
     }
