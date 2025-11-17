@@ -32,65 +32,74 @@ let userIdCounter = 1;
 
 const DEFAULT_BOARDS_TEMPLATE = [
     {
-        "id": 1,
-        "name": "Công việc nhóm",
-        "description": "Các công việc cần hoàn thành theo nhóm.",
-        "lists": [
+      "id": 1,
+      "userId": 101,
+      "name": "Công việc nhóm",
+      "description": "Các công việc cần hoàn thành theo nhóm.",
+      "color": "linear-gradient(135deg, #667eea, #764ba2)",
+      "visibility":"Workspace",
+      "lists": [
+        {
+          "id": "list_1",
+          "title": "To Do",
+          "cards": [
             {
-                "id": "list_1",
-                "title": "To Do",
-                "cards": [
-                    {
-                        "id": "card_1",
-                        "title": "Thiết kế giao diện trang chủ",
-                        "description": "Dùng Figma để tạo layout cơ bản.",
-                        "labels": ["design"],
-                        "dueDate": "2025-11-10"
-                    },
-                    {
-                        "id": "card_2",
-                        "title": "Phân công nhiệm vụ",
-                        "description": "Chia việc cho từng thành viên.",
-                        "labels": ["management"]
-                    }
-                ]
+              "id": "card_1",
+              "title": "Thiết kế giao diện trang chủ",
+              "description": "Dùng Figma để tạo layout cơ bản.",
+              "labels": ["design"],
+              "dueDate": "2025-11-10"
             },
             {
-                "id": "list_2",
-                "title": "In Progress",
-                "cards": []
-            },
-            {
-                "id": "list_3",
-                "title": "Done",
-                "cards": []
+              "id": "card_2",
+              "title": "Phân công nhiệm vụ",
+              "description": "Chia việc cho từng thành viên.",
+              "labels": ["management"]
             }
-        ]
+          ]
+        },
+        {
+          "id": "list_2",
+          "title": "In Progress",
+          "cards": []
+        },
+        {
+          "id": "list_3",
+          "title": "Done",
+          "cards": []
+        }
+      ]
     },
     {
-        "id": 2,
-        "name": "Dự án React",
-        "description": "Làm project web quản lý công việc bằng React.",
-        "lists": [
+      "id": 2,
+      "userId": 101,
+      "name": "Dự án React",
+      "description": "Làm project web quản lý công việc bằng React.",
+      "color": "linear-gradient(135deg, #fddb92, #d1fdff)",
+      "visibility":"Workspace",
+      "lists": [
+        {
+          "id": "list_4",
+          "title": "To Do",
+          "cards": [
             {
-                "id": "list_4",
-                "title": "To Do",
-                "cards": [
-                    {
-                        "id": "card_3",
-                        "title": "Tạo component Login",
-                        "description": "Form đăng nhập với validation.",
-                        "labels": ["frontend"]
-                    }
-                ]
+              "id": "card_3",
+              "title": "Tạo component Login",
+              "description": "Form đăng nhập với validation.",
+              "labels": ["frontend"]
             }
-        ]
+          ]
+        }
+      ]
     },
     {
-        "id": 3,
-        "name": "Việc cá nhân",
-        "description": "Danh sách việc riêng trong tuần.",
-        "lists": []
+      "id": 3,
+       "userId": 102,
+      "name": "Việc cá nhân",
+      "description": "Danh sách việc riêng trong tuần.",
+      "color": "#722ed1",
+      "visibility":"Workspace",
+      "lists": []
     }
 ];
 
@@ -318,17 +327,17 @@ app.get('/api/boards/:boardID', authMiddleware, (req, res) => {
 // let userBoardsCopy = DEFAULT_BOARDS_TEMPLATE.map(board => ({ ...board }));
 
 // Auto-increasingly Id for board
-let nextBoardId = userBoards.reduce((maxId, board) => Math.max(maxId, board.id), 0) + 1;
+// let nextBoardId = userBoards.reduce((maxId, board) => Math.max(maxId, board.id), 0) + 1;
 
 // Post new boards
 app.post('/api/boards', authMiddleware,(req, res) => {
     const userId = req.user.id;
+
+    const { name, description, color, visibility } = req.body;
     
     if (!userId) {
         return res.status(401).json({ message: "Chưa xác thực" });
     }
-
-    const { name, description } = req.body;
 
     if (!name) {
         return res.status(400).json({ message: 'Tên board là bắt buộc' });
@@ -346,8 +355,11 @@ app.post('/api/boards', authMiddleware,(req, res) => {
 
     const newBoard = {
         id: newBoardId,
+        userId: userId,
         name: name,
         description: description || '',
+        color: color || 'linear-gradient(135deg, #667eea, #764ba2)',
+        visibility: visibility || 'Workspace',
         lists: [] // Board mới mặc định không có list
     };
 
@@ -360,6 +372,7 @@ app.post('/api/boards', authMiddleware,(req, res) => {
 // Edit new boards
 app.put('/api/boards/:id', authMiddleware,(req, res) => {
     const userId = req.user.id; 
+
     if (!userId) {
         return res.status(401).json({ message: "Chưa xác thực" });
     }
@@ -371,7 +384,7 @@ app.put('/api/boards/:id', authMiddleware,(req, res) => {
     }
     
     // Lấy dữ liệu mới từ body
-    const { name, description } = req.body;
+    const { name, description, color, visibility } = req.body;
     if (!name) {
         return res.status(400).json({ message: 'Tên board là bắt buộc' });
     }
@@ -395,7 +408,9 @@ app.put('/api/boards/:id', authMiddleware,(req, res) => {
     const updatedBoard = {
         ...originalBoard, // Giữ lại ID và lists cũ
         name: name,
-        description: description !== undefined ? description : originalBoard.description
+        description: description !== undefined ? description : originalBoard.description,
+        color: color || originalBoard.color,
+        visibility: visibility || originalBoard.visibility
     };
 
     boardsOfThisUser[boardIndex] = updatedBoard;
@@ -433,3 +448,8 @@ app.delete('/api/boards/:id', authMiddleware,(req, res) => {
     console.log(`UserBoards của user ${userId} sau khi XOÁ:`, userBoards[userId]);
     res.status(204).send();
 });
+
+
+// Lưu ý, phải lưu token bằng localStorage trong frontend thì mới chạy đúng được
+// Quy trình: 
+// Đăng nhập và Lưu token (Login) -> Gửi token đi (khi gọi API lấy data) -> Đăng xuất (xóa token khoit localStorage)
