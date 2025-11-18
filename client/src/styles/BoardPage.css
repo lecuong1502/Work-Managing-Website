@@ -262,4 +262,69 @@
   background-color: rgba(255, 255, 255, 0.4);
 }
 
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.list-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rename-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  transition: 0.2s;
+  border-radius: 6px;
+}
+
+.rename-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.rename-btn img {
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+}
+
+.rename-btn:hover img {
+  opacity: 1;
+}
+
+.rename-list-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rename-list-box input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.rename-list-box button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.rename-list-box button:nth-child(2) {
+  background: #3b82f6;
+  color: white;
+}
+
+.rename-list-box button:nth-child(3) {
+  background: #9ca3af;
+  color: white;
+}
 

@@ -1,8 +1,8 @@
 .loading-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(255, 255, 255, 0.7); /* mờ nền */
-  backdrop-filter: blur(4px); /* hiệu ứng blur */
+  background: rgba(255, 255, 255, 0.7); 
+  backdrop-filter: blur(4px); 
   display: flex;
   justify-content: center;
   align-items: center;

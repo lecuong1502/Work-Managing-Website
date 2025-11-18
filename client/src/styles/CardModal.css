@@ -92,3 +92,8 @@
   background: #e3e4e7;
 }
 
+.feature button img {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}

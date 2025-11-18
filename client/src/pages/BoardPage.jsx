@@ -13,6 +13,9 @@ const BoardPage = () => {
   const [addingCard, setAddingCard] = useState({})
   const [addingList, setAddingList] = useState(false)
   const [selectedCard, setSelectedCard] = useState(null)
+  const [newListTitle, setNewListTitle] = useState("")
+  const [renamingList, setRenamingList] = useState(null)
+  const [newListName, setNewListName] = useState("")
 
   useEffect(() => {
     const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
@@ -26,6 +29,45 @@ const BoardPage = () => {
     }
   }, [boardId, navigate]);
 
+  const updateBoardToStorage = (updatedBoard) => {
+    const boards = JSON.parse(sessionStorage.getItem("boards")) || [];
+    const index = boards.findIndex(b => b.id === updatedBoard.id);
+    boards[index] = updatedBoard;
+    sessionStorage.setItem("boards", JSON.stringify(boards));
+  };
+
+  const handleAddList = () => {
+    if (!newListTitle.trim()) return;
+    const newList = {
+      id: Date.now(),
+      title: newListTitle.trim(),
+      cards: []
+    };
+    const updatedBoard = {
+      ...board,
+      lists: [...board.lists, newList]
+    };
+    setBoard(updatedBoard);
+    updateBoardToStorage(updatedBoard);
+    setNewListTitle("");
+    setAddingList(false);
+  };
+
+  const handleRenameList = (listId) => {
+    if (!newListName.trim()) return;
+    const updatedLists = board.lists.map(list =>  
+      list.id === listId ? { ...list, title: newListName.trim() } : list
+    );
+    const updatedBoard = {  
+      ...board,
+      lists: updatedLists
+    };
+    setBoard(updatedBoard);
+    updateBoardToStorage(updatedBoard);
+    setRenamingList(null);
+    setNewListName("");
+  };
+
   if (!board) return <p>Đang tải...</p>;
 
   return (
@@ -38,10 +80,31 @@ const BoardPage = () => {
             <p className="description">{board.description}</p>
           </div>
         </div>
+
         <div className="lists-container">
           {board.lists.map((list) => (
             <div key={list.id} className="list-column">
-              <h3>{list.title}</h3>
+              <div className="list-header">
+                {renamingList === list.id ? (
+                  <div className="rename-list-box">
+                    <input
+                      type="text"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)} />
+                    <button onClick={() => handleRenameList(list.id)}>Save</button>
+                    <button onClick={() => setRenamingList(null)}>Cancel</button>
+
+                  </div>
+                ) : (
+                  <div className="list-title-row"> 
+                    <h3>{list.title}</h3>
+                    <button className ="rename-btn"onClick={() => {
+                      setRenamingList(list.id);
+                      setNewListName(list.title);
+                    }}><img src="/assets/edit.svg" alt='rename'></img></button>
+                  </div>
+                )}
+              </div>
               <div className="card-container">
                 {list.cards.length === 0 && (
                   <p className="empty">Không có thẻ nào</p>
@@ -81,9 +144,15 @@ const BoardPage = () => {
           ))}
           {addingList ? (
             <div className="add-list-form">
-              <input type="text" placeholder="List title..." />
+              <input
+                type="text"
+                placeholder="List title..."
+                value={newListTitle}
+                onChange={(e) => setNewListTitle(e.target.value)}
+                autoFocus
+              />
               <button onClick={() => setAddingList(false)}>Cancel</button>
-              <button>Add</button>
+              <button onClick={handleAddList}>Add</button>
             </div>
           ) : (
             <div className="add-list" onClick={() => setAddingList(true)}>

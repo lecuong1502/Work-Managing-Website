@@ -12,8 +12,8 @@ const CardModal = ({ card, onClose }) => {
                 <div className="feature">
                     <button>+ Add</button>
                     <button> Label </button>
-                    <button> Checklist </button>
-                    <button> Attachment </button>
+                    <button> <img src="/assets/check-circle.svg"></img>Checklist </button>
+                    <button> <img src="/assets/paperclip.svg"></img>Attachment </button>
                 </div>
 
                 {card.dueDate && (
