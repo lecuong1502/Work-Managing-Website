@@ -20,41 +20,8 @@ const LoginPage = () => {
       password: Password,
     };
   
-    // try {
-    //   const res = await fetch("http://localhost:3000/login", {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //     },
-    //     body: JSON.stringify(payload),
-    //   });
-
-    //   const data = await res.json();
-
-    //   if (res.ok) {
-    //     sessionStorage.setItem("loggedIn", "true");
-    //     sessionStorage.setItem("userId", data.userId);
-    //     sessionStorage.setItem("token",data.token)
-
-    //     setError("");
-    //     setMessage("Đăng nhập thành công!");
-    //     setTimeout(() => {
-    //       setMessage("");
-    //       navigate("/dashboard");
-    //       window.location.reload();
-    //     }, 1000);
-    //   } else {
-    //     setError(data.message || "Đăng nhập thất bại");
-    //   }
-    // } catch (err) {
-    //   console.error("Không kết nối được server:", err);
-    //   alert("Không kết nối được server");
-    // } finally{
-    //   setLoading(false); 
-    // }
-//-------ko chạy backend
     try {
-      const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
+      const res = await fetch("http://localhost:3000/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -66,9 +33,13 @@ const LoginPage = () => {
 
       if (res.ok) {
         sessionStorage.setItem("loggedIn", "true");
-        sessionStorage.setItem("userId", 101);
+        sessionStorage.setItem("userId", data.id);
+        sessionStorage.setItem("token",data.token);
+        console.log("token login",data.token);
+        console.log("Data:::Dcd",data)
+
         setError("");
-        setMessage("Đăng nhập thành công!");
+        setMessage(data.message);
         setTimeout(() => {
           setMessage("");
           navigate("/dashboard");
@@ -81,10 +52,41 @@ const LoginPage = () => {
       console.error("Không kết nối được server:", err);
       alert("Không kết nối được server");
     } finally{
-      setLoading(false);
+      setLoading(false); 
     }
-    //-----------ko chạy backend
-  };
+//-------ko chạy backend
+  //   try {
+  //     const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (res.ok) {
+  //       sessionStorage.setItem("loggedIn", "true");
+  //       sessionStorage.setItem("userId", 101);
+  //       setError("");
+  //       setMessage("Đăng nhập thành công!");
+  //       setTimeout(() => {
+  //         setMessage("");
+  //         navigate("/dashboard");
+  //         window.location.reload();
+  //       }, 1000);
+  //     } else {
+  //       setError(data.message || "Đăng nhập thất bại");
+  //     }
+  //   } catch (err) {
+  //     console.error("Không kết nối được server:", err);
+  //     alert("Không kết nối được server");
+  //   } finally{
+  //     setLoading(false);
+  //   }
+  //   //-----------ko chạy backend
+   };
 
   return (
     <div style={styles.container}>

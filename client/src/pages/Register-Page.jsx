@@ -55,8 +55,8 @@ const RegisterPage = () => {
       alert("Không kết nối được server");
     }
 
-    localStorage.setItem("user", JSON.stringify({ username, email, password }));
-
+    sessionStorage.setItem("user", JSON.stringify({ username, email, password }));
+    
   };
 
   return (

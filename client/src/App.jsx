@@ -14,7 +14,7 @@ import RegisterPage from "./pages/Register-Page";
 
 function App() {
   const isLoggedIn = sessionStorage.getItem("loggedIn") === "true";
-
+  
   return (
     <Router>
       {isLoggedIn ? (

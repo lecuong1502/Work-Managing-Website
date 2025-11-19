@@ -9,6 +9,4 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <App />
   </React.StrictMode>
 );
-import RegisterPage from "./pages/Register-Page";
 
-<Route path="/register" element={<RegisterPage />} />;
