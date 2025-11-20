@@ -9,6 +9,7 @@ import validator from 'validator';
 // import { Strategy as MicrosoftStrategy } from 'passport-microsoft';     // Microsoft Acc
 import bcrypt from 'bcryptjs'       // hash password
 import jwt from 'jsonwebtoken'      // transfer client and server: header + payload + signature (JSON File)
+// import { authorize } from 'passport';
 
 const app = express();
 app.use(express.json())     // Server reads body of request in JSON
@@ -33,7 +34,7 @@ let userIdCounter = 1;
 const DEFAULT_BOARDS_TEMPLATE = [
     {
       "id": 1,
-      "userId": 101,
+      "userId": 1,
       "name": "Công việc nhóm",
       "description": "Các công việc cần hoàn thành theo nhóm.",
       "color": "linear-gradient(135deg, #667eea, #764ba2)",
@@ -72,7 +73,7 @@ const DEFAULT_BOARDS_TEMPLATE = [
     },
     {
       "id": 2,
-      "userId": 101,
+      "userId": 1,
       "name": "Dự án React",
       "description": "Làm project web quản lý công việc bằng React.",
       "color": "linear-gradient(135deg, #fddb92, #d1fdff)",
@@ -94,7 +95,7 @@ const DEFAULT_BOARDS_TEMPLATE = [
     },
     {
       "id": 3,
-       "userId": 102,
+       "userId": 2,
       "name": "Việc cá nhân",
       "description": "Danh sách việc riêng trong tuần.",
       "color": "#722ed1",
@@ -104,7 +105,7 @@ const DEFAULT_BOARDS_TEMPLATE = [
 ];
 
 // let userBoards = {};
-let userBoards = DEFAULT_BOARDS_TEMPLATE.map(board => ({ ...board }));
+let userBoards = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
 
 // Route (API ENDPOINTS)
 app.get('/', (req, res) => {
@@ -453,3 +454,70 @@ app.delete('/api/boards/:id', authMiddleware,(req, res) => {
 // Lưu ý, phải lưu token bằng localStorage trong frontend thì mới chạy đúng được
 // Quy trình: 
 // Đăng nhập và Lưu token (Login) -> Gửi token đi (khi gọi API lấy data) -> Đăng xuất (xóa token khoit localStorage)
+
+app.post('/api/boards/:boardId/lists', authMiddleware, (req, res) => {
+    // const userId = req.user.id;
+    const { boardId } = req.params;
+    const { title } = req.body;
+
+    if (!title) {
+        return res.status(400).json({ message: 'Tiêu đề list không được để trống.' });
+    }
+
+    const board = userBoards.find(b => b.id == boardId);
+
+    if (!board) {
+        return res.status(404).json({ message: 'Board không tồn tại hoặc không có quyền truy cập.' });
+    }
+
+    const newList = {
+        id: `list_${Date.now()}`,
+        title: title,
+        cards: []
+    };
+
+    board.lists.push(newList);
+    console.log("List trong board", board)
+    console.log("List trong board", board.lists)
+    res.status(201).json(newList);
+});
+
+app.put('/api/boards/:boardId/lists/:listId', authMiddleware, (req, res) => {
+    // const userId = req.user.id;
+    const { boardId, listId } = req.params;
+    console.log(boardId, listId)
+    const { title } = req.body;
+
+    const board = userBoards.find(b => b.id == boardId);
+    if (!board) {
+        return res.status(404).json({ message: 'Board không tồn tại.' });
+    }
+
+    const list = board.lists.find(l => l.id === listId);
+    if (!list) {
+        return res.status(404).json({ message: 'List không tồn tại.' });
+    }
+
+    if (title) list.title = title;
+
+    res.status(200).json(list);
+});
+
+app.delete('/api/boards/:boardId/lists/:listId', authMiddleware, (req, res) => {
+    // const userId = req.user.id;
+    const { boardId, listId } = req.params;
+
+    const board = userBoards.find(b => b.id == boardId);
+    if (!board) {
+        return res.status(404).json({ message: 'Board không tồn tại.' });
+    }
+
+    const listIndex = board.lists.findIndex(l => l.id === listId);
+    if (listIndex === -1) {
+        return res.status(404).json({ message: 'List không tồn tại.' });
+    }
+
+    board.lists.splice(listIndex, 1);
+
+    res.status(200).json({ message: 'Đã xóa list thành công.' });
+});
