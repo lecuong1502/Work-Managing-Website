@@ -17,6 +17,86 @@ const Dashboard = () => {
   const token = sessionStorage.getItem("token");
   console.log("Token bên dashb",token)
 
+  // useEffect(() => {
+  //   const userId = Number(sessionStorage.getItem("userId"));
+  //   const isLoggedIn = sessionStorage.getItem("loggedIn");
+  //   if (!isLoggedIn) {
+  //     navigate("/");
+  //     return;
+  //   }
+
+    //Chưa chạy BackEnd thì dùng "Board.json"
+  //   fetch("http://localhost:3000/api/boards",{
+  //     headers:{
+  //       "Content-Type": "application/json",
+  //       "Authorization": `Bearer ${token}`
+  //     }
+  //   })
+  //     .then((res) => res.json())
+  //     .then((data) => {
+  //       setBoards(data)
+  //       sessionStorage.setItem("boards", JSON.stringify(data));
+  //       console.log("Data lấy được",data)
+  //     }).catch((err) => console.error("Lỗi tải board",err));
+
+  //   fetch("colors.json")
+  //     .then((res) => res.json())
+  //     .then((data) => setAvailableColors(data.colors))
+  //     .catch((err) => console.error("Lỗi tải colors", err));
+
+  // }, [navigate]);
+
+  // const handleBoardClick = (boardId) => {
+  //   navigate(`/board/${boardId}`);
+  // };
+
+
+  // const handleAddBoard = async (e) => {
+  //   e.preventDefault();
+  //   if (!newBoardName.trim() || !newBoardColor) return;
+
+  //   const userId = Number(sessionStorage.getItem("userId"));
+
+  //   const newBoard = {
+  //     name: newBoardName.trim(),
+  //     description: description,
+  //     color: newBoardColor,
+  //     visibility: boardVisibility,
+  //   };
+
+  //   try {
+  //     const res = await fetch("http://localhost:3000/api/boards", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         "Authorization": `Bearer ${token}`
+  //       },
+  //       body: JSON.stringify(newBoard)
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (!res.ok) {
+  //       alert(data.message || "Lỗi tạo board");
+  //       return;
+  //     }
+
+  //     setBoards(prev => [...prev, {
+  //       id: data.id,        
+  //       name: data.name,
+  //       color: data.color || newBoardColor,
+  //       visibility: data.visibility || boardVisibility
+  //     }]);
+
+  //     setNewBoardName("");
+  //     setNewBoardColor("");
+  //     setShowForm(false);
+  //   } catch (err) {
+  //     alert(data.message || "Lỗi khi tạo Board")
+  //   }
+  // };
+
+  //------Ko chạy backend
   useEffect(() => {
     const userId = Number(sessionStorage.getItem("userId"));
     const isLoggedIn = sessionStorage.getItem("loggedIn");
@@ -25,19 +105,14 @@ const Dashboard = () => {
       return;
     }
 
-    //Chưa chạy BackEnd thì dùng "Board.json"
-    fetch("http://localhost:3000/api/boards",{
-      headers:{
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      }
-    })
+    fetch("Board.json")
       .then((res) => res.json())
       .then((data) => {
-        setBoards(data)
-        sessionStorage.setItem("boards", JSON.stringify(data));
-        console.log("Data lấy được",data)
-      }).catch((err) => console.error("Lỗi tải board",err));
+        const allBoards = data.boards;
+        const userBoards = allBoards.filter(b => b.userId === userId);
+        setBoards(userBoards);
+        sessionStorage.setItem("boards", JSON.stringify(data.boards));
+      }).catch((err) => console.error("Lỗi tải board", err));
 
     fetch("colors.json")
       .then((res) => res.json())
@@ -49,102 +124,27 @@ const Dashboard = () => {
     navigate(`/board/${boardId}`);
   };
 
-
-  const handleAddBoard = async (e) => {
+  const handleAddBoard = (e) => {
     e.preventDefault();
     if (!newBoardName.trim() || !newBoardColor) return;
 
     const userId = Number(sessionStorage.getItem("userId"));
-
     const newBoard = {
+      id: Date.now(),
       name: newBoardName.trim(),
-      description: description,
+      userId,
       color: newBoardColor,
       visibility: boardVisibility,
     };
 
-    try {
-      const res = await fetch("http://localhost:3000/api/boards", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(newBoard)
-      });
+    const updatedBoards = [...boards, newBoard];
+    setBoards(updatedBoards);
+    sessionStorage.setItem("boards", JSON.stringify(updatedBoards));
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || "Lỗi tạo board");
-        return;
-      }
-
-      setBoards(prev => [...prev, {
-        id: data.id,        
-        name: data.name,
-        color: data.color || newBoardColor,
-        visibility: data.visibility || boardVisibility
-      }]);
-
-      setNewBoardName("");
-      setNewBoardColor("");
-      setShowForm(false);
-    } catch (err) {
-      alert(data.message || "Lỗi khi tạo Board")
-    }
-  };
-
-  //------Ko chạy backend
-  // useEffect(() => {
-  //   const userId = Number(sessionStorage.getItem("userId"));
-  //   const isLoggedIn = sessionStorage.getItem("loggedIn");
-  //   if (!isLoggedIn) {
-  //     navigate("/");
-  //     return;
-  //   }
-
-  //   fetch("Board.json")
-  //     .then((res) => res.json())
-  //     .then((data) => {
-  //       const allBoards = data.boards;
-  //       const userBoards = allBoards.filter(b => b.userId === userId);
-  //       setBoards(userBoards);
-  //       sessionStorage.setItem("boards", JSON.stringify(data.boards));
-  //     }).catch((err) => console.error("Lỗi tải board", err));
-
-  //   fetch("colors.json")
-  //     .then((res) => res.json())
-  //     .then((data) => setAvailableColors(data.color))
-  //     .catch((err) => console.error("Lỗi tải colors", err));
-
-  // }, [navigate]);
-
-  // const handleBoardClick = (boardId) => {
-  //   navigate(`/board/${boardId}`);
-  // };
-
-  // const handleAddBoard = (e) => {
-  //   e.preventDefault();
-  //   if (!newBoardName.trim() || !newBoardColor) return;
-
-  //   const userId = Number(sessionStorage.getItem("userId"));
-  //   const newBoard = {
-  //     id: Date.now(),
-  //     name: newBoardName.trim(),
-  //     userId,
-  //     color: newBoardColor,
-  //     visibility: boardVisibility,
-  //   };
-
-  //   const updatedBoards = [...boards, newBoard];
-  //   setBoards(updatedBoards);
-  //   sessionStorage.setItem("boards", JSON.stringify(updatedBoards));
-
-  //   setNewBoardName("");
-  //   setNewBoardColor("");
-  //   setShowForm(false);
-  // }
+    setNewBoardName("");
+    setNewBoardColor("");
+    setShowForm(false);
+  }
 //------------ko chạy backend
   const filteredBoards = boards.filter((b) =>
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
