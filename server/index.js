@@ -373,6 +373,7 @@ app.post('/api/boards', authMiddleware,(req, res) => {
 // Edit new boards
 app.put('/api/boards/:id', authMiddleware,(req, res) => {
     const userId = req.user.id; 
+
     if (!userId) {
         return res.status(401).json({ message: "Chưa xác thực" });
     }
