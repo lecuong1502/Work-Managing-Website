@@ -25,16 +25,16 @@ const Dashboard = () => {
       .then((res) => res.json())
       .then((data) => {
         const allBoards = data.boards;
-        const userBoards = allBoards.filter(b => b.userId === userId);
+        const userBoards = allBoards.filter((b) => b.userId === userId);
         setBoards(userBoards);
         sessionStorage.setItem("boards", JSON.stringify(data.boards));
-      }).catch((err) => console.error("Lỗi tải board", err));
+      })
+      .catch((err) => console.error("Lỗi tải board", err));
 
     fetch("colors.json")
       .then((res) => res.json())
       .then((data) => setAvailableColors(data.colors))
       .catch((err) => console.error("Lỗi tải colors", err));
-
   }, [navigate]);
 
   const handleBoardClick = (boardId) => {
@@ -74,7 +74,10 @@ const Dashboard = () => {
         <div className="dashboard-header">
           <h1>📋 My Boards</h1>
           <div>
-            <button className="dashboard-button" onClick={() => setShowForm(!showForm)}>
+            <button
+              className="dashboard-button"
+              onClick={() => setShowForm(!showForm)}
+            >
               + Thêm board
             </button>
           </div>
@@ -82,7 +85,10 @@ const Dashboard = () => {
 
         {showForm && (
           <>
-            <div className="modal-overlay" onClick={() => setShowForm(false)}></div>
+            <div
+              className="modal-overlay"
+              onClick={() => setShowForm(false)}
+            ></div>
             <form className="add-board-form" onSubmit={handleAddBoard}>
               <input
                 type="text"
@@ -94,7 +100,7 @@ const Dashboard = () => {
 
               <div>
                 <p>Background</p>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                   {availableColors.map((color) => (
                     <div
                       key={color}
@@ -105,7 +111,10 @@ const Dashboard = () => {
                         borderRadius: "6px",
                         background: color,
                         cursor: "pointer",
-                        border: newBoardColor === color ? "3px solid #000" : "2px solid #fff"
+                        border:
+                          newBoardColor === color
+                            ? "3px solid #000"
+                            : "2px solid #fff",
                       }}
                     />
                   ))}
@@ -113,15 +122,19 @@ const Dashboard = () => {
               </div>
               <div className="visibility-selection">
                 <p>Chọn quyền truy cập:</p>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: "flex", gap: "10px" }}>
                   <div
-                    className={`visibility-option ${boardVisibility === "Private" ? "selected" : ""}`}
+                    className={`visibility-option ${
+                      boardVisibility === "Private" ? "selected" : ""
+                    }`}
                     onClick={() => setBoardVisibility("Private")}
                   >
                     Private
                   </div>
                   <div
-                    className={`visibility-option ${boardVisibility === "Workspace" ? "selected" : ""}`}
+                    className={`visibility-option ${
+                      boardVisibility === "Workspace" ? "selected" : ""
+                    }`}
                     onClick={() => setBoardVisibility("Workspace")}
                   >
                     Workspace
@@ -129,14 +142,15 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+              <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
                 <button type="submit">Thêm</button>
-                <button type="button" onClick={() => setShowForm(false)}>Hủy</button>
+                <button type="button" onClick={() => setShowForm(false)}>
+                  Hủy
+                </button>
               </div>
             </form>
           </>
         )}
-
 
         <div className="board-list">
           {filteredBoards.map((board) => (
@@ -150,7 +164,6 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
-
       </div>
     </div>
   );
