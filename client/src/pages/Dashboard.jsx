@@ -43,7 +43,6 @@ const Dashboard = () => {
       .then((res) => res.json())
       .then((data) => setAvailableColors(data.colors))
       .catch((err) => console.error("Lỗi tải colors", err));
-
   }, [navigate]);
 
   const handleBoardClick = (boardId) => {
@@ -229,7 +228,6 @@ const Dashboard = () => {
           </>
         )}
 
-
         <div className="board-list">
           {filteredBoards.map((board) => (
             <div
@@ -242,7 +240,6 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
-
       </div>
     </div>
   );
