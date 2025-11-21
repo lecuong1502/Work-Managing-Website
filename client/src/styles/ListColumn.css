@@ -1,0 +1,144 @@
+.list-column:hover{
+  transform: translateY(-1px);
+}
+
+.list-column {
+  background: #e8ecf1;
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 250px;
+  max-height: 500px;
+  height: fit-content;
+  overflow-y: auto;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rename-list-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rename-list-box input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.rename-list-box button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.rename-list-box button:nth-child(2) {
+  background: #3b82f6;
+  color: white;
+}
+
+.rename-list-box button:nth-child(3) {
+  background: #9ca3af;
+  color: white;
+}
+
+.list-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rename-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  transition: 0.2s;
+  border-radius: 6px;
+}
+
+.rename-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.rename-btn img {
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+}
+
+.rename-btn:hover img {
+  opacity: 1;
+}
+
+
+.add-card-btn {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.add-card-btn:hover {
+  background: #e6f7ff;
+}
+
+
+.add-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-top: 8px;
+}
+
+.add-card-form input {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+}
+
+.add-card-form input:focus {
+  border-color: #3b82f6;
+}
+
+.add-card-form button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.add-card-form button:nth-child(2) {
+  background-color: #9ca3af;
+  color: white;
+}
+
+.add-card-form button:nth-child(2):hover {
+  background-color: #6b7280;
+}
+
+.add-card-form button:nth-child(3) {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.add-card-form button:nth-child(3):hover {
+  background-color: #2563eb;
+}
