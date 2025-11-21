@@ -521,3 +521,5 @@ app.delete('/api/boards/:boardId/lists/:listId', authMiddleware, (req, res) => {
 
     res.status(200).json({ message: 'Đã xóa list thành công.' });
 });
+
+// Drop lists
