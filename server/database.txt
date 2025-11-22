@@ -1,49 +1,124 @@
-Table: Users
-    - id: id of user (maybe "friendly" name) 
-    - name: name of user
-    - email: Gmail, Facebook, phone number, GitHub or personal username (use email to get better security) 
-    - password_after_hashing: Save hashed password instead of real password
-    - role: admin/member/manager/developer/tester
-    - avatar_url: avatar of user
+-- Note: 
+-- SHOULD: Add/Edit
+-- SHOULDN'T: Delete
+CREATE DATABASE work_manager;
+USE work_manager;
 
-Table: Projects
-    - id: id of project
-    - name: Name of project (Only one name, one project)
-    - description: description for project
-    - created_by: person who created the project (id: Users)
-    - created_at: the time that the project was created
-    - members: Users(id)
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    avatar_url VARCHAR(255),    
+    role ENUM('admin', 'member') NOT NULL DEFAULT 'member',
+);
 
-Table: Issues
-    - id: id of task
-    - project_id: id of project
-    - title: title of project
-    - description: description of task
-    - type: task
-    - status: None/Done/In-Progress/Todo
-    - priority: high/medium/low
-    - assignee_id: Users(id) => person is assigned
-    - created_at: the time that the task was created
-    - updated_at: the time that the task was updated
-    - deadline: the time that the task must be finished
+-- ADD
+-- INSERT INTO users (username, email, password_hash, avatar_url, role)
+-- VALUES (admin,admin@admin.com,"abcxyz","",'admin');
 
-Table: Comments            // Like commit in GitHub
-    - id: id of comment
-    - issue_id: Issues(id)
-    - user_id: Users(id)
-    - content: main comment
-    - created_at: the time that the comment was created
 
-Table: History
-    - id: id of process
-    - issue_id: Issues(id)
-    - user_id: Users(id)
-    - action: use status of Issues
-    - created_at: the time that the history was created
+CREATE TABLE boards (
+    board_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-Table: Attachments (File or Folder)
-    - id: id of file
-    - issue_id: file related to issue
-    - file_url: the address of file
-    - uploaded_by: Users(id)
-    - created_at: the time that the file was created
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- ADD
+-- INSERT INTO boards (user_id, title, description)
+-- VALUES (1, "title", "description");
+
+
+CREATE TABLE board_members (
+    board_id INT NOT NULL,
+    user_id INT NOT NULL,
+
+    PRIMARY KEY (board_id, user_id),
+    FOREIGN KEY (board_id) REFERENCES boards(board_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- ADD
+-- INSERT INTO board_members (board_id, user_id)
+-- VALUES (1, 1);
+
+
+CREATE TABLE lists (
+    list_id INT AUTO_INCREMENT PRIMARY KEY,
+    board_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    position INT NOT NULL DEFAULT 0,
+
+    FOREIGN KEY (board_id) REFERENCES boards(board_id)
+);
+
+-- ADD
+-- INSERT INTO lists (board_id, title, position)
+-- VALUES (1, "title", 0);
+
+CREATE TABLE cards (
+    card_id INT AUTO_INCREMENT PRIMARY KEY,
+    list_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    position INT NOT NULL DEFAULT 0,
+    due_date DATETIME,
+    status ENUM('in progress', 'completed') NOT NULL DEFAULT 'in progress',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (list_id) REFERENCES lists(list_id)
+);
+
+-- ADD
+-- INSERT INTO cards (list_id, title, description, position, due_date, status)
+-- VALUES (1, "title", "description", 0, "2025-11-22", 'in progress');
+
+CREATE TABLE card_members (
+    card_id INT NOT NULL,
+    user_id INT NOT NULL,
+
+    PRIMARY KEY (card_id, user_id),
+    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- ADD
+-- INSERT INTO card_members (card_id, user_id)
+-- VALUES ( 1, 1);
+
+CREATE TABLE card_comments (
+    comment_id INT AUTO_INCREMENT PRIMARY KEY,
+    card_id INT NOT NULL,
+    user_id INT NOT NULL,
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (card_id) REFERENCES cards(card_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- ADD
+-- INSERT INTO card_comments (card_id, user_id, comment)
+-- VALUES ( 1, 1, "comment");
+
+CREATE TABLE card_attachments (
+    attachment_id INT AUTO_INCREMENT PRIMARY KEY,
+    card_id INT NOT NULL,
+    user_id INT NOT NULL,
+    file_url VARCHAR(255),
+    file_type VARCHAR(50),
+
+    FOREIGN KEY (card_id) REFERENCES cards(card_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- ADD
+-- INSERT INTO card_attachments (card_id, user_id, file_url, file_type)
+-- VALUES ( 1, 1, "", "");
