@@ -23,6 +23,8 @@ CREATE TABLE boards (
     user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    color VARCHAR(255),
+    visibility VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -30,8 +32,8 @@ CREATE TABLE boards (
 );
 
 -- ADD
--- INSERT INTO boards (user_id, title, description)
--- VALUES (1, "title", "description");
+-- INSERT INTO boards (user_id, title, description, color, visibility)
+-- VALUES (1, "title", "description", "#000", "Workspace");
 
 
 CREATE TABLE board_members (
@@ -122,3 +124,27 @@ CREATE TABLE card_attachments (
 -- ADD
 -- INSERT INTO card_attachments (card_id, user_id, file_url, file_type)
 -- VALUES ( 1, 1, "", "");
+
+CREATE TABLE labels (
+    label_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,          
+    color VARCHAR(7) NOT NULL           -- Hex color code (e.g., "#FF5733")
+);
+
+-- ADD
+-- INSERT INTO label (label_id, name, color)
+-- VALUES ( 1,, "name", "#000");
+
+CREATE TABLE card_labels (
+    card_id INT NOT NULL,
+    label_id INT NOT NULL,
+
+    PRIMARY KEY (card_id, label_id),
+    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE,
+    FOREIGN KEY (label_id) REFERENCES labels(label_id) ON DELETE CASCADE
+);
+
+-- ADD
+-- INSERT INTO card_labels (card_id, label_id)
+-- VALUES ( 1, 1);
+

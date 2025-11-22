@@ -1,0 +1,35 @@
+-- Insert users into the `users` table
+INSERT INTO users (username, email, password_hash, avatar_url, role)
+VALUES 
+    ('admin', 'admin@admin.com', 'a', '', 'admin'),
+    ('john_doe', 'john.doe@example.com', 'password123', 'https://example.com/avatars/john_doe.jpg', 'member'),
+    ('jane_smith', 'jane.smith@example.com', 'password456', 'https://example.com/avatars/jane_smith.jpg', 'member');
+
+-- Insert Boards into `boards`
+INSERT INTO boards (user_id, title, description, color, visibility)
+VALUES 
+    (1, 'Công việc nhóm', 'Các công việc cần hoàn thành theo nhóm.', 'linear-gradient(135deg, #667eea, #764ba2)', 'Workspace'),
+    (1, 'Dự án React', 'Làm project web quản lý công việc bằng React.', 'linear-gradient(135deg, #fddb92, #d1fdff)', 'Workspace'),
+    (2, 'Việc cá nhân', 'Danh sách việc riêng trong tuần.', '#722ed1', 'Workspace');
+
+-- Insert Lists into `lists`
+INSERT INTO lists (board_id, title, position)
+VALUES 
+    (1, 'To Do', 0),
+    (1, 'In Progress', 1),
+    (1, 'Done', 2),
+    (2, 'To Do', 0);
+
+-- Insert Cards into `cards`
+INSERT INTO cards (list_id, title, description, position, due_date, status)
+VALUES 
+    (1, 'Thiết kế giao diện trang chủ', 'Dùng Figma để tạo layout cơ bản.', 0, '2025-11-10 00:00:00', 'in progress'),
+    (1, 'Phân công nhiệm vụ', 'Chia việc cho từng thành viên.', 1, NULL, 'in progress'),
+    (4, 'Tạo component Login', 'Form đăng nhập với validation.', 0, NULL, 'in progress');
+
+-- Insert Labels into `labels`
+INSERT INTO labels (name, color)
+VALUES 
+    ('design', '#FF5733'),     -- Example label color for "design"
+    ('management', '#33CFFF'),  -- Example label color for "management"
+    ('frontend', '#FF8C00');    -- Example label color for "frontend"
