@@ -523,3 +523,102 @@ app.delete('/api/boards/:boardId/lists/:listId', authMiddleware, (req, res) => {
 });
 
 // Drop lists
+app.put('/api/boards/lists/move', authMiddleware, (req, res) => {
+    const { sourceBoardId, destBoardId, listId, index } = req.body;
+
+    // Validation
+    if (!sourceBoardId || !destBoardId || !listId) {
+        return res.status(400).json({ message: 'Thiếu thông tin: sourceBoardId, destBoardId hoặc listId.' });
+    }
+
+    // 2. Tìm Board Nguồn và Board Đích
+    const sourceBoard = userBoards.find(b => b.id == sourceBoardId);
+    const destBoard = userBoards.find(b => b.id == destBoardId);
+
+    if (!sourceBoard) {
+        return res.status(404).json({ message: 'Không tìm thấy Board nguồn hoặc không có quyền truy cập.' });
+    }
+
+    if (!destBoard) {
+        return res.status(404).json({ message: 'Không tìm thấy Board đích hoặc không có quyền truy cập.' });
+    }
+
+    // List cần chuyển trong Board nguồn
+    const listIndex = sourceBoard.lists.findIndex(l => l.id === listId);
+    
+    if (listIndex === -1) {
+        return res.status(404).json({ message: 'Không tìm thấy List trong Board nguồn.' });
+    }
+
+    // CẮT List ra khỏi Board nguồn (Dùng splice)
+    const [movedList] = sourceBoard.lists.splice(listIndex, 1);
+
+    // THÊM List vào Board đích
+    if (typeof index === 'number' && index >= 0 && index <= destBoard.lists.length) {
+        destBoard.lists.splice(index, 0, movedList);
+    } else {
+        destBoard.lists.push(movedList);
+    }
+
+    console.log(`Đã chuyển list "${movedList.title}" từ Board ${sourceBoardId} sang Board ${destBoardId}`);
+
+    res.status(200).json({
+        message: 'Di chuyển List thành công',
+        sourceBoardId,
+        destBoardId,
+        movedList
+    });
+});
+
+// Drop cards
+app.put('/api/cards/move', authMiddleware, (req, res) => {
+    // const userId = req.user.id;
+    const { 
+        sourceBoardId, 
+        sourceListId, 
+        destBoardId, 
+        destListId, 
+        cardId, 
+        index 
+    } = req.body;
+
+    if (!sourceBoardId || !destBoardId || !sourceListId || !destListId || !cardId) {
+        return res.status(400).json({ message: 'Thiếu thông tin ID cần thiết để di chuyển card.' });
+    }
+
+    const sourceBoard = userBoards.find(b => b.id == sourceBoardId);
+    const destBoard = userBoards.find(b => b.id == destBoardId);
+
+    if (!sourceBoard || !destBoard) {
+        return res.status(404).json({ message: 'Không tìm thấy Board hoặc không có quyền truy cập.' });
+    }
+
+    const sourceList = sourceBoard.lists.find(l => l.id === sourceListId);
+    const destList = destBoard.lists.find(l => l.id === destListId);
+
+    if (!sourceList || !destList) {
+        return res.status(404).json({ message: 'Không tìm thấy List nguồn hoặc đích.' });
+    }
+
+    const cardIndex = sourceList.cards.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) {
+        return res.status(404).json({ message: 'Card không tồn tại trong List nguồn.' });
+    }
+
+    const [movedCard] = sourceList.cards.splice(cardIndex, 1);
+
+    if (typeof index === 'number' && index >= 0 && index <= destList.cards.length) {
+        destList.cards.splice(index, 0, movedCard);
+    } else {
+        destList.cards.push(movedCard);
+    }
+
+    console.log(`Đã chuyển Card "${movedCard.title}" từ List "${sourceList.title}" sang List "${destList.title}"`);
+
+    res.status(200).json({
+        message: 'Di chuyển Card thành công',
+        movedCard,
+        sourceListId,
+        destListId
+    });
+});
