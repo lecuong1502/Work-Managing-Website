@@ -41,21 +41,38 @@ const BoardPage = () => {
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
 
-  const handleAddList = () => {
+  const handleAddList = async (e) => {
     if (!newListTitle.trim()) return;
     const newList = {
-      id: Date.now(),
-      title: newListTitle.trim(),
-      cards: []
+      title: newListTitle.trim()
     };
-    const updatedBoard = {
+
+    try{
+      const res = await fetch("http://localhost:3000/api/boards/"+board.id+"/lists",{
+        method: "POST",
+        headers:{
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionStorage.getItem("token")}`
+        },
+        body: JSON.stringify(newList)
+      });
+      const data = await res.json();
+      if(!res.ok){
+        alert(data.message || "Lỗi thêm list mới");
+        return;
+      }
+      const updatedBoard = {
       ...board,
-      lists: [...board.lists, newList]
+      lists: [...board.lists, data]
     };
+
     setBoard(updatedBoard);
     updateBoardToStorage(updatedBoard);
     setNewListTitle("");
     setAddingList(false);
+    }catch(err){
+      console.error("Lỗi thêm list mới:",err);
+    } 
   };
 
   const handleRenameList = (listId) => {
