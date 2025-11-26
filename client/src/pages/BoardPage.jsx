@@ -47,47 +47,78 @@ const BoardPage = () => {
       title: newListTitle.trim()
     };
 
-    try{
-      const res = await fetch("http://localhost:3000/api/boards/"+board.id+"/lists",{
+    try {
+      const res = await fetch("http://localhost:3000/api/boards/" + board.id + "/lists", {
         method: "POST",
-        headers:{
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${sessionStorage.getItem("token")}`
         },
         body: JSON.stringify(newList)
       });
       const data = await res.json();
-      if(!res.ok){
+      if (!res.ok) {
         alert(data.message || "Lỗi thêm list mới");
         return;
       }
       const updatedBoard = {
-      ...board,
-      lists: [...board.lists, data]
-    };
+        ...board,
+        lists: [...board.lists, data]
+      };
 
-    setBoard(updatedBoard);
-    updateBoardToStorage(updatedBoard);
-    setNewListTitle("");
-    setAddingList(false);
-    }catch(err){
-      console.error("Lỗi thêm list mới:",err);
-    } 
+      setBoard(updatedBoard);
+      updateBoardToStorage(updatedBoard);
+      setNewListTitle("");
+      setAddingList(false);
+    } catch (err) {
+      console.error("Lỗi thêm list mới:", err);
+    }
   };
 
-  const handleRenameList = (listId) => {
+  const handleRenameList = async(listId) => {
+    console.log("Renaming list",listId,newListName);
     if (!newListName.trim()) return;
-    const updatedLists = board.lists.map(list =>  
-      list.id === listId ? { ...list, title: newListName.trim() } : list
+    const bodyData = {
+      title: newListName.trim()
+    };
+    try {
+      const res = await fetch("http://localhost:3000/api/boards/" + board.id + "/lists/" + listId, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionStorage.getItem("token")}`
+        },
+        body: JSON.stringify(bodyData)
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || "Lỗi thay doi ten");
+        return;
+      }
+      const updatedLists = board.lists.map(list =>  
+      list.id === listId ? data : list
     );
-    const updatedBoard = {  
+      const updatedBoard = {
       ...board,
       lists: updatedLists
     };
-    setBoard(updatedBoard);
-    updateBoardToStorage(updatedBoard);
-    setRenamingList(null);
-    setNewListName("");
+
+      setBoard(updatedBoard);
+      updateBoardToStorage(updatedBoard);
+      setRenamingList(null);
+      setNewListName("");
+    } catch {
+      console.error("Lỗi thêm list mới:", err);
+    }
+    // const updatedLists = board.lists.map(list =>  
+    //   list.id === listId ? { ...list, title: newListName.trim() } : list
+    // );
+    // const updatedBoard = {
+    //   ...board,
+    //   lists: updatedLists
+    // };
+
   };
 
   if (!board) return <p>Đang tải...</p>;
@@ -104,41 +135,41 @@ const BoardPage = () => {
         </div>
 
         <DndProvider backend={HTML5Backend}>
-        <div className="lists-container">
-          {board.lists.map((list) => (
-            <ListColumn
-              key={list.id}
-              list={list} 
-              board={board}
-              setBoard={setBoard}
-              renamingList={renamingList}
-              setRenamingList={setRenamingList}
-              newListName={newListName}
-              setNewListName={setNewListName}
-              handleRenameList={handleRenameList}
-              setAddingCard={setAddingCard}
-              addingCard={addingCard}
-              selectedCard={selectedCard}
-              setSelectedCard={setSelectedCard}
-            />
-          ))}
-          {addingList ? (
-            <div className="add-list-form">
-              <input
-                type="text"
-                placeholder="List title..."
-                value={newListTitle}
-                onChange={(e) => setNewListTitle(e.target.value)}
-                autoFocus
+          <div className="lists-container">
+            {board.lists.map((list) => (
+              <ListColumn
+                key={list.id}
+                list={list}
+                board={board}
+                setBoard={setBoard}
+                renamingList={renamingList}
+                setRenamingList={setRenamingList}
+                newListName={newListName}
+                setNewListName={setNewListName}
+                handleRenameList={handleRenameList}
+                setAddingCard={setAddingCard}
+                addingCard={addingCard}
+                selectedCard={selectedCard}
+                setSelectedCard={setSelectedCard}
               />
-              <button onClick={() => setAddingList(false)}>Cancel</button>
-              <button onClick={handleAddList}>Add</button>
-            </div>
-          ) : (
-            <div className="add-list" onClick={() => setAddingList(true)}>
-              + Add another list
-            </div>)}
-        </div>
+            ))}
+            {addingList ? (
+              <div className="add-list-form">
+                <input
+                  type="text"
+                  placeholder="List title..."
+                  value={newListTitle}
+                  onChange={(e) => setNewListTitle(e.target.value)}
+                  autoFocus
+                />
+                <button onClick={() => setAddingList(false)}>Cancel</button>
+                <button onClick={handleAddList}>Add</button>
+              </div>
+            ) : (
+              <div className="add-list" onClick={() => setAddingList(true)}>
+                + Add another list
+              </div>)}
+          </div>
         </DndProvider>
         {selectedCard && (
           <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
