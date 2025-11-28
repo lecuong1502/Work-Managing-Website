@@ -42,7 +42,6 @@ body {
   width: 100%;
 }
 
-/* Cột giờ trái */
 .wcal-hours {
   width: 70px;
   background: white;
@@ -114,7 +113,6 @@ body {
   background: rgba(26, 115, 232, 0.25) !important;
 }
 
-/* EVENT */
 .wcal-event {
   position: absolute;
   left: 6px;
