@@ -11,16 +11,18 @@ import HomePage from "./pages/Home-Page";
 import DashboardPage from "./pages/Dashboard";
 import BoardPage from "./pages/BoardPage";
 import RegisterPage from "./pages/Register-Page";
-
+import CalendarPage from "./pages/CalendarPage";
 function App() {
   const isLoggedIn = sessionStorage.getItem("loggedIn") === "true";
-  
+
   return (
     <Router>
       {isLoggedIn ? (
         <Routes>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/board/:boardId" element={<BoardPage />} />
+          <Route path="/board/:boardId" element={<BoardPage />}>
+            <Route path="calendar" element={<CalendarPage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       ) : (

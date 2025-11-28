@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Outlet, useLocation } from "react-router-dom";
 import "../styles/BoardPage.css";
 import SearchBar from "../components/SearchBar";
 import CardModal from "../components/CardModal";
@@ -9,22 +9,24 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import BottomToolbar from "../components/BottomToolbar";
 
-
 const BoardPage = () => {
   const { boardId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [board, setBoard] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [addingCard, setAddingCard] = useState({})
-  const [addingList, setAddingList] = useState(false)
-  const [selectedCard, setSelectedCard] = useState(null)
-  const [newListTitle, setNewListTitle] = useState("")
-  const [renamingList, setRenamingList] = useState(null)
-  const [newListName, setNewListName] = useState("")
+  const [addingCard, setAddingCard] = useState({});
+  const [addingList, setAddingList] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [newListTitle, setNewListTitle] = useState("");
+  const [renamingList, setRenamingList] = useState(null);
+  const [newListName, setNewListName] = useState("");
+
+  const isCalendarMode = location.pathname.includes("/calendar");
 
   useEffect(() => {
     const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
-    const foundBoard = savedBoards.find(b => b.id === Number(boardId));
+    const foundBoard = savedBoards.find((b) => b.id === Number(boardId));
 
     if (foundBoard) {
       setBoard(foundBoard);
@@ -36,7 +38,7 @@ const BoardPage = () => {
 
   const updateBoardToStorage = (updatedBoard) => {
     const boards = JSON.parse(sessionStorage.getItem("boards")) || [];
-    const index = boards.findIndex(b => b.id === updatedBoard.id);
+    const index = boards.findIndex((b) => b.id === updatedBoard.id);
     boards[index] = updatedBoard;
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
@@ -46,11 +48,11 @@ const BoardPage = () => {
     const newList = {
       id: Date.now(),
       title: newListTitle.trim(),
-      cards: []
+      cards: [],
     };
     const updatedBoard = {
       ...board,
-      lists: [...board.lists, newList]
+      lists: [...board.lists, newList],
     };
     setBoard(updatedBoard);
     updateBoardToStorage(updatedBoard);
@@ -60,12 +62,12 @@ const BoardPage = () => {
 
   const handleRenameList = (listId) => {
     if (!newListName.trim()) return;
-    const updatedLists = board.lists.map(list =>  
+    const updatedLists = board.lists.map((list) =>
       list.id === listId ? { ...list, title: newListName.trim() } : list
     );
-    const updatedBoard = {  
+    const updatedBoard = {
       ...board,
-      lists: updatedLists
+      lists: updatedLists,
     };
     setBoard(updatedBoard);
     updateBoardToStorage(updatedBoard);
@@ -78,6 +80,7 @@ const BoardPage = () => {
   return (
     <div>
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-header">
           <div>
@@ -86,50 +89,62 @@ const BoardPage = () => {
           </div>
         </div>
 
-        <DndProvider backend={HTML5Backend}>
-        <div className="lists-container">
-          {board.lists.map((list) => (
-            <ListColumn
-              key={list.id}
-              list={list} 
-              board={board}
-              setBoard={setBoard}
-              renamingList={renamingList}
-              setRenamingList={setRenamingList}
-              newListName={newListName}
-              setNewListName={setNewListName}
-              handleRenameList={handleRenameList}
-              setAddingCard={setAddingCard}
-              addingCard={addingCard}
-              selectedCard={selectedCard}
-              setSelectedCard={setSelectedCard}
-            />
-          ))}
-          {addingList ? (
-            <div className="add-list-form">
-              <input
-                type="text"
-                placeholder="List title..."
-                value={newListTitle}
-                onChange={(e) => setNewListTitle(e.target.value)}
-                autoFocus
+        {isCalendarMode ? (
+          <Outlet context={{ board, setBoard }} />
+        ) : (
+          <>
+            <DndProvider backend={HTML5Backend}>
+              <div className="lists-container">
+                {board.lists.map((list) => (
+                  <ListColumn
+                    key={list.id}
+                    list={list}
+                    board={board}
+                    setBoard={setBoard}
+                    renamingList={renamingList}
+                    setRenamingList={setRenamingList}
+                    newListName={newListName}
+                    setNewListName={setNewListName}
+                    handleRenameList={handleRenameList}
+                    setAddingCard={setAddingCard}
+                    addingCard={addingCard}
+                    selectedCard={selectedCard}
+                    setSelectedCard={setSelectedCard}
+                  />
+                ))}
+
+                {addingList ? (
+                  <div className="add-list-form">
+                    <input
+                      type="text"
+                      placeholder="List title..."
+                      value={newListTitle}
+                      onChange={(e) => setNewListTitle(e.target.value)}
+                      autoFocus
+                    />
+                    <button onClick={() => setAddingList(false)}>Cancel</button>
+                    <button onClick={handleAddList}>Add</button>
+                  </div>
+                ) : (
+                  <div className="add-list" onClick={() => setAddingList(true)}>
+                    + Add another list
+                  </div>
+                )}
+              </div>
+            </DndProvider>
+
+            {selectedCard && (
+              <CardModal
+                card={selectedCard}
+                onClose={() => setSelectedCard(null)}
               />
-              <button onClick={() => setAddingList(false)}>Cancel</button>
-              <button onClick={handleAddList}>Add</button>
-            </div>
-          ) : (
-            <div className="add-list" onClick={() => setAddingList(true)}>
-              + Add another list
-            </div>)}
-        </div>
-        </DndProvider>
-        {selectedCard && (
-          <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
+            )}
+          </>
         )}
       </div>
-      <BottomToolbar />
+
+      <BottomToolbar boardId={boardId} />
     </div>
   );
 };
-
 export default BoardPage;
