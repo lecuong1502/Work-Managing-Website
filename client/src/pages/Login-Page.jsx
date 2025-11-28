@@ -30,6 +30,7 @@ const LoginPage = () => {
       });
 
       const data = await res.json();
+      console.log("Data:  ", data)
 
       if (res.ok) {
         sessionStorage.setItem("loggedIn", "true");
