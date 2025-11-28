@@ -167,7 +167,7 @@ app.post('/register', async (req, res) => {
 
         // Create new user
         const newUser = {
-            id: (userIdCounter++).toString(),
+            id: (userIdCounter++),
             name: name,
             email: email,
             passwordHash: passwordHash,
@@ -223,7 +223,7 @@ app.post('/login', async (req, res) => {
         console.log(users)
 
         const payload = {
-            id: user.id,
+            id: Number(user.id),
             email: user.email,
             name: user.name,
             avatar_url: user.avatar_url,
@@ -238,7 +238,8 @@ app.post('/login', async (req, res) => {
 
         res.status(200).json({
             message: 'Đăng nhập thành công!',
-            token: token
+            token: token,
+            payload: payload
         });
     } catch (err) {
         res.status(500).json({ message: 'Lỗi server', error: err.message });
@@ -296,7 +297,7 @@ app.get('/api/admin/data', authMiddleware, adminOnlyMiddleware, (req, res) => {
  * @access  Private
  */
 app.get('/api/boards', authMiddleware, (req, res) => {
-    const userID = req.user.id;
+    const userID = Number(req.user.id);
     const boards = userBoards[userID] || [];
 
     res.status(200).json(boards);
@@ -356,7 +357,7 @@ app.post('/api/boards', authMiddleware,(req, res) => {
 
     const newBoard = {
         id: newBoardId,
-        userId: userId,
+        userId: Number(userId),
         name: name,
         description: description || '',
         color: color || 'linear-gradient(135deg, #667eea, #764ba2)',
@@ -456,7 +457,7 @@ app.delete('/api/boards/:id', authMiddleware,(req, res) => {
 // Đăng nhập và Lưu token (Login) -> Gửi token đi (khi gọi API lấy data) -> Đăng xuất (xóa token khoit localStorage)
 
 app.post('/api/boards/:boardId/lists', authMiddleware, (req, res) => {
-    // const userId = req.user.id;
+    const userId = req.user.id;
     const { boardId } = req.params;
     const { title } = req.body;
 
@@ -464,7 +465,8 @@ app.post('/api/boards/:boardId/lists', authMiddleware, (req, res) => {
         return res.status(400).json({ message: 'Tiêu đề list không được để trống.' });
     }
 
-    const board = userBoards.find(b => b.id == boardId);
+    const boardsOfUser = userBoards[userId] || [];
+    const board = boardsOfUser.find(b => b.id == boardId);
 
     if (!board) {
         return res.status(404).json({ message: 'Board không tồn tại hoặc không có quyền truy cập.' });
@@ -481,14 +483,16 @@ app.post('/api/boards/:boardId/lists', authMiddleware, (req, res) => {
     console.log("List trong board", board.lists)
     res.status(201).json(newList);
 });
-
+//updatelist
 app.put('/api/boards/:boardId/lists/:listId', authMiddleware, (req, res) => {
-    // const userId = req.user.id;
+    const userId = req.user.id;
     const { boardId, listId } = req.params;
     console.log(boardId, listId)
     const { title } = req.body;
 
-    const board = userBoards.find(b => b.id == boardId);
+    const boardsOfUser = userBoards[userId] || [];
+    const board = boardsOfUser.find(b => b.id == boardId);
+    
     if (!board) {
         return res.status(404).json({ message: 'Board không tồn tại.' });
     }
