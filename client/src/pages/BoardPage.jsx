@@ -4,7 +4,6 @@ import "../styles/BoardPage.css";
 import SearchBar from "../components/SearchBar";
 import CardModal from "../components/CardModal";
 import ListColumn from "../components/ListColumn";
-import CardItem from "../components/CardItem";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import BottomToolbar from "../components/BottomToolbar";
@@ -43,36 +42,90 @@ const BoardPage = () => {
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
 
-  const handleAddList = () => {
+  const handleAddList = async (e) => {
     if (!newListTitle.trim()) return;
     const newList = {
-      id: Date.now(),
       title: newListTitle.trim(),
-      cards: [],
     };
-    const updatedBoard = {
-      ...board,
-      lists: [...board.lists, newList],
-    };
-    setBoard(updatedBoard);
-    updateBoardToStorage(updatedBoard);
-    setNewListTitle("");
-    setAddingList(false);
+
+    try {
+      const res = await fetch(
+        "http://localhost:3000/api/boards/" + board.id + "/lists",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(newList),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || "Lỗi thêm list mới");
+        return;
+      }
+      const updatedBoard = {
+        ...board,
+        lists: [...board.lists, data],
+      };
+
+      setBoard(updatedBoard);
+      updateBoardToStorage(updatedBoard);
+      setNewListTitle("");
+      setAddingList(false);
+    } catch (err) {
+      console.error("Lỗi thêm list mới:", err);
+    }
   };
 
-  const handleRenameList = (listId) => {
+  const handleRenameList = async (listId) => {
+    console.log("Renaming list", listId, newListName);
     if (!newListName.trim()) return;
-    const updatedLists = board.lists.map((list) =>
-      list.id === listId ? { ...list, title: newListName.trim() } : list
-    );
-    const updatedBoard = {
-      ...board,
-      lists: updatedLists,
+
+    const bodyData = {
+      title: newListName.trim(),
     };
-    setBoard(updatedBoard);
-    updateBoardToStorage(updatedBoard);
-    setRenamingList(null);
-    setNewListName("");
+    try {
+      const res = await fetch(
+        "http://localhost:3000/api/boards/" + board.id + "/lists/" + listId,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(bodyData),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || "Lỗi thay doi ten");
+        return;
+      }
+      const updatedLists = board.lists.map((list) =>
+        list.id === listId ? data : list
+      );
+      const updatedBoard = {
+        ...board,
+        lists: updatedLists,
+      };
+
+      setBoard(updatedBoard);
+      updateBoardToStorage(updatedBoard);
+      setRenamingList(null);
+      setNewListName("");
+    } catch {
+      console.error("Lỗi thêm list mới:", err);
+    }
+    // const updatedLists = board.lists.map(list =>
+    //   list.id === listId ? { ...list, title: newListName.trim() } : list
+    // );
+    // const updatedBoard = {
+    //   ...board,
+    //   lists: updatedLists
+    // };
   };
 
   if (!board) return <p>Đang tải...</p>;
