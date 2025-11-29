@@ -142,7 +142,8 @@ app.post('/login', async (req, res) => {
 
         res.status(200).json({
             message: 'Đăng nhập thành công!',
-            token: token
+            token: token,
+            payload: payload
         });
     } catch (err) {
         console.error(err);
