@@ -8,7 +8,8 @@ import {
 } from "@heroicons/react/24/outline";
 import BoardSwitcher from "./BoardSwitcher"; // chuyển bảng
 import { useNavigate } from "react-router-dom";
-const BottomToolbar = () => {
+
+const BottomToolbar = ({ boardId }) => {
   const [openSwitcher, setOpenSwitcher] = useState(false);
   const navigate = useNavigate();
 
@@ -64,6 +65,7 @@ const BottomToolbar = () => {
           style={btnStyle}
           onMouseEnter={btnHover}
           onMouseLeave={btnLeave}
+          onClick={() => navigate(`/board/${boardId}/calendar`)}
         >
           <CalendarDateRangeIcon
             style={{ width: 20, height: 20, marginRight: 8 }}
