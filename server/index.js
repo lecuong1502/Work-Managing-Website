@@ -483,7 +483,7 @@ app.post('/api/boards/:boardId/lists', authMiddleware, (req, res) => {
     console.log("List trong board", board.lists)
     res.status(201).json(newList);
 });
-//updateList
+
 app.put('/api/boards/:boardId/lists/:listId', authMiddleware, (req, res) => {
     const userId = req.user.id;
     const { boardId, listId } = req.params;
