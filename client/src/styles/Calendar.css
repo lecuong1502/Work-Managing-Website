@@ -63,8 +63,6 @@ body {
   border-top: 1px solid #eee;
   box-sizing: border-box;
 }
-
-/* Cột ngày phải */
 .wcal-days {
   flex: 1;
   background: white;
@@ -89,12 +87,11 @@ body {
   display: flex;
 }
 
-/* PHẦN QUAN TRỌNG NHẤT – KHỚP GRID */
 .wcal-day-col {
   flex: 1;
   border-right: 1px solid #f0f0f0;
   position: relative;
-  height: calc(48 * 30px); /* 48 block 30p = 1440px */
+  height: calc(48 * 30px);
   box-sizing: border-box;
 }
 
@@ -131,7 +128,6 @@ body {
   box-sizing: border-box;
 }
 
-/* POPUP */
 .popup-overlay {
   position: fixed;
   inset: 0;
