@@ -34,7 +34,7 @@ const LoginPage = () => {
 
       if (res.ok) {
         sessionStorage.setItem("loggedIn", "true");
-        sessionStorage.setItem("userId", data.payload.id);
+        //sessionStorage.setItem("userId", data.payload.id);
         sessionStorage.setItem("token",data.token);
         console.log("token login",data.token);
         console.log("Data:::Dcd",data)

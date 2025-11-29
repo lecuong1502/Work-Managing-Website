@@ -10,7 +10,7 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(255),    
-    role ENUM('admin', 'member') NOT NULL DEFAULT 'member',
+    role ENUM('admin', 'member') NOT NULL DEFAULT 'member'
 );
 
 -- ADD
