@@ -7,6 +7,8 @@ import ListColumn from "../components/ListColumn";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import BottomToolbar from "../components/BottomToolbar";
+import Loading from "../components/LoadingOverlay"
+
 
 const BoardPage = () => {
   const { boardId } = useParams();
@@ -20,6 +22,8 @@ const BoardPage = () => {
   const [newListTitle, setNewListTitle] = useState("");
   const [renamingList, setRenamingList] = useState(null);
   const [newListName, setNewListName] = useState("");
+  const [newCardTitle, setNewCardTitle] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const isCalendarMode = location.pathname.includes("/calendar");
 
@@ -47,6 +51,8 @@ const BoardPage = () => {
     const newList = {
       title: newListTitle.trim(),
     };
+
+    setLoading(true);
 
     try {
       const res = await fetch(
@@ -76,12 +82,16 @@ const BoardPage = () => {
       setAddingList(false);
     } catch (err) {
       console.error("Lỗi thêm list mới:", err);
+    }finally{
+      setLoading(false);
     }
   };
 
   const handleRenameList = async (listId) => {
     console.log("Renaming list", listId, newListName);
     if (!newListName.trim()) return;
+
+    setLoading(true);
 
     const bodyData = {
       title: newListName.trim(),
@@ -118,6 +128,8 @@ const BoardPage = () => {
       setNewListName("");
     } catch {
       console.error("Lỗi thêm list mới:", err);
+    } finally {
+      setLoading(false);
     }
     // const updatedLists = board.lists.map(list =>
     //   list.id === listId ? { ...list, title: newListName.trim() } : list
@@ -128,11 +140,37 @@ const BoardPage = () => {
     // };
   };
 
-  if (!board) return <p>Đang tải...</p>;
+  const handleAddCard = (listId,cardTitle) => {
+    if (!cardTitle.trim()) return alert("Tiêu đề thẻ không được để trống");
+    
+    const newCard ={
+      id: Date.now(),
+      title: cardTitle.trim()
+    }
+
+    const newList = board.lists.map(list=>{
+      if(list.id === listId){
+        return {
+          ...list,
+          cards: [...list.cards, newCard]
+        };
+      }
+      return list;
+    })
+
+    const newBoard = { ...board, lists: newList};
+    setBoard(newBoard);
+    updateBoardToStorage(newBoard);
+    setNewCardTitle("");
+    setAddingCard(prev => ({ ...prev, [listId]: false }))
+  };
+
+  if (!board) return <Loading />;
 
   return (
     <div>
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+      {loading && <Loading />}
 
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-header">
@@ -152,6 +190,7 @@ const BoardPage = () => {
                   <ListColumn
                     key={list.id}
                     list={list}
+                    index = {board.lists.indexOf(list)}
                     board={board}
                     setBoard={setBoard}
                     renamingList={renamingList}
@@ -163,6 +202,9 @@ const BoardPage = () => {
                     addingCard={addingCard}
                     selectedCard={selectedCard}
                     setSelectedCard={setSelectedCard}
+                    handleAddCard={handleAddCard}
+                    newCardTitle={newCardTitle}
+                    setNewCardTitle={setNewCardTitle}
                   />
                 ))}
 

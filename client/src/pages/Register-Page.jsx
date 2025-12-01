@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/register.css";
-
+import Toast from "../components/Toast";
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [Error, setError] = React.useState("");
+  const [toast, setToast] = useState(null);
+
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -42,11 +44,11 @@ const RegisterPage = () => {
       const data = await res.json();
 
       if (res.ok) {
+        sessionStorage.setItem("user", JSON.stringify({ username, email, password }));
+        setToast({ message: "Đăng ký thành công!", type: "success" });
         setTimeout(() => {
-          alert("Đăng ký thành công!");
           navigate("/login");
-          window.location.reload();
-        }, 1000);
+        }, 2000);
       } else {
         setError(data.message);
       }
@@ -55,12 +57,17 @@ const RegisterPage = () => {
       alert("Không kết nối được server");
     }
 
-    sessionStorage.setItem("user", JSON.stringify({ username, email, password }));
-    
   };
 
   return (
     <div className="auth-page">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
       <div className="auth-overlay"></div>
 
       <div className="auth-card">

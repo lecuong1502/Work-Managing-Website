@@ -1,0 +1,28 @@
+.toast {
+  position: fixed;
+  top: 20px;
+
+  /* căn giữa theo chiều ngang */
+  left: 50%;
+  transform: translateX(-50%);
+
+  padding: 12px 18px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+  z-index: 1000;
+}
+
+.toast.success {
+  background-color: #4caf50;
+}
+
+.toast.error {
+  background-color: #f44336;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}

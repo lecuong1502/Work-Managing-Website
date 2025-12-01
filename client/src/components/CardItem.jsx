@@ -2,12 +2,15 @@ import React from "react";
 import "../styles/CardItem.css";
 import { useDrag } from "react-dnd";
 
-const CardItem = ({ card,listId, onClick }) => {
+const CardItem = ({ card,listId,boardId, onClick }) => {
 const [{ isDragging},drag] = useDrag(() => ({
     type: "card",
-    item: { cardId: card.id , fromListId: listId },
+    item: { 
+        cardId: card.id , 
+        fromListId: listId,
+        sourceBoardId: boardId},
     collect: (monitor) => ({    
-        isDraging: !!monitor.isDragging(),
+        isDragging: !!monitor.isDragging(),
     }),
 }));
     return (
