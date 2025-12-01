@@ -108,3 +108,90 @@
   height: 16px;
   margin-right: 6px;
 }
+
+.calendar-popup {
+    position: absolute;
+    top: 140px;
+    left: 50%;
+    background: white;
+    padding: 14px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    z-index: 200;
+    animation: popup 0.25s ease;
+}
+
+@keyframes popup {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    } 
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Các nút dưới lịch */
+.calendar-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.calendar-actions button {
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+/* Save */
+.calendar-actions button:nth-child(1) {
+    background: #0079bf;
+    color: white;
+}
+.calendar-actions button:nth-child(1):hover {
+    background: #026aa7;
+}
+
+/* Clear */
+.calendar-actions button:nth-child(2) {
+    background: #f4f5f7;
+}
+.calendar-actions button:nth-child(2):hover {
+    background: #e3e5e8;
+}
+
+/* Cancel */
+.calendar-actions button:nth-child(3) {
+    background: #ddd;
+}
+.calendar-actions button:nth-child(3):hover {
+    background: #ccc;
+}
+
+/* Nút đóng */
+.close-btn {
+    margin-top: 20px;
+    float: right;
+    background: #e53935;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    background: #d32f2f;
+}
+
+/* Animation modal */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

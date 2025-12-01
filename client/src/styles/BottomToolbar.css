@@ -1,0 +1,48 @@
+.bottom-toolbar {
+  position: fixed;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  background: #ffffff;
+  padding: 8px 12px;    
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 12px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+}
+
+.bottom-btn {
+  background: #f4f5f7;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 15px;        
+  cursor: pointer;
+  transition: 0.2s;
+  font-weight: 500;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;               
+}
+
+.bottom-btn:hover {
+  background: #e3e4e8;
+}
+
+.bottom-btn svg {
+  width: 18px;    
+  height: 18px;
+}
+
+.bottom-btn.active {
+  background: #3b82f6;   
+  color: white;
+}
+
+.bottom-btn.active svg {
+  stroke: white;  
+}

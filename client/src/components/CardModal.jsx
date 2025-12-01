@@ -1,8 +1,33 @@
 import React from "react";
 import "../styles/CardModal.css"
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
+import { useState } from "react";
+
 
 const CardModal = ({ card, onClose }) => {
     if (!card) return null;
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [date, setDate] = useState(card?.dueDate ? new Date(card.dueDate) : null);
+
+    const handleSave = () => {
+    if (!date) return;
+
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+        .toISOString()
+        .split("T")[0];
+
+    card.dueDate = localDate;
+
+    setShowDatePicker(false);
+};
+
+
+    const handleClear = () => {
+        setDate(null);
+        card.dueDate = null;
+        setShowDatePicker(false);
+    };
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -15,6 +40,7 @@ const CardModal = ({ card, onClose }) => {
                         <button> Label </button>
                         <button> <img src="/assets/check-circle.svg"></img>Checklist </button>
                         <button> <img src="/assets/paperclip.svg"></img>Attachment </button>
+                        <button onClick={() => setShowDatePicker(!showDatePicker)}>DueDate</button>
                     </div>
 
                     {card.dueDate && (
@@ -26,6 +52,18 @@ const CardModal = ({ card, onClose }) => {
                             {card.labels.map((label, i) => (
                                 <span key={i} className="label">{label}</span>
                             ))}
+                        </div>
+                    )}
+
+                    {showDatePicker && (
+                        <div className="calendar-popup">
+                            <Calendar onChange={setDate} value={date}/>
+
+                            <div className="calendar-actions">
+                                <button onClick ={handleSave}> Save </button>
+                                <button onClick ={handleClear}> Clear </button>
+                                <button onClick ={()=> setShowDatePicker (false)}> Cancel </button>
+                            </div>
                         </div>
                     )}
 

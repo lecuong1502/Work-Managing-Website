@@ -1,22 +1,24 @@
 import React from "react";
 import "../styles/SearchBar.css";
 import { Link, useNavigate } from "react-router-dom";
+import Toast from "./Toast";
 import { useState } from "react";
 
 const SearchBar = ({ searchTerm, setSearchTerm }) => {
     const navigate = useNavigate();
     const [showAlert, setShowAlert] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [toast, setToast] = useState(null);
 
 
     const handleLogout = () => {
         sessionStorage.removeItem("loggedIn");
-        setShowAlert(true);
+        setToast({ message: "Đăng xuất thành công!", type: "success" });
         setTimeout(() => {
             setShowAlert(false);
             navigate("/");
             window.location.reload();
-        }, 1000);
+        }, 2000);
     };
 
     return (
@@ -46,16 +48,20 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
                 {dropdownOpen && (
                     <div className="dropdown-menu">
                         <p onClick={handleLogout}>Logout</p>
-                        {}
+                        { }
                     </div>
                 )}
             </div>
 
-            {showAlert && (
-                <div className="alert-box">
-                    <p>Đăng xuất thành công!</p>
-                </div>
+
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
             )}
+
         </div>
     );
 };
