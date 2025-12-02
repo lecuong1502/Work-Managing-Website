@@ -428,8 +428,6 @@ app.put('/api/cards/move', authMiddleware, async (req, res) => {
     }
 });
 
-// Bạn cần thêm API Create Card và Edit/Delete Card nếu frontend có gọi (dựa trên code cũ thì hình như bạn chưa viết phần POST card trong code mẫu, nhưng database đã có).
-// Ví dụ thêm card:
 app.post('/api/lists/:listId/cards', authMiddleware, async (req, res) => {
     const { listId } = req.params;
     const { title } = req.body;
@@ -445,5 +443,135 @@ app.post('/api/lists/:listId/cards', authMiddleware, async (req, res) => {
         res.status(201).json({ id: result.insertId.toString(), title, listId });
     } catch (err) {
         res.status(500).json({ message: 'Lỗi tạo card' });
+    }
+});
+
+// Create Card
+app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, async (req, res) => {
+    // const userId = req.user.id;
+    const { listId } = req.params;
+    const { title, description, dueDate, members } = req.body;
+
+    if (!title) {
+        return res.status(400).json({ message: 'Tiêu đề card là bắt buộc' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Tính toán vị trí (position) để card nằm cuối list
+        const [rows] = await connection.query('SELECT MAX(position) as maxPos FROM cards WHERE list_id = ?', [listId]);
+        const newPosition = (rows[0].maxPos || 0) + 1024; 
+
+        // Insert vào bảng cards
+        const [result] = await connection.query(
+            'INSERT INTO cards (list_id, title, description, position, due_date, status) VALUES (?, ?, ?, ?, ?, ?)',
+            [listId, title, description || '', newPosition, dueDate || null, 'in progress']
+        );
+
+        const newCardId = result.insertId;
+
+        // Insert vào bảng card_members (nếu có members)
+        if (members && Array.isArray(members) && members.length > 0) {
+            const memberValues = members.map(uid => [newCardId, uid]);
+            await connection.query('INSERT INTO card_members (card_id, user_id) VALUES ?', [memberValues]);
+        }
+
+        await connection.commit();
+
+        // Trả về object card vừa tạo
+        const newCard = {
+            card_id: newCardId,
+            list_id: Number(listId),
+            title,
+            description: description || '',
+            position: newPosition,
+            due_date: dueDate || null,
+            status: 'in progress',
+            members: members || []
+        };
+
+        res.status(201).json(newCard);
+
+    } catch (err) {
+        await connection.rollback();
+        console.error(err);
+        res.status(500).json({ message: 'Lỗi server khi tạo card', error: err.message });
+    } finally {
+        connection.release();
+    }
+});
+
+// Update Card
+app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, async (req, res) => {
+    const { cardId } = req.params;
+    const { title, description, dueDate, status, members } = req.body;
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Cập nhật bảng cards (Chỉ cập nhật field nào được gửi lên)
+        const updateFields = [];
+        const updateValues = [];
+
+        if (title !== undefined) { updateFields.push('title = ?'); updateValues.push(title); }
+        if (description !== undefined) { updateFields.push('description = ?'); updateValues.push(description); }
+        if (dueDate !== undefined) { updateFields.push('due_date = ?'); updateValues.push(dueDate); }
+        if (status !== undefined) { updateFields.push('status = ?'); updateValues.push(status); }
+
+        if (updateFields.length > 0) {
+            updateValues.push(cardId);
+            const query = `UPDATE cards SET ${updateFields.join(', ')} WHERE card_id = ?`;
+            await connection.query(query, updateValues);
+        }
+
+        // Cập nhật bảng card_members
+        if (members && Array.isArray(members)) {
+            await connection.query('DELETE FROM card_members WHERE card_id = ?', [cardId]);
+
+            if (members.length > 0) {
+                const memberValues = members.map(uid => [cardId, uid]);
+                await connection.query('INSERT INTO card_members (card_id, user_id) VALUES ?', [memberValues]);
+            }
+        }
+
+        await connection.commit();
+
+        // Lấy lại card đã update để trả về frontend
+        const [updatedRows] = await connection.query('SELECT * FROM cards WHERE card_id = ?', [cardId]);
+        const updatedCard = updatedRows[0];
+        
+        // Lấy members mới để trả về luôn
+        const [memberRows] = await connection.query('SELECT user_id FROM card_members WHERE card_id = ?', [cardId]);
+        updatedCard.members = memberRows.map(row => row.user_id);
+
+        res.json(updatedCard);
+
+    } catch (err) {
+        await connection.rollback();
+        console.error(err);
+        res.status(500).json({ message: 'Lỗi cập nhật card', error: err.message });
+    } finally {
+        connection.release();
+    }
+});
+
+// Delete Card
+app.delete('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, async (req, res) => {
+    const { cardId } = req.params;
+
+    try {
+        const [result] = await pool.query('DELETE FROM cards WHERE card_id = ?', [cardId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Card không tồn tại để xóa' });
+        }
+
+        res.status(204).send(); // 204 No Content
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Lỗi xóa card', error: err.message });
     }
 });
