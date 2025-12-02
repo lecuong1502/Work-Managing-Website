@@ -626,7 +626,93 @@ app.put('/api/cards/move', authMiddleware, (req, res) => {
     });
 });
 
+// Create new cards
+app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, (req, res) => {
+    const userId = req.user.id;
+    const { boardId, listId } = req.params;
+    const { title, description, labels, dueDate, members } = req.body;
 
+    if (!title) {
+        return res.status(400).json({ message: 'Tiêu đề card là bắt buộc' });
+    }
+
+    const boardsOfUser = userBoards[userId] || [];
+    const board = boardsOfUser.find(b => b.id == boardId);
+
+    if (!board) {
+        return res.status(404).json({ message: 'Board không tồn tại hoặc không có quyền truy cập.' });
+    }
+
+    const list = board.lists.find(l => l.id === listId);
+    if (!list) {
+        return res.status(404).json({ message: 'List không tồn tại trong Board này.' });
+    }
+
+    const newCard = {
+        id: `card_${Date.now()}`,
+        title: title,
+        description: description || '',
+        labels: labels || [],   
+        dueDate: dueDate || null,
+        members: members || []
+    };
+
+    list.cards.push(newCard);
+
+    console.log(`User ${userId} đã thêm card "${title}" vào list "${list.title}"`);
+    
+    res.status(201).json(newCard);
+});
+
+// Edit cards
+app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req, res) => {
+    const userId = req.user.id;
+    const { boardId, listId, cardId } = req.params;
+    const { title, description, labels, dueDate, members } = req.body;
+
+    const boardsOfUser = userBoards[userId] || [];
+    const board = boardsOfUser.find(b => b.id == boardId);
+
+    if (!board) return res.status(404).json({ message: 'Board không tồn tại.' });
+
+    const list = board.lists.find(l => l.id === listId);
+    if (!list) return res.status(404).json({ message: 'List không tồn tại.' });
+
+    const card = list.cards.find(c => c.id === cardId);
+    if (!card) return res.status(404).json({ message: 'Card không tồn tại.' });
+
+    if (title !== undefined) card.title = title;
+    if (description !== undefined) card.description = description;
+    if (labels !== undefined) card.labels = labels;
+    if (dueDate !== undefined) card.dueDate = dueDate;
+    if (members !== undefined) card.members = members;
+
+    console.log(`Đã cập nhật card ${cardId}`);
+    res.json(card);
+});
+
+// Delete cards
+app.delete('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req, res) => {
+    const userId = req.user.id;
+    const { boardId, listId, cardId } = req.params;
+
+    const boardsOfUser = userBoards[userId] || [];
+    const board = boardsOfUser.find(b => b.id == boardId);
+
+    if (!board) return res.status(404).json({ message: 'Board không tồn tại.' });
+
+    const list = board.lists.find(l => l.id === listId);
+    if (!list) return res.status(404).json({ message: 'List không tồn tại.' });
+
+    const cardIndex = list.cards.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) return res.status(404).json({ message: 'Card không tồn tại.' });
+
+    // Xóa card khỏi mảng
+    list.cards.splice(cardIndex, 1);
+
+    console.log(`Đã xóa card ${cardId}`);
+    res.status(204).send();
+});
 
 
 // ---------------------------------------

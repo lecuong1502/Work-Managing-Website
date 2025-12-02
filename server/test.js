@@ -3,16 +3,16 @@ import cors from 'cors';
 import validator from 'validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import mysql from 'mysql2/promise'; // Sử dụng phiên bản promise của mysql2
+import mysql from 'mysql2/promise'; 
 import dotenv from 'dotenv';
 
-dotenv.config(); // Nếu bạn dùng file .env
+dotenv.config(); 
 
 const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-process.env.JWT_SECRET = '4_ong_deu_ten_Cuong'; // Tốt nhất nên để trong file .env
+process.env.JWT_SECRET = '4_ong_deu_ten_Cuong'; 
 
 app.use(cors({
     origin: 'http://localhost:5173',
@@ -21,8 +21,8 @@ app.use(cors({
 // --- CẤU HÌNH KẾT NỐI DATABASE ---
 const pool = mysql.createPool({
     host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,           // Thay bằng user MySQL của bạn
-    password: process.env.MYSQL_PASSWORD,           // Thay bằng mật khẩu MySQL của bạn
+    user: process.env.MYSQL_USER,           
+    password: process.env.MYSQL_PASSWORD,
     database: 'work_manager',
     waitForConnections: true,
     connectionLimit: 10,
@@ -66,7 +66,7 @@ app.post('/register', async (req, res) => {
         return res.status(400).json({ message: 'Email không hợp lệ.' });
     }
 
-    // Password strength check (giữ nguyên logic cũ)
+    // Password strength check
     const passwordOptions = { minLength: 8, minNumbers: 1, minUppercase: 1, minSymbols: 1, minLowercase: 0 };
     if (!validator.isStrongPassword(password, passwordOptions)) {
         return res.status(400).json({ message: 'Mật khẩu yếu (Cần 8 ký tự, 1 số, 1 hoa, 1 ký tự đặc biệt).' });
@@ -82,11 +82,9 @@ app.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
         
-        // Mặc định avatar nếu không có
         const finalAvatar = avatar_url || `https://placehold.co/400x400/EEE/31343C?text=${name.charAt(0)}`;
 
         // Insert vào DB
-        // Lưu ý: DB dùng 'username', API dùng 'name'. Ta map name -> username
         const [result] = await pool.query(
             'INSERT INTO users (username, email, password_hash, avatar_url, role) VALUES (?, ?, ?, ?, ?)',
             [name, email, passwordHash, finalAvatar, 'member']
@@ -174,7 +172,7 @@ const authMiddleware = (req, res, next) => {
 app.get('/api/boards', authMiddleware, async (req, res) => {
     try {
         const userId = req.user.id;
-        // Select và đổi tên cột để khớp với Frontend (title -> name)
+        
         const [boards] = await pool.query(`
             SELECT 
                 board_id as id, 
@@ -188,7 +186,6 @@ app.get('/api/boards', authMiddleware, async (req, res) => {
             ORDER BY created_at DESC
         `, [userId]);
 
-        // Cần gán lists rỗng mặc định để frontend không lỗi map()
         const boardsWithLists = boards.map(b => ({ ...b, lists: [] }));
         
         res.status(200).json(boardsWithLists);
@@ -203,7 +200,7 @@ app.get('/api/boards/:boardID', authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     try {
-        // 1. Lấy thông tin Board
+        // Lấy thông tin Board
         const [boards] = await pool.query(`
             SELECT board_id as id, user_id as userId, title as name, description, color, visibility 
             FROM boards WHERE board_id = ? AND user_id = ?
@@ -214,7 +211,7 @@ app.get('/api/boards/:boardID', authMiddleware, async (req, res) => {
         }
         const board = boards[0];
 
-        // 2. Lấy Lists của Board
+        // Lấy Lists của Board
         const [lists] = await pool.query(`
             SELECT list_id as id, title, position 
             FROM lists 
@@ -222,7 +219,7 @@ app.get('/api/boards/:boardID', authMiddleware, async (req, res) => {
             ORDER BY position ASC
         `, [boardID]);
 
-        // 3. Lấy tất cả Cards thuộc các List trên
+        // Lấy tất cả Cards thuộc các List trên
         const listIds = lists.map(l => l.id);
         let cards = [];
         if (listIds.length > 0) {
@@ -241,11 +238,10 @@ app.get('/api/boards/:boardID', authMiddleware, async (req, res) => {
             cards = cardsData;
         }
 
-        // 4. Ghép Cards vào Lists (Nested JSON)
+        // Ghép Cards vào Lists (Nested JSON)
         const listsWithCards = lists.map(list => {
             return {
                 ...list,
-                // Chuyển id về string để khớp với frontend cũ (nếu cần thiết)
                 id: list.id.toString(), 
                 cards: cards
                     .filter(c => c.list_id === list.id)
@@ -253,9 +249,9 @@ app.get('/api/boards/:boardID', authMiddleware, async (req, res) => {
             };
         });
 
-        // 5. Trả về kết quả
+        // Trả về kết quả
         board.lists = listsWithCards;
-        board.id = board.id.toString(); // Frontend thường thích ID là string
+        board.id = board.id.toString();
         
         res.status(200).json(board);
 
@@ -268,7 +264,7 @@ app.get('/api/boards/:boardID', authMiddleware, async (req, res) => {
 // Create Board
 app.post('/api/boards', authMiddleware, async (req, res) => {
     const userId = req.user.id;
-    const { name, description, color, visibility } = req.body; // Frontend gửi 'name', DB dùng 'title'
+    const { name, description, color, visibility } = req.body;
 
     if (!name) return res.status(400).json({ message: 'Tên board là bắt buộc' });
 
@@ -309,7 +305,7 @@ app.put('/api/boards/:id', authMiddleware, async (req, res) => {
             [name, description, color, visibility, boardId]
         );
         
-        // Trả về data đã update (Giả lập)
+        // Trả về data đã update
         res.json({ id: boardId, name, description, color, visibility });
     } catch (err) {
         res.status(500).json({ message: 'Lỗi cập nhật board' });
