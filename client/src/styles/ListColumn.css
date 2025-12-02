@@ -3,15 +3,18 @@
 }
 
 .list-column {
-  background: #e8ecf1;
+  flex-shrink: 0;
+  width: 280px; 
+  background-color: #e8ecf1;
   border-radius: 8px;
   padding: 10px;
-  min-width: 250px;
-  max-height: 500px;
+  display: flex;
+  flex-direction: column;
+  max-height: 90%; 
+  overflow-y: auto; 
+  scroll-behavior: smooth;
   height: fit-content;
-  overflow-y: auto;
 }
-
 .list-header {
   display: flex;
   justify-content: space-between;
@@ -141,4 +144,13 @@
 
 .add-card-form button:nth-child(3):hover {
   background-color: #2563eb;
+}
+
+.card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;      
+  max-height: calc(90vh - 60px); 
+  scroll-behavior: smooth;
 }

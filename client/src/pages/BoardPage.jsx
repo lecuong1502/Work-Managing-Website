@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Outlet, useLocation } from "react-router-dom";
 import "../styles/BoardPage.css";
+import { UserPlusIcon } from "@heroicons/react/24/solid";
 import SearchBar from "../components/SearchBar";
 import CardModal from "../components/CardModal";
 import ListColumn from "../components/ListColumn";
@@ -10,6 +11,7 @@ import BottomToolbar from "../components/BottomToolbar";
 import Loading from "../components/LoadingOverlay"
 import InboxPanel from "../components/InboxPanel";
 import BoardSwitcher from "../components/BoardSwitcher";
+import Calendar  from "../pages/CalendarPage"
 
 
 const BoardPage = () => {
@@ -27,7 +29,12 @@ const BoardPage = () => {
   const [newCardTitle, setNewCardTitle] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [openPanel, setOpenPanel] = useState(null);
+  const [openPanel, setOpenPanel] = useState({
+    inbox: false,
+    calendar: false,
+    // board: false,
+    switcher: false,
+  });
 
   const isCalendarMode = location.pathname.includes("/calendar");
 
@@ -165,25 +172,37 @@ const BoardPage = () => {
   if (!board) return <Loading />;
 
   return (
-    <div>
+    <div className="board-wrapper">
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       {loading && <Loading />}
 
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-container">
 
-          {openPanel && openPanel !== "boards" && (
+          {(openPanel.inbox || openPanel.calendar) && (
             <div className="side-panel">
-              {openPanel === "inbox" && <InboxPanel board={board} />}
+              {openPanel.inbox && <InboxPanel board={board} />}
               {/* {openPanel === "calendar" && <CalendarPanel board={board} />}
-              {openPanel === "dashboard" && <DashboardPanel board={board} />} */}
+              
+              {openPanel === "dashboard" && <DashboardPanel board={board} />} */
+              }
+              {openPanel.calendar && (
+                // <div className="side-panel">
+                //   <div className="calendar-panel">Calendar Coming Soon...</div>
+                // </div>
+                <Calendar />
+              )}
             </div>
           )}
 
-          {openPanel === "boards" && (
+          {openPanel.switcher && (
             <BoardSwitcher
               isOpen={true}
-              onClose={() => setOpenPanel(null)}
+              onClose={() => setOpenPanel(prev => ({
+                ...prev,
+                switcher: false
+              })
+              )}
               onSelectBoard={(b) => {
                 setBoard(b);
                 setOpenPanel(null);
@@ -191,12 +210,17 @@ const BoardPage = () => {
             />
           )}
 
-          <div className={`board-main ${openPanel && openPanel !== "boards" ? "shrink" : ""}`}>
+          <div className={`board-main ${openPanel.inbox || openPanel.calendar ? "shrink" : ""}`}>
             <div className="board-header">
               <div>
                 <h2>{board.name}</h2>
                 <p className="description">{board.description}</p>
               </div>
+              <button className="add-member-btn" onClick={() => alert("Add member clicked!")}>
+                <UserPlusIcon className="icon" />
+                Add Member
+              </button>
+
             </div>
 
             {isCalendarMode ? (

@@ -113,8 +113,8 @@ const ListColumn = ({
                         onClick={() => setSelectedCard(card)}
                     />
                 ))}
-
-                {addingCard[list.id] ? (
+            </div>
+            {addingCard[list.id] ? (
                     <div className="add-card-form">
                         <input
                             type="text"
@@ -136,7 +136,6 @@ const ListColumn = ({
                         + Add a card
                     </button>
                 )}
-            </div>
         </div>
     );
 };

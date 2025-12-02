@@ -9,13 +9,16 @@ import "../styles/BottomToolbar.css";
 
 const BottomToolbar = ({ openPanel, setOpenPanel }) => {
   const handleToggle = (panel) => {
-    setOpenPanel(openPanel === panel ? null : panel);
+    setOpenPanel(prev => ({
+      ...prev,
+      [panel]: !prev[panel]
+    }));
   };
 
   return (
     <div className="bottom-toolbar">
       <button
-        className={`bottom-btn ${openPanel === "inbox" ? "active" : ""}`}
+        className={`bottom-btn ${openPanel.inbox ? "active" : ""}`}
         onClick={() => handleToggle("inbox")}
       >
         <InboxArrowDownIcon />
@@ -23,7 +26,7 @@ const BottomToolbar = ({ openPanel, setOpenPanel }) => {
       </button>
 
       <button
-        className={`bottom-btn ${openPanel === "calendar" ? "active" : ""}`}
+        className={`bottom-btn ${openPanel.calendar ? "active" : ""}`}
         onClick={() => handleToggle("calendar")}
       >
         <CalendarDateRangeIcon />
@@ -31,15 +34,17 @@ const BottomToolbar = ({ openPanel, setOpenPanel }) => {
       </button>
 
       <button
-        className={`bottom-btn ${openPanel === "dashboard" ? "active" : ""}`}
+        className={"bottom-btn active"}
+        // onClick={() => handleToggle("board")}
+        onClick={() => navigate(`/board/${board.id}`)}
       >
         <DocumentChartBarIcon />
         Board
       </button>
 
       <button
-        className={`bottom-btn ${openPanel === "boards" ? "active" : ""}`}
-        onClick={() => handleToggle("boards")}
+        className={`bottom-btn ${openPanel.switcher ? "active" : ""}`}
+        onClick={() => handleToggle("switcher")}
       >
         <Bars3Icon />
         BoardSwitcher
