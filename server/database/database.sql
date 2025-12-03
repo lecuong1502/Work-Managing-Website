@@ -132,8 +132,8 @@ CREATE TABLE labels (
 );
 
 -- ADD
--- INSERT INTO label (label_id, name, color)
--- VALUES ( 1,, "name", "#000");
+-- INSERT INTO labels (label_id, name, color)
+-- VALUES ( 1, "name", "#000");
 
 CREATE TABLE card_labels (
     card_id INT NOT NULL,
