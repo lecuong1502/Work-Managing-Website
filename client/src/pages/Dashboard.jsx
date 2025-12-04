@@ -98,56 +98,6 @@ const Dashboard = () => {
     }
   };
 
-  //------Ko chạy backend
-  // useEffect(() => {
-  //   const userId = Number(sessionStorage.getItem("userId"));
-  //   const isLoggedIn = sessionStorage.getItem("loggedIn");
-  //   if (!isLoggedIn) {
-  //     navigate("/");
-  //     return;
-  //   }
-
-  //   fetch("Board.json")
-  //     .then((res) => res.json())
-  //     .then((data) => {
-  //       const allBoards = data.boards;
-  //       const userBoards = allBoards.filter(b => b.userId === userId);
-  //       setBoards(userBoards);
-  //       sessionStorage.setItem("boards", JSON.stringify(data.boards));
-  //     }).catch((err) => console.error("Lỗi tải board", err));
-
-  //   fetch("colors.json")
-  //     .then((res) => res.json())
-  //     .then((data) => setAvailableColors(data.colors))
-  //     .catch((err) => console.error("Lỗi tải colors", err));
-  // }, [navigate]);
-
-  // const handleBoardClick = (boardId) => {
-  //   navigate(`/board/${boardId}`);
-  // };
-
-  // const handleAddBoard = (e) => {
-  //   e.preventDefault();
-  //   if (!newBoardName.trim() || !newBoardColor) return;
-
-  //   const userId = Number(sessionStorage.getItem("userId"));
-  //   const newBoard = {
-  //     id: Date.now(),
-  //     name: newBoardName.trim(),
-  //     userId,
-  //     color: newBoardColor,
-  //     visibility: boardVisibility,
-  //   };
-
-  //   const updatedBoards = [...boards, newBoard];
-  //   setBoards(updatedBoards);
-  //   sessionStorage.setItem("boards", JSON.stringify(updatedBoards));
-
-  //   setNewBoardName("");
-  //   setNewBoardColor("");
-  //   setShowForm(false);
-  // }
-//------------ko chạy backend
   const filteredBoards = boards.filter((b) =>
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
   );

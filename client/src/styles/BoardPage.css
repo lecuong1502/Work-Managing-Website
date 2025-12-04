@@ -212,8 +212,16 @@
   transition: all 0.3s;
 }
 
-.board-main.shrink {
-  flex: 0 0 75%; 
+.board-main.panels-0 {
+  width: 100%;
+}
+
+.board-main.panels-1 {
+  width: 75%;
+}
+
+.board-main.panels-2 {
+  width: 50%;
 }
 
 .board-main {
@@ -232,10 +240,20 @@
   background: #fff;
   border-right: 1px solid #ddd;
   border-radius: 16px;
-  padding: 12px;
-  overflow-y: auto;
-  overflow-x: auto;
+  padding: 0;              
   box-shadow: 2px 0 12px rgba(0,0,0,0.1);
   margin-right: 10px;
   height: 90%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;       
 }
+
+.side-panel-content {
+  padding: 12px;  
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+}
+
+

@@ -103,7 +103,7 @@ const DEFAULT_BOARDS_TEMPLATE = [
       "lists": []
     }
 ];
-
+ 
 // let userBoards = {};
 let userBoards = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
 
@@ -603,9 +603,9 @@ app.put('/api/cards/move', authMiddleware, (req, res) => {
         return res.status(404).json({ message: 'Không tìm thấy List nguồn hoặc đích.' });
     }
 
-    const cardIndex = sourceList.cards.findIndex(c => c.id === cardId);
+    const cardIndex = sourceList.cards.findIndex(c => c.id.toString() === cardId.toString());
     if (cardIndex === -1) {
-        return res.status(404).json({ message: 'Card không tồn tại trong List nguồn.' });
+        return res.status(404).json({ message: `Card không tồn tại trong List nguồn.CardID là ${cardId}`});
     }
 
     const [movedCard] = sourceList.cards.splice(cardIndex, 1);
@@ -660,6 +660,8 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, (req, res) 
     list.cards.push(newCard);
 
     console.log(`User ${userId} đã thêm card "${title}" vào list "${list.title}"`);
+    console.log("List sau khi thêm card:", list.cards);
+
     
     res.status(201).json(newCard);
 });
