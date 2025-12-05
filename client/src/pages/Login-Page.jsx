@@ -19,7 +19,7 @@ const LoginPage = () => {
       email: Username,
       password: Password,
     };
-  
+
     try {
       const res = await fetch("http://localhost:3000/login", {
         method: "POST",
@@ -30,14 +30,16 @@ const LoginPage = () => {
       });
 
       const data = await res.json();
-      console.log("Data:  ", data)
+      console.log("Data:  ", data);
 
       if (res.ok) {
         sessionStorage.setItem("loggedIn", "true");
         sessionStorage.setItem("userId", data.payload.id);
-        sessionStorage.setItem("token",data.token);
-        console.log("token login",data.token);
-        console.log("Data:::Dcd",data)
+        sessionStorage.setItem("token", data.token);
+        sessionStorage.setItem("role", data.payload.role);
+
+        console.log("token login", data.token);
+        console.log("Data:::Dcd", data);
 
         setError("");
         setMessage(data.message);
@@ -52,10 +54,10 @@ const LoginPage = () => {
     } catch (err) {
       console.error("Không kết nối được server:", err);
       alert("Không kết nối được server");
-    } finally{
-      setLoading(false); 
+    } finally {
+      setLoading(false);
     }
-//-------ko chạy backend
+    //-------ko chạy backend
     // try {
     //   const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
     //     method: "POST",
@@ -86,14 +88,14 @@ const LoginPage = () => {
     // } finally{
     //   setLoading(false);
     // }
-  //   //-----------ko chạy backend
-   };
+    //   //-----------ko chạy backend
+  };
 
   return (
     <div style={styles.container}>
       {loading && <LoadingOverlay message="Đang đăng nhập..." />}
       <div style={styles.overlay}></div>
-      
+
       <form style={styles.form} onSubmit={handleSubmit}>
         <h2 style={styles.title}>Login</h2>
         <p style={styles.subtitle}>Login to manage your tasks efficiently</p>

@@ -1,11 +1,12 @@
 .search-bar-container {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 20px;
   align-items: center;
-  top: 0; 
+  top: 0;
   left: 0;
   width: 100%;
-  height: 60px; 
+  height: 60px;
   background: linear-gradient(135deg, #12365a, #1e40af);
   /* background-color: rgba(255, 255, 255, 4.6); */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -27,15 +28,14 @@
   letter-spacing: 1px;
 }
 
-
 .search-bar {
   display: flex;
   align-items: center;
   background: #fff;
   border-radius: 8px;
   padding: 8px 14px;
-  max-width: 400px;
-  width: 80%;
+  max-width: 450px;
+  width: 100%;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -71,41 +71,71 @@
 }
 
 .avatar-img {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: #1e40af;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #1e40af;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 .avatar-container {
-    position: relative;
+  position: relative;
+  margin-left: auto;
 }
 
 .dropdown-menu {
-    position: absolute;
-    top: 50px;
-    right: 0;
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    padding: 10px;
-    z-index: 100;
-    min-width: 100px;
+  position: absolute;
+  top: 50px;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  z-index: 100;
+  min-width: 100px;
 }
 
 .dropdown-menu p {
-    margin: 0;
-    padding: 5px 10px;
-    cursor: pointer;
+  margin: 0;
+  padding: 5px 10px;
+  cursor: pointer;
 }
 
 .dropdown-menu p:hover {
-    background-color: #f0f0f0;
+  background-color: #f0f0f0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.template-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: white;
+  background: #10b981;
+  white-space: nowrap;
+  transition: 0.2s;
+}
+
+.template-btn:hover {
+  opacity: 0.85;
+}
+.search-center-area {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px; /* khoảng cách giữa search và nút */
 }

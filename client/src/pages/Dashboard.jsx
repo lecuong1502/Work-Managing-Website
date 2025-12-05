@@ -2,6 +2,7 @@ import React, { use, useEffect, useState } from "react";
 import { data, useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import SearchBar from "../components/SearchBar";
+import AdminUserPage from "../pages/AdminUserPage";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -9,13 +10,14 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
-  const [description, setDescription] = useState("")
+  const [description, setDescription] = useState("");
   const [newBoardColor, setNewBoardColor] = useState("");
   const [boardVisibility, setBoardVisibility] = useState("Private");
   const [availableColors, setAvailableColors] = useState([]);
+  const [showUserManager, setShowUserManager] = useState(false);
 
   const token = sessionStorage.getItem("token");
-  console.log("Token bên dashb",token)
+  console.log("Token bên dashb", token);
 
   useEffect(() => {
     const userId = Number(sessionStorage.getItem("userId"));
@@ -26,33 +28,33 @@ const Dashboard = () => {
     }
 
     // Chưa chạy BackEnd thì dùng "Board.json"
-    fetch("http://localhost:3000/api/boards",{
-      headers:{
+    fetch("http://localhost:3000/api/boards", {
+      headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     })
       .then((res) => res.json())
       .then((data) => {
-        const userBoards = data.filter(b => Number(b.userId) === userId);
+        const userBoards = data.filter((b) => Number(b.userId) === userId);
         setBoards(userBoards);
         sessionStorage.setItem("boards", JSON.stringify(userBoards));
-        console.log("Data lấy được",userBoards)
-      }).catch((err) => console.error("Lỗi tải board",err));
+        console.log("Data lấy được", userBoards);
+      })
+      .catch((err) => console.error("Lỗi tải board", err));
 
     fetch("colors.json")
       .then((res) => res.json())
       .then((data) => setAvailableColors(data.colors))
       .catch((err) => console.error("Lỗi tải colors", err));
-
   }, [navigate]);
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
   };
-  
+
   const userId = Number(sessionStorage.getItem("userId"));
-  console.log("UserID bên dashb",userId)
+  console.log("UserID bên dashb", userId);
 
   const handleAddBoard = async (e) => {
     e.preventDefault();
@@ -72,9 +74,9 @@ const Dashboard = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(newBoard)
+        body: JSON.stringify(newBoard),
       });
 
       const data = await res.json();
@@ -84,7 +86,7 @@ const Dashboard = () => {
         return;
       }
 
-      setBoards(prev => {
+      setBoards((prev) => {
         const updatedBoards = [...prev, data];
         sessionStorage.setItem("boards", JSON.stringify(updatedBoards));
         return updatedBoards;
@@ -94,7 +96,7 @@ const Dashboard = () => {
       setNewBoardColor("");
       setShowForm(false);
     } catch (err) {
-      alert(data.message || "Lỗi khi tạo Board")
+      alert(data.message || "Lỗi khi tạo Board");
     }
   };
 
@@ -147,7 +149,7 @@ const Dashboard = () => {
   //   setNewBoardColor("");
   //   setShowForm(false);
   // }
-//------------ko chạy backend
+  //------------ko chạy backend
   const filteredBoards = boards.filter((b) =>
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -159,7 +161,19 @@ const Dashboard = () => {
         <div className="dashboard-header">
           <h1>📋 My Boards</h1>
           <div>
-            <button className="dashboard-button" onClick={() => setShowForm(!showForm)}>
+            {sessionStorage.getItem("role") === "admin" && (
+              <button
+                className="dashboard-button"
+                onClick={() => setShowUserManager(true)}
+              >
+                Quản lý user
+              </button>
+            )}
+
+            <button
+              className="dashboard-button"
+              onClick={() => setShowForm(!showForm)}
+            >
               + Thêm board
             </button>
           </div>
@@ -167,7 +181,10 @@ const Dashboard = () => {
 
         {showForm && (
           <>
-            <div className="modal-overlay" onClick={() => setShowForm(false)}></div>
+            <div
+              className="modal-overlay"
+              onClick={() => setShowForm(false)}
+            ></div>
             <form className="add-board-form" onSubmit={handleAddBoard}>
               <input
                 type="text"
@@ -177,7 +194,7 @@ const Dashboard = () => {
                 required
               />
 
-               <input
+              <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -187,7 +204,7 @@ const Dashboard = () => {
 
               <div>
                 <p>Background</p>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                   {availableColors.map((color) => (
                     <div
                       key={color}
@@ -198,7 +215,10 @@ const Dashboard = () => {
                         borderRadius: "6px",
                         background: color,
                         cursor: "pointer",
-                        border: newBoardColor === color ? "3px solid #000" : "2px solid #fff"
+                        border:
+                          newBoardColor === color
+                            ? "3px solid #000"
+                            : "2px solid #fff",
                       }}
                     />
                   ))}
@@ -206,15 +226,19 @@ const Dashboard = () => {
               </div>
               <div className="visibility-selection">
                 <p>Chọn quyền truy cập:</p>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: "flex", gap: "10px" }}>
                   <div
-                    className={`visibility-option ${boardVisibility === "Private" ? "selected" : ""}`}
+                    className={`visibility-option ${
+                      boardVisibility === "Private" ? "selected" : ""
+                    }`}
                     onClick={() => setBoardVisibility("Private")}
                   >
                     Private
                   </div>
                   <div
-                    className={`visibility-option ${boardVisibility === "Workspace" ? "selected" : ""}`}
+                    className={`visibility-option ${
+                      boardVisibility === "Workspace" ? "selected" : ""
+                    }`}
                     onClick={() => setBoardVisibility("Workspace")}
                   >
                     Workspace
@@ -222,9 +246,11 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+              <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
                 <button type="submit">Thêm</button>
-                <button type="button" onClick={() => setShowForm(false)}>Hủy</button>
+                <button type="button" onClick={() => setShowForm(false)}>
+                  Hủy
+                </button>
               </div>
             </form>
           </>
@@ -242,6 +268,11 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
+        {showUserManager && (
+          <div style={{ marginTop: "30px" }}>
+            <AdminUserPage />
+          </div>
+        )}
       </div>
     </div>
   );

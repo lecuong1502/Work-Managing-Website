@@ -1,0 +1,29 @@
+.admin-user-page {
+  width: 90%;
+  margin: 30px auto;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.user-table th {
+  background: #f4f4f4;
+  padding: 12px;
+  font-weight: 600;
+}
+
+.user-table td {
+  padding: 10px;
+  border-top: 1px solid #eee;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
