@@ -11,7 +11,7 @@ import BottomToolbar from "../components/BottomToolbar";
 import Loading from "../components/LoadingOverlay"
 import InboxPanel from "../components/InboxPanel";
 import BoardSwitcher from "../components/BoardSwitcher";
-import Calendar  from "../pages/CalendarPage"
+import Calendar from "../pages/CalendarPage"
 
 
 const BoardPage = () => {
@@ -28,6 +28,7 @@ const BoardPage = () => {
   const [newListName, setNewListName] = useState("");
   const [newCardTitle, setNewCardTitle] = useState("");
   const [loading, setLoading] = useState(false);
+  const [numpanel, setNumpanel] = useState(0);
 
   const [openPanel, setOpenPanel] = useState({
     inbox: false,
@@ -35,6 +36,8 @@ const BoardPage = () => {
     // board: false,
     switcher: false,
   });
+
+  const openCount = Object.values(openPanel).filter(Boolean).length;
 
   const isCalendarMode = location.pathname.includes("/calendar");
 
@@ -144,29 +147,50 @@ const BoardPage = () => {
     }
   };
 
-  const handleAddCard = (listId, cardTitle) => {
+  const handleAddCard = async (listId, cardTitle) => {
     if (!cardTitle.trim()) return alert("Tiêu đề thẻ không được để trống");
 
-    const newCard = {
-      id: Date.now(),
+    const bodyData = {
       title: cardTitle.trim()
     }
 
-    const newList = board.lists.map(list => {
-      if (list.id === listId) {
-        return {
-          ...list,
-          cards: [...list.cards, newCard]
-        };
-      }
-      return list;
-    })
+    setLoading(true);
+    try {
+      const res = await fetch(
+        "http://localhost:3000/api/boards/" + board.id + "/lists/" + listId + "/cards",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`
+          },
+          body: JSON.stringify(bodyData)
+        }
+      );
 
-    const newBoard = { ...board, lists: newList };
-    setBoard(newBoard);
-    updateBoardToStorage(newBoard);
-    setNewCardTitle("");
-    setAddingCard(prev => ({ ...prev, [listId]: false }))
+      const data = await res.json();
+      const newList = board.lists.map(list => {
+        if (list.id === listId) {
+          return {
+            ...list,
+            cards: [...list.cards, data]
+          };
+        }
+        return list;
+      });
+
+      const newBoard = { ...board, lists: newList };
+
+      setBoard(newBoard);
+      updateBoardToStorage(newBoard);
+
+      setNewCardTitle("");
+      setAddingCard(prev => ({ ...prev, [listId]: false }));
+    } catch {
+      console.error("Lỗi thêm card mới:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!board) return <Loading />;
@@ -179,18 +203,22 @@ const BoardPage = () => {
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-container">
 
-          {(openPanel.inbox || openPanel.calendar) && (
-            <div className="side-panel">
-              {openPanel.inbox && <InboxPanel board={board} />}
-              {/* {openPanel === "calendar" && <CalendarPanel board={board} />}
-              
-              {openPanel === "dashboard" && <DashboardPanel board={board} />} */
-              }
+          {openPanel.inbox && (
+            <div className="side-panel inbox-panel">
+              {openPanel.inbox && (
+                <div className="side-panel-content">
+                  <InboxPanel board={board} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {openPanel.calendar && (
+            <div className="side-panel calendar-panel">
               {openPanel.calendar && (
-                // <div className="side-panel">
-                //   <div className="calendar-panel">Calendar Coming Soon...</div>
-                // </div>
-                <Calendar />
+                <div className="side-panel-content">
+                  <Calendar />
+                </div>
               )}
             </div>
           )}
@@ -210,7 +238,7 @@ const BoardPage = () => {
             />
           )}
 
-          <div className={`board-main ${openPanel.inbox || openPanel.calendar ? "shrink" : ""}`}>
+          <div className={`board-main panel-${openCount}`}>
             <div className="board-header">
               <div>
                 <h2>{board.name}</h2>

@@ -187,7 +187,47 @@ app.get('/api/boards', authMiddleware, async (req, res) => {
         `, [userId]);
 
         const boardsWithLists = boards.map(b => ({ ...b, lists: [] }));
-        
+
+        // Lấy Lists của Board
+        for (let board of boardsWithLists) {
+            const [lists] = await pool.query(`
+                SELECT  list_id as id, title, position 
+                FROM lists 
+                WHERE board_id = ? 
+                ORDER BY position ASC
+            `, [board.id]); 
+            board.lists = lists;
+
+            // Lấy Cards của từng List
+            for (let list of board.lists) {
+                list.id = list.id.toString(); 
+                const [cards] = await pool.query(`
+                    SELECT 
+                        card_id as id, 
+                        list_id, 
+                        title, 
+                        description, 
+                        position, 
+                        due_date as dueDate 
+                    FROM cards
+                    WHERE list_id = ?
+                    ORDER BY position ASC
+                `, [list.id]);
+
+                // Lấy Labels của từng Card
+                for (let card of cards) {
+                    const [labels] = await pool.query(`
+                        SELECT l.name
+                        FROM labels l
+                        JOIN card_labels cl ON l.label_id = cl.label_id
+                        WHERE cl.card_id = ?
+                    `, [card.id]);
+                    card.labels = labels.map(label => label.name);
+                }
+                list.cards = cards;
+            }
+        }
+
         res.status(200).json(boardsWithLists);
     } catch (err) {
         res.status(500).json({ message: 'Lỗi lấy danh sách board' });
@@ -204,6 +244,7 @@ app.get('/api/boards/:boardID', authMiddleware, async (req, res) => {
         const [boards] = await pool.query(`
             SELECT board_id as id, user_id as userId, title as name, description, color, visibility 
             FROM boards WHERE board_id = ? AND user_id = ?
+            ORDER BY id ASC
         `, [boardID, userId]);
 
         if (boards.length === 0) {

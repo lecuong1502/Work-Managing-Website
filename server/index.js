@@ -574,7 +574,7 @@
 
 // // Drop cards
 // app.put('/api/cards/move', authMiddleware, (req, res) => {
-//     // const userId = req.user.id;
+//     const userId = req.user.id;
 //     const {
 //         sourceBoardId,
 //         sourceListId,
@@ -588,8 +588,9 @@
 //         return res.status(400).json({ message: 'Thiếu thông tin ID cần thiết để di chuyển card.' });
 //     }
 
-//     const sourceBoard = userBoards.find(b => b.id == sourceBoardId);
-//     const destBoard = userBoards.find(b => b.id == destBoardId);
+//     const boardsOfUser = userBoards[userId] || [];
+//     const sourceBoard = boardsOfUser.find(b => b.id == sourceBoardId);
+//     const destBoard = boardsOfUser.find(b => b.id == destBoardId);
 
 //     if (!sourceBoard || !destBoard) {
 //         return res.status(404).json({ message: 'Không tìm thấy Board hoặc không có quyền truy cập.' });
@@ -602,9 +603,9 @@
 //         return res.status(404).json({ message: 'Không tìm thấy List nguồn hoặc đích.' });
 //     }
 
-//     const cardIndex = sourceList.cards.findIndex(c => c.id === cardId);
+//     const cardIndex = sourceList.cards.findIndex(c => String(c.id) === String(cardId));
 //     if (cardIndex === -1) {
-//         return res.status(404).json({ message: 'Card không tồn tại trong List nguồn.' });
+//         return res.status(404).json({ message: `Card không tồn tại trong List nguồn.CardID là ${cardId}`});
 //     }
 
 //     const [movedCard] = sourceList.cards.splice(cardIndex, 1);
@@ -647,8 +648,10 @@
 //         return res.status(404).json({ message: 'List không tồn tại trong Board này.' });
 //     }
 
+//     const randomId = Math.random().toString(36).substr(2, 9);
+
 //     const newCard = {
-//         id: `card_${Date.now()}`,
+//         id: `card_${randomId}`,
 //         title: title,
 //         description: description || '',
 //         labels: labels || [],
@@ -659,6 +662,7 @@
 //     list.cards.push(newCard);
 
 //     console.log(`User ${userId} đã thêm card "${title}" vào list "${list.title}"`);
+//     console.log("List sau khi thêm card:", list.cards);
 
 //     res.status(201).json(newCard);
 // });

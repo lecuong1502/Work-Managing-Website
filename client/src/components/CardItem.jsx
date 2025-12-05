@@ -4,7 +4,7 @@ import { useDrag, useDrop } from "react-dnd";
 
 const CardItem = ({ card, listId, boardId, index, onMoveCard, onClick }) => {
     const ref = useRef();
-
+    console.log("CardID là:",card.id);
     const [{ isDragging }, drag] = useDrag({
         type: "card",
         item: {
