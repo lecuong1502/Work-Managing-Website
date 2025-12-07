@@ -8,13 +8,49 @@
   z-index: 999;
 }
 
+.modal-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 20;
+    padding: 10px 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;      
+}
+
+.close-x {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.close-x:hover {
+    color: red;
+}
+
+.modal-description {
+    margin-top: 15px;
+    white-space: pre-wrap;
+}
+
 .modal-content {
+  display: flex;
+  flex-direction: column;
   background: #fff;
   border-radius: 12px;
-  padding: 24px;
+  padding: 10px;
   width: 600px;
   max-height: 80vh;
-  overflow-y: auto;
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
   animation: fadeIn 0.2s ease-in-out;
 }
@@ -132,7 +168,6 @@
     }
 }
 
-/* Các nút dưới lịch */
 .calendar-actions {
     display: flex;
     justify-content: flex-end;
@@ -149,7 +184,6 @@
     transition: 0.2s ease;
 }
 
-/* Save */
 .calendar-actions button:nth-child(1) {
     background: #0079bf;
     color: white;
@@ -158,7 +192,6 @@
     background: #026aa7;
 }
 
-/* Clear */
 .calendar-actions button:nth-child(2) {
     background: #f4f5f7;
 }
@@ -166,7 +199,6 @@
     background: #e3e5e8;
 }
 
-/* Cancel */
 .calendar-actions button:nth-child(3) {
     background: #ddd;
 }
@@ -174,7 +206,6 @@
     background: #ccc;
 }
 
-/* Nút đóng */
 .close-btn {
     margin-top: 20px;
     float: right;
@@ -190,8 +221,85 @@
     background: #d32f2f;
 }
 
-/* Animation modal */
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+
+.modal-content {
+    position: relative;
+}
+
+.label-popup {
+    position: relative;
+    left: 20px;    
+    background: white;
+    width: 250px;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 20;
+    animation: fadeIn 0.15s ease-out;
+}
+
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+.label-popup h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.label-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+}
+
+.label-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid #eee;
+    transition: 0.15s;
+}
+
+.label-row:hover {
+    background: #f4f5f7;
+    border-color: #d6d6d6;
+}
+
+.label-color-box {
+    width: 26px;
+    height: 18px;
+    border-radius: 4px;
+    width: 40%;
+}
+
+.label-popup button {
+    margin-top: 12px;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    background: #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.label-popup button:hover {
+    background: #ccc;
+}
+
+
+

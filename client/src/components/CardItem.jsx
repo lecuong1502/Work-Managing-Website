@@ -4,7 +4,7 @@ import { useDrag, useDrop } from "react-dnd";
 
 const CardItem = ({ card, listId, boardId, index, onMoveCard, onClick }) => {
     const ref = useRef();
-    console.log("CardID là:",card.id);
+    console.log("CardID là:",card.id, listId, boardId);
     const [{ isDragging }, drag] = useDrag({
         type: "card",
         item: {
@@ -52,7 +52,7 @@ const CardItem = ({ card, listId, boardId, index, onMoveCard, onClick }) => {
             {card.labels && (
                 <div className="labels">
                     {card.labels.map((label, idx) => (
-                        <span key={idx} className="label">{label}</span>
+                        <span style={{backgroundColor:label.color}}key={idx} className="label">{label.name}</span>
                     ))}
                 </div>
             )}

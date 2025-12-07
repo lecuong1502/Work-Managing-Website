@@ -1,58 +1,83 @@
 .board-switcher-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.25);
-  z-index: 10000;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  backdrop-filter: blur(2px);
 }
 
 .board-switcher-popup {
   position: fixed;
-  top: 50%;
+  top: 48%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 480px;
-  max-height: 80vh;
-  overflow-y: auto;
+  width: 420px;
+  max-height: 75vh;
   background: #ffffff;
-  padding: 16px;
-  border-radius: 14px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  z-index: 10001;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+  animation: fadeInScale 0.15s ease-out;
+  z-index: 2001;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .board-switcher-search {
   width: 100%;
-  padding: 10px;
   border-radius: 8px;
-  border: 1px solid #ddd;
+  padding: 10px 12px;
+  border: 1px solid #cfd6dd;
+  font-size: 15px;
   margin-bottom: 16px;
-  font-size: 16px;
+  transition: 0.15s;
+  box-sizing: border-box; 
+}
+
+.board-switcher-search:focus {
+  border-color: #388bff;
+  box-shadow: 0 0 0 2px rgba(56, 139, 255, 0.2);
+  outline: none;
 }
 
 .board-switcher-section-title {
-  margin-bottom: 10px;
-  font-weight: 500;
+  font-size: 14px;
+  color: #5f6b7c;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  font-weight: 600;
 }
 
 .board-item {
-  padding: 12px;
-  background: #f3f4f6;
-  border-radius: 8px;
-  margin-bottom: 8px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 10px;
   cursor: pointer;
   font-weight: 500;
-  transition: 0.2s;
+  background: #f4f5f7;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease,
+              background 0.15s, border-color 0.15s;
 }
 
 .board-item:hover {
-  background: #e0e2e6;
+  background: #e9ebf0;
+  transform: translateX(3px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .board-switcher-empty {
-  color: #888;
+  padding: 12px;
+  text-align: center;
+  color: #7a869a;
   font-style: italic;
-  padding: 8px 0;
 }

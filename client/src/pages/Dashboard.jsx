@@ -24,7 +24,7 @@ const Dashboard = () => {
       navigate("/");
       return;
     }
-
+    
     // Chưa chạy BackEnd thì dùng "Board.json"
     fetch("http://localhost:3000/api/boards",{
       headers:{

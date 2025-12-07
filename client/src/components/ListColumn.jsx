@@ -110,7 +110,7 @@ const ListColumn = ({
                         boardId={board.id}
                         index={idx}
                         onMoveCard={moveCard}
-                        onClick={() => setSelectedCard(card)}
+                        onClick={() => setSelectedCard({ ...card, listId: list.id, boardId: board.id })}
                     />
                 ))}
             </div>

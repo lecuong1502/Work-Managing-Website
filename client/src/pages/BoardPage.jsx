@@ -60,6 +60,10 @@ const BoardPage = () => {
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
 
+  const handleBoardClick = (boardId) => {
+    navigate(`/board/${boardId}`);
+  };
+
   const handleAddList = async (e) => {
     if (!newListTitle.trim()) return;
     const newList = {
@@ -193,6 +197,26 @@ const BoardPage = () => {
     }
   };
 
+  const handleUpdateCard = (updatedCard, listId) => {
+    setBoard(prevBoard => {
+      const newLists = prevBoard.lists.map(list => {
+        if (list.id === listId) {
+          const newCards = list.cards.map(c => c.id === updatedCard.id ? updatedCard : c);
+          return { ...list, cards: newCards };
+        }
+        return list;
+      });
+
+      const updatedBoard = { ...prevBoard, lists: newLists };
+
+      updateBoardToStorage(updatedBoard);
+
+      return { ...prevBoard, lists: newLists };
+    });
+  };
+
+
+
   if (!board) return <Loading />;
 
   return (
@@ -232,8 +256,11 @@ const BoardPage = () => {
               })
               )}
               onSelectBoard={(b) => {
-                setBoard(b);
-                setOpenPanel(null);
+                handleBoardClick(b.id);
+                setOpenPanel(prev => ({
+                  ...prev,
+                  switcher: false
+                }));
               }}
             />
           )}
@@ -302,7 +329,11 @@ const BoardPage = () => {
                 {selectedCard && (
                   <CardModal
                     card={selectedCard}
-                    onClose={() => setSelectedCard(null)}
+                    boardId={selectedCard.boardId}
+                    listId={selectedCard.listId}
+                    onUpdate={handleUpdateCard}
+                    onClose={() => setSelectedCard(null)
+                    }
                   />
                 )}
               </>

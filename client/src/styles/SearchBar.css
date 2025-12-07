@@ -9,7 +9,7 @@
   background: linear-gradient(135deg, #12365a, #1e40af);
   /* background-color: rgba(255, 255, 255, 4.6); */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+  z-index: 998;
 }
 
 .logo {
