@@ -3,25 +3,58 @@ import cors from 'cors';
 import validator from 'validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import mysql from 'mysql2/promise'; 
+import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
-dotenv.config(); 
+dotenv.config();
 
 const app = express();
 app.use(express.json());
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: 'http://localhost:5173',
+        methods: ["GET", "POST"]
+    }
+});
 
 const PORT = process.env.PORT || 3000;
-process.env.JWT_SECRET = '4_ong_deu_ten_Cuong'; 
+process.env.JWT_SECRET = '4_ong_deu_ten_Cuong';
 
-app.use(cors({
-    origin: 'http://localhost:5173',
-}));
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) return next(new Error("Authentication error"));
+    
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded;
+        next();
+    } catch (err) {
+        next(new Error("Authentication error"));
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log(`User connected: ${socket.user.name} (ID: ${socket.user.id})`);
+    
+    // Join user vào room riêng theo ID của họ
+    socket.join(`user_${socket.user.id}`);
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
+// app.use(cors({
+//     origin: 'http://localhost:5173',
+// }));
 
 // --- CẤU HÌNH KẾT NỐI DATABASE ---
 const pool = mysql.createPool({
     host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,           
+    user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: 'work_manager',
     waitForConnections: true,
@@ -39,7 +72,32 @@ pool.getConnection()
         console.error("Lỗi kết nối database:", err);
     });
 
-app.listen(PORT, () => {
+// Hàm gửi thông báo (Lưu DB + Bắn Socket)
+async function sendNotification({ userId, actorId, cardId, type, message }) {
+    try {
+        // 1. Lưu vào Database
+        const [result] = await pool.query(
+            'INSERT INTO notifications (user_id, actor_id, card_id, type, message) VALUES (?, ?, ?, ?, ?)',
+            [userId, actorId, cardId, type, message]
+        );
+        
+        const notificationData = {
+            id: result.insertId,
+            userId, actorId, cardId, type, message,
+            isRead: 0,
+            createdAt: new Date()
+        };
+
+        // 2. Bắn Socket tới Real-time tới user đó
+        io.to(`user_${userId}`).emit('new_notification', notificationData);
+        console.log(`Đã gửi thông báo tới user_${userId}`);
+
+    } catch (err) {
+        console.error("Lỗi gửi thông báo:", err);
+    }
+}
+
+httpServer.listen(PORT, () => {
     console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
 
@@ -81,7 +139,7 @@ app.post('/register', async (req, res) => {
 
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
-        
+
         const finalAvatar = avatar_url || `https://placehold.co/400x400/EEE/31343C?text=${name.charAt(0)}`;
 
         // Insert vào DB
@@ -172,7 +230,7 @@ const authMiddleware = (req, res, next) => {
 app.get('/api/boards', authMiddleware, async (req, res) => {
     try {
         const userId = req.user.id;
-        
+
         const [boards] = await pool.query(`
             SELECT 
                 board_id as id, 
@@ -195,12 +253,12 @@ app.get('/api/boards', authMiddleware, async (req, res) => {
                 FROM lists 
                 WHERE board_id = ? 
                 ORDER BY position ASC
-            `, [board.id]); 
+            `, [board.id]);
             board.lists = lists;
 
             // Lấy Cards của từng List
             for (let list of board.lists) {
-                list.id = list.id.toString(); 
+                list.id = list.id.toString();
                 const [cards] = await pool.query(`
                     SELECT 
                         card_id as id, 
@@ -283,17 +341,17 @@ app.get('/api/boards/:boardID', authMiddleware, async (req, res) => {
         const listsWithCards = lists.map(list => {
             return {
                 ...list,
-                id: list.id.toString(), 
+                id: list.id.toString(),
                 cards: cards
                     .filter(c => c.list_id === list.id)
-                    .map(c => ({...c, id: c.id.toString()}))
+                    .map(c => ({ ...c, id: c.id.toString() }))
             };
         });
 
         // Trả về kết quả
         board.lists = listsWithCards;
         board.id = board.id.toString();
-        
+
         res.status(200).json(board);
 
     } catch (err) {
@@ -345,7 +403,7 @@ app.put('/api/boards/:id', authMiddleware, async (req, res) => {
             'UPDATE boards SET title = ?, description = ?, color = ?, visibility = ? WHERE board_id = ?',
             [name, description, color, visibility, boardId]
         );
-        
+
         // Trả về data đã update
         res.json({ id: boardId, name, description, color, visibility });
     } catch (err) {
@@ -360,7 +418,7 @@ app.delete('/api/boards/:id', authMiddleware, async (req, res) => {
 
     try {
         const [result] = await pool.query('DELETE FROM boards WHERE board_id = ? AND user_id = ?', [boardId, userId]);
-        
+
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Board không tồn tại hoặc không có quyền.' });
         }
@@ -432,8 +490,8 @@ app.put('/api/boards/lists/move', authMiddleware, async (req, res) => {
         // Cách đơn giản nhất ở đây: Update board_id (nếu chuyển board) và gán position mới.
         // Để làm chuẩn tính năng Drag & Drop, frontend nên gửi lên 'newPosition' (float) thay vì index.
         // Ở đây mình tạm gán position = index * 10000 để demo logic cập nhật DB.
-        
-        const newPosition = (index + 1) * 10000; 
+
+        const newPosition = (index + 1) * 10000;
 
         await pool.query(
             'UPDATE lists SET board_id = ?, position = ? WHERE list_id = ?',
@@ -503,7 +561,7 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, async (req,
 
         // Tính toán vị trí (position) để card nằm cuối list
         const [rows] = await connection.query('SELECT MAX(position) as maxPos FROM cards WHERE list_id = ?', [listId]);
-        const newPosition = (rows[0].maxPos || 0) + 1024; 
+        const newPosition = (rows[0].maxPos || 0) + 1024;
 
         // Insert vào bảng cards
         const [result] = await connection.query(
@@ -548,6 +606,7 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, async (req,
 app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, async (req, res) => {
     const { cardId } = req.params;
     const { title, description, dueDate, status, members } = req.body;
+    const actorId = req.user.id;
 
     const connection = await pool.getConnection();
     try {
@@ -564,17 +623,37 @@ app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, asyn
 
         if (updateFields.length > 0) {
             updateValues.push(cardId);
-            const query = `UPDATE cards SET ${updateFields.join(', ')} WHERE card_id = ?`;
-            await connection.query(query, updateValues);
+            await connection.query(`UPDATE cards SET ${updateFields.join(', ')} WHERE card_id = ?`, updateValues);
         }
 
         // Cập nhật bảng card_members
         if (members && Array.isArray(members)) {
-            await connection.query('DELETE FROM card_members WHERE card_id = ?', [cardId]);
+            const [oldMemberRows] = await connection.query('SELECT user_id FROM card_members WHERE card_id = ?', [cardId]);
+            const oldMemberIds = oldMemberRows.map(r => r.user_id);
 
+            await connection.query('DELETE FROM card_members WHERE card_id = ?', [cardId]);
             if (members.length > 0) {
                 const memberValues = members.map(uid => [cardId, uid]);
                 await connection.query('INSERT INTO card_members (card_id, user_id) VALUES ?', [memberValues]);
+            }
+
+            // TÌM NGƯỜI VỪA ĐƯỢC THÊM ĐỂ THÔNG BÁO
+            const addedMembers = members.filter(uid => !oldMemberIds.includes(uid));
+
+            // Lấy tên Card để hiển thị trong thông báo
+            const [cardInfo] = await connection.query('SELECT title FROM cards WHERE card_id = ?', [cardId]);
+            const cardTitle = cardInfo[0]?.title || 'Unknown Card';
+
+            for (const newUserId of addedMembers) {
+                if (newUserId !== actorId) {
+                    sendNotification({
+                        userId: newUserId,
+                        actorId: actorId,
+                        cardId: cardId,
+                        type: 'assigned_card',
+                        message: `Bạn đã được thêm vào thẻ: "${cardTitle}"`
+                    });
+                }
             }
         }
 
@@ -583,8 +662,6 @@ app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, asyn
         // Lấy lại card đã update để trả về frontend
         const [updatedRows] = await connection.query('SELECT * FROM cards WHERE card_id = ?', [cardId]);
         const updatedCard = updatedRows[0];
-        
-        // Lấy members mới để trả về luôn
         const [memberRows] = await connection.query('SELECT user_id FROM card_members WHERE card_id = ?', [cardId]);
         updatedCard.members = memberRows.map(row => row.user_id);
 
@@ -616,3 +693,57 @@ app.delete('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, a
         res.status(500).json({ message: 'Lỗi xóa card', error: err.message });
     }
 });
+
+// API get notifications
+app.get('api/notifications', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        // Lấy thông báo và thông tin người gửi (actor)
+        const [rows] = await pool.query(`
+            SELECT 
+                n.notification_id as id,
+                n.type,
+                n.message,
+                n.is_read as isRead,
+                n.created_at as createdAt,
+                n.card_id as cardId,
+                u.username as actorName,
+                u.avatar_url as actorAvatar
+            FROM notifications n
+            JOIN users u ON n.actor_id = u.user_id
+            WHERE n.user_id = ? 
+            ORDER BY n.created_at DESC
+        `, [userId]);
+
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi lấy thông báo' });
+    }
+});
+
+// Mark Notification as Read
+app.put('/api/notifications/:id/read', authMiddleware, async (req, res) => {
+    try {
+        const notiId = req.params.id;
+        const userId = req.user.id;
+        await pool.query('UPDATE notifications SET is_read = 1 WHERE notification_id = ? AND user_id = ?', [notiId, userId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: 'Lỗi cập nhật thông báo' });
+    }
+});
+
+// Frontend Socket.io
+// import { io } from "socket.io-client";
+
+// const socket = io("http://localhost:3000", {
+//     auth: { token: "YOUR_JWT_TOKEN" }
+// });
+
+// socket.on("new_notification", (data) => {
+//     // 1. Hiển thị Toast (Popup nhỏ góc màn hình)
+//     toast.info(data.message); 
+
+//     // 2. Thêm vào danh sách state 'notifications' để hiển thị ở Inbox
+//     setNotifications(prev => [data, ...prev]);
+// });

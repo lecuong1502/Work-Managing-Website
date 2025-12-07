@@ -144,6 +144,25 @@ CREATE TABLE card_labels (
     FOREIGN KEY (label_id) REFERENCES labels(label_id) ON DELETE CASCADE
 );
 
+CREATE TABLE notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,           -- Người nhận thông báo
+    actor_id INT NOT NULL,          -- Người tạo ra hành động
+    card_id INT,
+    type VARCHAR(50) NOT NULL,      -- Loại thông báo: 'assigned', 'comment', 'due_date'
+    message TEXT,
+    is_read BOOLEAN DEFAULT FALSE,  -- false = chưa đọc, true = đã đọc
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (actor_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE
+);
+
+-- ADD (Dữ liệu mẫu để test)
+-- INSERT INTO notifications (user_id, actor_id, card_id, type, message)
+-- VALUES (1, 2, 1, 'assigned', 'Nguyễn Văn A đã thêm bạn vào thẻ "Thiết kế giao diện"');
+
 -- ADD
 -- INSERT INTO card_labels (card_id, label_id)
 -- VALUES ( 1, 1);
