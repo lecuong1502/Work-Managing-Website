@@ -81,7 +81,8 @@ const DEFAULT_BOARDS_TEMPLATE = [
           "id": "list_3",
           "title": "Done",
           "cards": []
-        }
+        },
+        { "id": "inbox", "title": "Inbox", "cards": [] }
       ]
     },
     {
@@ -103,7 +104,8 @@ const DEFAULT_BOARDS_TEMPLATE = [
               "labels": ["frontend"]
             }
           ]
-        }
+        },
+        { "id": "inbox", "title": "Inbox", "cards": [] }
       ]
     },
     {
@@ -113,7 +115,7 @@ const DEFAULT_BOARDS_TEMPLATE = [
       "description": "Danh sách việc riêng trong tuần.",
       "color": "#722ed1",
       "visibility":"Workspace",
-      "lists": []
+      "lists": [{ "id": "inbox", "title": "Inbox", "cards": [] }]
     }
 ];
  
@@ -427,7 +429,7 @@ app.post('/api/boards', authMiddleware,(req, res) => {
         description: description || '',
         color: color || 'linear-gradient(135deg, #667eea, #764ba2)',
         visibility: visibility || 'Workspace',
-        lists: [] // Board mới mặc định không có list
+        lists: [{ "id": "inbox", "title": "Inbox", "cards": []}] // Board mới mặc định không có list
     };
 
     boardsOfThisUser.push(newBoard);

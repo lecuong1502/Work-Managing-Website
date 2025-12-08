@@ -226,65 +226,75 @@ const BoardPage = () => {
 
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-container">
+          <DndProvider backend={HTML5Backend}>
 
-          {openPanel.inbox && (
-            <div className="side-panel inbox-panel">
-              {openPanel.inbox && (
-                <div className="side-panel-content">
-                  <InboxPanel board={board} />
-                </div>
-              )}
-            </div>
-          )}
+            {openPanel.inbox && (
+              <div className="side-panel inbox-panel">
+                {openPanel.inbox && (
+                  <div className="side-panel-content">
+                    <InboxPanel
+                      inboxCards={board.lists.find(l => l.id === "inbox").cards}
+                      board={board}
+                      setBoard={setBoard}
+                      addingCard={addingCard}
+                      setAddingCard={setAddingCard} 
+                      newCardTitle={newCardTitle}
+                      setNewCardTitle={setNewCardTitle}
+                      handleAddCard={handleAddCard}
+                      selectedCard={selectedCard}
+                      setSelectedCard={setSelectedCard}/>
+                  </div>
+                )}
+              </div>
+            )}
 
-          {openPanel.calendar && (
-            <div className="side-panel calendar-panel">
-              {openPanel.calendar && (
-                <div className="side-panel-content">
-                  <Calendar />
-                </div>
-              )}
-            </div>
-          )}
+            {openPanel.calendar && (
+              <div className="side-panel calendar-panel">
+                {openPanel.calendar && (
+                  <div className="side-panel-content">
+                    <Calendar />
+                  </div>
+                )}
+              </div>
+            )}
 
-          {openPanel.switcher && (
-            <BoardSwitcher
-              isOpen={true}
-              onClose={() => setOpenPanel(prev => ({
-                ...prev,
-                switcher: false
-              })
-              )}
-              onSelectBoard={(b) => {
-                handleBoardClick(b.id);
-                setOpenPanel(prev => ({
+            {openPanel.switcher && (
+              <BoardSwitcher
+                isOpen={true}
+                onClose={() => setOpenPanel(prev => ({
                   ...prev,
                   switcher: false
-                }));
-              }}
-            />
-          )}
+                })
+                )}
+                onSelectBoard={(b) => {
+                  handleBoardClick(b.id);
+                  setOpenPanel(prev => ({
+                    ...prev,
+                    switcher: false
+                  }));
+                }}
+              />
+            )}
 
-          <div className={`board-main panel-${openCount}`}>
-            <div className="board-header">
-              <div>
-                <h2>{board.name}</h2>
-                <p className="description">{board.description}</p>
+            <div className={`board-main panel-${openCount}`}>
+              <div className="board-header">
+                <div>
+                  <h2>{board.name}</h2>
+                  <p className="description">{board.description}</p>
+                </div>
+                <button className="add-member-btn" onClick={() => alert("Add member clicked!")}>
+                  <UserPlusIcon className="icon" />
+                  Add Member
+                </button>
+
               </div>
-              <button className="add-member-btn" onClick={() => alert("Add member clicked!")}>
-                <UserPlusIcon className="icon" />
-                Add Member
-              </button>
 
-            </div>
-
-            {isCalendarMode ? (
-              <Outlet context={{ board, setBoard }} />
-            ) : (
-              <>
-                <DndProvider backend={HTML5Backend}>
+              {isCalendarMode ? (
+                <Outlet context={{ board, setBoard }} />
+              ) : (
+                <>
                   <div className="lists-container">
-                    {board.lists.map((list) => (
+                    {board.lists.filter(l => l.id !== "inbox").map((list) => (
                       <ListColumn
                         key={list.id}
                         list={list}
@@ -324,21 +334,21 @@ const BoardPage = () => {
                       </div>
                     )}
                   </div>
-                </DndProvider>
 
-                {selectedCard && (
-                  <CardModal
-                    card={selectedCard}
-                    boardId={selectedCard.boardId}
-                    listId={selectedCard.listId}
-                    onUpdate={handleUpdateCard}
-                    onClose={() => setSelectedCard(null)
-                    }
-                  />
-                )}
-              </>
-            )}
-          </div>
+                  {selectedCard && (
+                    <CardModal
+                      card={selectedCard}
+                      boardId={selectedCard.boardId}
+                      listId={selectedCard.listId}
+                      onUpdate={handleUpdateCard}
+                      onClose={() => setSelectedCard(null)
+                      }
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          </DndProvider>
         </div>
 
 
