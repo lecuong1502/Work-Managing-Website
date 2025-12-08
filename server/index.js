@@ -10,26 +10,39 @@ import validator from 'validator';
 import bcrypt from 'bcryptjs'       // hash password
 import jwt from 'jsonwebtoken'      // transfer client and server: header + payload + signature (JSON File)
 // import { authorize } from 'passport';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 const app = express();
+const httpServer = createServer(app);
 app.use(express.json())     // Server reads body of request in JSON
 
 // PORT = 3000
 const PORT = process.env.PORT || 3000;
+process.env.JWT_SECRET = '4_ong_deu_ten_Cuong';
 
-app.use(cors({
-    origin: 'http://localhost:5173', // Cho phép frontend truy cập từ port 5173
-}));
+const corsOptions = {
+    origin: 'http://localhost:5173',
+    methods: ["GET", "POST", "PUT", "DELETE"]
+};
+app.use(cors(corsOptions));
 
-app.listen(PORT, () => {
-    console.log(`Server đang chạy (listening) tại http://localhost:${PORT}`);
+// app.listen(PORT, () => {
+//     console.log(`Server đang chạy (listening) tại http://localhost:${PORT}`);
+// });
+
+httpServer.listen(PORT, () => {
+    console.log(`Server Socket.io đang chạy tại http://localhost:${PORT}`);
 });
 
-process.env.JWT_SECRET = '4_ong_deu_ten_Cuong';
+const io = new Server(httpServer, {
+    cors: corsOptions
+});
 
 // Create simple database
 const users = [];
 let userIdCounter = 1;
+const userNotifications = {};
 
 const DEFAULT_BOARDS_TEMPLATE = [
     {
@@ -106,6 +119,58 @@ const DEFAULT_BOARDS_TEMPLATE = [
  
 // let userBoards = {};
 let userBoards = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
+
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) return next(new Error("Authentication error"));
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded;
+        next();
+    } catch (err) {
+        next(new Error("Authentication error"));
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log(`User connected: ${socket.user.name} (ID: ${socket.user.id})`);
+    socket.join(`user_${socket.user.id}`);
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
+const sendNotification = ({ userId, actor, card, boardId, type, message }) => {
+    // Tạo object thông báo
+    const newNotification = {
+        id: `noti_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        type: type, // 'assigned'
+        message: message,
+        isRead: false,
+        createdAt: new Date(),
+        sender: {
+            id: actor.id.toString(),
+            name: actor.name,
+            avatar: actor.avatar_url
+        },
+        target: {
+            boardId: boardId.toString(),
+            cardId: card.id.toString()
+        }
+    };
+
+    // Lưu vào In-Memory Store (userNotifications)
+    if (!userNotifications[userId]) {
+        userNotifications[userId] = [];
+    }
+    // Thêm vào đầu mảng
+    userNotifications[userId].unshift(newNotification);
+
+    // Bắn Socket Real-time
+    io.to(`user_${userId}`).emit('notification_received', newNotification);
+    console.log(`[Socket] Đã gửi thông báo cho User ID ${userId}`);
+};
 
 // Route (API ENDPOINTS)
 app.get('/', (req, res) => {
@@ -670,8 +735,9 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, (req, res) 
 });
 
 // Edit cards
+// Edit cards (Đã tích hợp Socket Notification)
 app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req, res) => {
-    const userId = req.user.id;
+    const userId = req.user.id; // Người đang thực hiện hành động (Actor)
     const { boardId, listId, cardId } = req.params;
     const { title, description, labels, dueDate, members } = req.body;
 
@@ -686,11 +752,39 @@ app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req
     const card = list.cards.find(c => c.id === cardId);
     if (!card) return res.status(404).json({ message: 'Card không tồn tại.' });
 
+    // --- LOGIC XỬ LÝ THAY ĐỔI VÀ THÔNG BÁO ---
+    if (members !== undefined) {
+        const oldMembers = card.members || [];
+        card.members = members; 
+
+        const addedMembers = members.filter(mId => !oldMembers.includes(mId));
+
+        if (addedMembers.length > 0) {
+            const actor = {
+                id: req.user.id,
+                name: req.user.name,
+                avatar_url: req.user.avatar_url
+            };
+
+            addedMembers.forEach(targetUserId => {
+                if (Number(targetUserId) !== Number(userId)) {
+                    sendNotification({
+                        userId: Number(targetUserId), // User nhận
+                        actor: actor,                 // User gửi
+                        card: card,                   // Card liên quan
+                        boardId: boardId,
+                        type: 'assigned',
+                        message: `đã thêm bạn vào thẻ "${card.title || 'Không tên'}"`
+                    });
+                }
+            });
+        }
+    }
+
     if (title !== undefined) card.title = title;
     if (description !== undefined) card.description = description;
     if (labels !== undefined) card.labels = labels;
     if (dueDate !== undefined) card.dueDate = dueDate;
-    if (members !== undefined) card.members = members;
 
     console.log(`Đã cập nhật card ${cardId}`);
     res.json(card);
@@ -717,6 +811,29 @@ app.delete('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (
 
     console.log(`Đã xóa card ${cardId}`);
     res.status(204).send();
+});
+
+// Lấy danh sách thông báo
+app.get('/api/notifications', authMiddleware, (req, res) => {
+    const userId = req.user.id;
+    // Trả về mảng thông báo của user, nếu chưa có thì trả về mảng rỗng
+    const notis = userNotifications[userId] || [];
+    res.json(notis);
+});
+
+// Đánh dấu đã đọc
+app.put('/api/notifications/:id/read', authMiddleware, (req, res) => {
+    const userId = req.user.id;
+    const notiId = req.params.id;
+    
+    const notis = userNotifications[userId];
+    if (notis) {
+        const notification = notis.find(n => n.id === notiId);
+        if (notification) {
+            notification.isRead = true;
+        }
+    }
+    res.json({ success: true });
 });
 
 
