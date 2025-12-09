@@ -54,11 +54,22 @@ const BoardPage = () => {
   }, [boardId, navigate]);
 
   const updateBoardToStorage = (updatedBoard) => {
-    const boards = JSON.parse(sessionStorage.getItem("boards")) || [];
-    const index = boards.findIndex((b) => b.id === updatedBoard.id);
-    boards[index] = updatedBoard;
+    let boards = JSON.parse(sessionStorage.getItem("boards"));
+
+    // Nếu không phải array → ép về array
+    if (!Array.isArray(boards)) {
+      boards = boards?.boards || [];
+    }
+
+    const index = boards.findIndex(b => b.id === updatedBoard.id);
+
+    if (index !== -1) {
+      boards[index] = updatedBoard;
+    }
+
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
+
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
@@ -208,11 +219,11 @@ const BoardPage = () => {
       });
 
       const updatedBoard = { ...prevBoard, lists: newLists };
-
       updateBoardToStorage(updatedBoard);
 
-      return { ...prevBoard, lists: newLists };
+      return updatedBoard;
     });
+
   };
 
 
@@ -237,12 +248,12 @@ const BoardPage = () => {
                       board={board}
                       setBoard={setBoard}
                       addingCard={addingCard}
-                      setAddingCard={setAddingCard} 
+                      setAddingCard={setAddingCard}
                       newCardTitle={newCardTitle}
                       setNewCardTitle={setNewCardTitle}
                       handleAddCard={handleAddCard}
                       selectedCard={selectedCard}
-                      setSelectedCard={setSelectedCard}/>
+                      setSelectedCard={setSelectedCard} />
                   </div>
                 )}
               </div>
@@ -338,6 +349,7 @@ const BoardPage = () => {
                   {selectedCard && (
                     <CardModal
                       card={selectedCard}
+                      list={board.lists.find(l => l.id === selectedCard.listId)}
                       boardId={selectedCard.boardId}
                       listId={selectedCard.listId}
                       onUpdate={handleUpdateCard}

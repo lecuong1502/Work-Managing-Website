@@ -1,10 +1,21 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import "../styles/CardItem.css";
 import { useDrag, useDrop } from "react-dnd";
 
-const CardItem = ({ card, listId, boardId, index, onMoveCard, onClick }) => {
+const CardItem = ({
+    card,
+    listId,
+    boardId,
+    index,
+    onMoveCard,
+    onClick,
+    onToggleComplete,   // <-- thêm
+    onArchive           // <-- thêm
+}) => {
+
     const ref = useRef();
-    console.log("CardID là:",card.id, listId, boardId);
+    const [showActions, setShowActions] = useState(false);
+
     const [{ isDragging }, drag] = useDrag({
         type: "card",
         item: {
@@ -42,18 +53,49 @@ const CardItem = ({ card, listId, boardId, index, onMoveCard, onClick }) => {
     return (
         <div
             ref={ref}
-            className="card-item"
+            className={`card-item ${card.completed ? "completed" : ""}`}
             onClick={onClick}
             style={{ opacity: isDragging ? 0.5 : 1 }}
+            onMouseEnter={() => setShowActions(true)}
+            onMouseLeave={() => setShowActions(false)}
         >
-            <h4>{card.title}</h4>
-            <p>{card.description}</p>
-            {card.dueDate && <small>Hạn: {card.dueDate}</small>}
-            {card.labels && (
-                <div className="labels">
-                    {card.labels.map((label, idx) => (
-                        <span style={{backgroundColor:label.color}}key={idx} className="label">{label.name}</span>
-                    ))}
+            <div
+                className={`circle-toggle ${card.completed ? "on" : ""}`}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleComplete(card);
+                }}
+            >
+                {card.completed && <span className="checkmark">✓</span>}
+            </div>
+
+            <div className="card-content">
+                {card.labels && (
+                    <div className="labels">
+                        {card.labels.map((label, idx) => (
+                            <span style={{ backgroundColor: label.color }} key={idx} className="label">
+                                {label.name}
+                            </span>
+                        ))}
+                    </div>
+                )}
+                <h4>{card.title}</h4>
+                {card.dueDate && <small>Hạn: {card.dueDate}</small>}
+
+
+            </div>
+
+            {showActions && (
+                <div className="card-actions">
+                    <button
+                        className="card-action-btn archive-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onArchive(card);
+                        }}
+                    >
+                        archive
+                    </button>
                 </div>
             )}
         </div>

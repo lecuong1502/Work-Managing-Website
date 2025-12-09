@@ -539,11 +539,11 @@ app.post('/api/boards/:boardId/lists', authMiddleware, (req, res) => {
         return res.status(404).json({ message: 'Board không tồn tại hoặc không có quyền truy cập.' });
     }
 
-    const newList = {
-        id: `list_${Date.now()}`,
-        title: title,
-        cards: []
-    };
+   const newList = {
+    id: `list_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    title: title,
+    cards: []
+};
 
     board.lists.push(newList);
     console.log("List trong board", board)
