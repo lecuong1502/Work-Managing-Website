@@ -1,7 +1,6 @@
 .search-bar-container {
   display: flex;
-  justify-content: flex-start;
-  gap: 20px;
+  justify-content: space-between;
   align-items: center;
   top: 0;
   left: 0;
@@ -10,7 +9,7 @@
   background: linear-gradient(135deg, #12365a, #1e40af);
   /* background-color: rgba(255, 255, 255, 4.6); */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+  z-index: 998;
 }
 
 .logo {
@@ -34,8 +33,8 @@
   background: #fff;
   border-radius: 8px;
   padding: 8px 14px;
-  max-width: 450px;
-  width: 100%;
+  max-width: 400px;
+  width: 80%;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -85,7 +84,6 @@
 
 .avatar-container {
   position: relative;
-  margin-left: auto;
 }
 
 .dropdown-menu {
@@ -109,33 +107,4 @@
 
 .dropdown-menu p:hover {
   background-color: #f0f0f0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-}
-
-.template-btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  color: white;
-  background: #10b981;
-  white-space: nowrap;
-  transition: 0.2s;
-}
-
-.template-btn:hover {
-  opacity: 0.85;
-}
-.search-center-area {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 12px; /* khoảng cách giữa search và nút */
 }

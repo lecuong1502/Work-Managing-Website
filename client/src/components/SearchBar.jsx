@@ -27,18 +27,14 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
         <Link to="/">TaskManager</Link>
       </div>
 
-      <div className="search-center-area">
-        <div className="search-bar">
-          <i className="fa fa-search" style={{ color: "#888" }}></i>
-          <input
-            type="text"
-            placeholder="Tìm kiếm board..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <button className="template-btn">Tạo với mẫu</button>
+      <div className="search-bar">
+        <i className="fa fa-search" style={{ color: "#888" }}></i>
+        <input
+          type="text"
+          placeholder="Tìm kiếm board..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       <div
