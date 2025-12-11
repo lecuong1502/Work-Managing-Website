@@ -266,7 +266,7 @@ app.post('/register', async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server', error: err.message });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 })
 
@@ -907,22 +907,30 @@ app.post('/api/boards/add-member', authMiddleware, (req, res) => {
         const alreadyShared = userBoards[memberToAdd.id].some(b => b.id == targetBoard.id);
         if (!alreadyShared) {
             userBoards[memberToAdd.id].push(targetBoard);
+            console.log(`Đã share Board ID ${targetBoard.id} sang dashboard của User ID ${memberToAdd.id}`);
         }
 
-        // Tạo thông báo cho người được mời 
+        // Tạo thông báo (Notification)
+        const notiContent = {
+            id: `noti_${Date.now()}`, 
+            type: 'invite',
+            message: `${req.user.name} đã thêm bạn vào bảng "${targetBoard.name}"`,
+            sender: { name: req.user.name, avatar: req.user.avatar_url },
+            boardId: targetBoard.id,
+            createdAt: new Date(),
+            isRead: false
+        };
+
         if (!userNotifications[memberToAdd.id]) {
             userNotifications[memberToAdd.id] = [];
         }
-        userNotifications[memberToAdd.id].unshift({
-            id: Date.now(), 
-            type: 'invite',
-            content: `${req.user.name || currentUserEmail} đã thêm bạn vào bảng "${targetBoard.name}"`,
-            boardId: targetBoard.id,
-            time: new Date(),
-            isRead: false
-        });
+        userNotifications[memberToAdd.id].unshift(notiContent);
 
-        console.log(`User ${currentUserId} added ${memberToAdd.email} to board ${boardId}`);
+        // Gửi Socket Real-time (Để client bên kia tự cập nhật UI)
+        io.to(`user_${memberToAdd.id}`).emit('notification_received', notiContent);
+        
+        // Bắn sự kiện "Bạn vừa được thêm vào board" để client tự fetch lại list board
+        io.to(`user_${memberToAdd.id}`).emit('board_joined', targetBoard);
 
         res.status(200).json({
             message: 'Thêm thành viên thành công!',
