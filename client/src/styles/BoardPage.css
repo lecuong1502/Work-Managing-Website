@@ -68,7 +68,7 @@
   align-items: center;
   gap: 6px; 
   background-color: rgba(255,255,255,0.15);
-  color: white;
+  color: rgb(104, 86, 86);
   border: none;
   padding: 6px 12px;
   border-radius: 6px;
@@ -255,5 +255,69 @@
   overflow-x: hidden;
   height: 100%;
 }
+
+.share-form {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  width: 250px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  padding: 16px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: "Arial", sans-serif;
+}
+
+.share-form input[type="email"] {
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  transition: border 0.2s;
+  width: 80%;
+}
+
+.share-form input[type="email"]:focus {
+  border-color: #4f46e5; 
+}
+
+.share-form button {
+  padding: 8px;
+  font-size: 14px;
+  background-color: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.share-form button:hover:not(:disabled) {
+  background-color: #3730a3;
+}
+
+.share-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.share-form {
+  transform: translateY(-10px);
+  opacity: 0;
+  animation: slideDown 0.2s forwards;
+}
+
+@keyframes slideDown {
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 
 

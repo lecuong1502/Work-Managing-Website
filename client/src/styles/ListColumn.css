@@ -1,5 +1,6 @@
 .list-column:hover{
   transform: translateY(-1px);
+  z-index: 1;
 }
 
 .list-column {

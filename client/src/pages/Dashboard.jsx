@@ -27,6 +27,7 @@ const Dashboard = () => {
     
     // Chưa chạy BackEnd thì dùng "Board.json"
     fetch("http://localhost:3000/api/boards",{
+      method: "GET",
       headers:{
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
@@ -34,7 +35,8 @@ const Dashboard = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        const userBoards = data.filter(b => Number(b.userId) === userId);
+        console.log("data tổng thể",data);
+        const userBoards = data;
         setBoards(userBoards);
         sessionStorage.setItem("boards", JSON.stringify(userBoards));
         console.log("Data lấy được",userBoards)
