@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Outlet, useLocation } from "react-router-dom";
+import { useParams, useNavigate, Outlet, useLocation, data } from "react-router-dom";
 import "../styles/BoardPage.css";
 import { UserPlusIcon } from "@heroicons/react/24/solid";
 import SearchBar from "../components/SearchBar";
@@ -12,12 +12,14 @@ import Loading from "../components/LoadingOverlay"
 import InboxPanel from "../components/InboxPanel";
 import BoardSwitcher from "../components/BoardSwitcher";
 import Calendar from "../pages/CalendarPage"
+import Toast from "../components/Toast";
 
 
 const BoardPage = () => {
   const { boardId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [toast, setToast] = useState(null);
   const [board, setBoard] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [addingCard, setAddingCard] = useState({});
@@ -36,6 +38,10 @@ const BoardPage = () => {
     // board: false,
     switcher: false,
   });
+
+  const [showShareForm, setShowShareForm] = useState(false);
+  const [email, setEmail] = useState("");
+
 
   const openCount = Object.values(openPanel).filter(Boolean).length;
 
@@ -56,7 +62,6 @@ const BoardPage = () => {
   const updateBoardToStorage = (updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
 
-    // Nếu không phải array → ép về array
     if (!Array.isArray(boards)) {
       boards = boards?.boards || [];
     }
@@ -226,6 +231,45 @@ const BoardPage = () => {
 
   };
 
+  const handleAddMember = async () => {
+    if (!email) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch("http://localhost:3000/api/boards/add-member", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ boardId: board.id, memberEmail: email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setToast({ message: data.message, type: "error" });
+      } else {
+        setToast({ message: "Thêm thành viên thành công", type: "success" })
+        setEmail("");
+        setShowShareForm(false);
+
+        setTimeout(() => {
+          window.location.reload(); // user mới sẽ thấy board được thêm
+        }, 500)
+        console.log("Member added:", data.member);
+      }
+    } catch (err) {
+      console.log(data.message);
+      setToast({ message: "Lỗi kết nối server.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 
   if (!board) return <Loading />;
@@ -234,6 +278,13 @@ const BoardPage = () => {
     <div className="board-wrapper">
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
       {loading && <Loading />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-container">
@@ -293,11 +344,49 @@ const BoardPage = () => {
                   <h2>{board.name}</h2>
                   <p className="description">{board.description}</p>
                 </div>
-                <button className="add-member-btn" onClick={() => alert("Add member clicked!")}>
-                  <UserPlusIcon className="icon" />
-                  Add Member
-                </button>
 
+                <div style={{ position: "relative" }}>
+                  <button
+                    className="add-member-btn"
+                    onClick={() => setShowShareForm(!showShareForm)}
+                  >
+                    <UserPlusIcon className="icon" />
+                    Add Member
+                  </button>
+
+                  {showShareForm && (
+                    <div
+                      className="share-form"
+                      style={{
+                        position: "absolute",
+                        top: "40px",
+                        right: 0,
+                        background: "#fff",
+                        border: "1px solid #ccc",
+                        padding: "10px",
+                        borderRadius: "6px",
+                        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                        zIndex: 10,
+                        width: "220px",
+                      }}
+                    >
+                      <input
+                        type="email"
+                        placeholder="Enter member email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        style={{ padding: "6px", width: "100%", marginBottom: "6px" }}
+                      />
+                      <button
+                        onClick={handleAddMember}
+                        disabled={loading}
+                        style={{ width: "100%", padding: "6px" }}
+                      >
+                        {loading ? "Adding..." : "Add"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {isCalendarMode ? (

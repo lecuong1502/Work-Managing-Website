@@ -1,8 +1,6 @@
 .toast {
   position: fixed;
   top: 20px;
-
-  /* căn giữa theo chiều ngang */
   left: 50%;
   transform: translateX(-50%);
 
