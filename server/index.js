@@ -122,8 +122,8 @@ const DEFAULT_BOARDS_TEMPLATE = [
     }
 ];
  
-// let userBoards = {};
-let userBoards = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
+   let userBoards = {};
+// let userBoards = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
 
 io.use((socket, next) => {
     const token = socket.handshake.auth.token;
@@ -248,7 +248,7 @@ app.post('/register', async (req, res) => {
 
         // Save to database
         users.push(newUser);
-        userBoards[newUser.id] = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
+        userBoards[newUser.id] = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE)).filter(b => b.userId === newUser.id);
 
         console.log('Users database sau khi đăng ký:', users);
         console.log('UserBoards database sau khi đăng ký:', userBoards);
@@ -367,11 +367,25 @@ app.get('/api/admin/data', authMiddleware, adminOnlyMiddleware, (req, res) => {
  * @access  Private
  */
 app.get('/api/boards', authMiddleware, (req, res) => {
-    const userID = Number(req.user.id);
-    const boards = userBoards[userID] || [];
+    const userId = Number(req.user.id);
 
-    res.status(200).json(boards);
-})
+    if (!userBoards[userId]) {
+        userBoards[userId] = []; // đảm bảo luôn tồn tại
+    }
+
+    // 1. Boards sở hữu
+    const ownedBoards = userBoards[userId].filter(b => b.userId === userId);
+
+    // 2. Boards được share vào
+    const sharedBoards = Object.values(userBoards)
+        .flat()
+        .filter(b => b.members?.some(m => m.id === userId));
+
+    const result = [...ownedBoards, ...sharedBoards];
+
+    res.status(200).json(result);
+});
+
 
 /**
  * @route   GET /api/boards/:boardId
@@ -847,7 +861,7 @@ app.post('/api/boards/add-member', authMiddleware, (req, res) => {
         const currentUserId = req.user.id;
         const currentUserEmail = req.user.email; 
 
-        const { boardId, memberEmail } = req.body;
+        const { boardId, memberEmail , role } = req.body;
 
         if (!boardId || !memberEmail) {
             return res.status(400).json({ message: 'Vui lòng cung cấp Board ID và Email thành viên.' });
@@ -893,7 +907,7 @@ app.post('/api/boards/add-member', authMiddleware, (req, res) => {
             name: memberToAdd.name,
             email: memberToAdd.email,
             avatar_url: memberToAdd.avatar_url,
-            role: 'member', // Role mặc định
+            role: role, // Role mặc định
             addedAt: new Date()
         };
         
@@ -906,7 +920,7 @@ app.post('/api/boards/add-member', authMiddleware, (req, res) => {
 
         const alreadyShared = userBoards[memberToAdd.id].some(b => b.id == targetBoard.id);
         if (!alreadyShared) {
-            userBoards[memberToAdd.id].push(targetBoard);
+            // userBoards[memberToAdd.id].push(targetBoard);
             console.log(`Đã share Board ID ${targetBoard.id} sang dashboard của User ID ${memberToAdd.id}`);
         }
 

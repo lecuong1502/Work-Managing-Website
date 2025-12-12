@@ -41,6 +41,8 @@ const BoardPage = () => {
 
   const [showShareForm, setShowShareForm] = useState(false);
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState("member");
+
 
 
   const openCount = Object.values(openPanel).filter(Boolean).length;
@@ -122,7 +124,6 @@ const BoardPage = () => {
   };
 
   const handleRenameList = async (listId) => {
-    console.log("Renaming list", listId, newListName);
     if (!newListName.trim()) return;
 
     setLoading(true);
@@ -245,7 +246,7 @@ const BoardPage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${sessionStorage.getItem("token")}`
         },
-        body: JSON.stringify({ boardId: board.id, memberEmail: email }),
+        body: JSON.stringify({ boardId: board.id, memberEmail: email ,role: role }),
       });
 
       const data = await res.json();
@@ -355,35 +356,56 @@ const BoardPage = () => {
                   </button>
 
                   {showShareForm && (
-                    <div
-                      className="share-form"
-                      style={{
-                        position: "absolute",
-                        top: "40px",
-                        right: 0,
-                        background: "#fff",
-                        border: "1px solid #ccc",
-                        padding: "10px",
-                        borderRadius: "6px",
-                        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-                        zIndex: 10,
-                        width: "220px",
-                      }}
-                    >
-                      <input
-                        type="email"
-                        placeholder="Enter member email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        style={{ padding: "6px", width: "100%", marginBottom: "6px" }}
-                      />
-                      <button
-                        onClick={handleAddMember}
-                        disabled={loading}
-                        style={{ width: "100%", padding: "6px" }}
-                      >
-                        {loading ? "Adding..." : "Add"}
-                      </button>
+                    <div className="share-board-popup">
+                      <div className="share-header">Share board</div>
+                      <div className="share-input-row">
+                        <input
+                          type="email"
+                          placeholder="Email address or name"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
+
+                        <select
+                          value={role}
+                          onChange={(e) => setRole(e.target.value)}
+                          className="share-role-select"
+                        >
+                          <option value="member">Member</option>
+                          <option value="admin">Admin</option>
+                        </select>
+
+                        <button onClick={handleAddMember} disabled={loading}>
+                          {loading ? "Adding..." : "Share"}
+                        </button>
+                      </div>
+                      <div className="share-members-section">
+                        <div className="share-section-title">Board members</div>
+
+                        {board?.members?.map((member) => (
+                          <div key={member.id} className="share-member-item">
+                            <div className="share-member-avatar">
+                              {member.name?.charAt(0)?.toUpperCase()}
+                            </div>
+
+                            <div className="share-member-info">
+                              <div className="share-member-name">{member.name}</div>
+                              <div className="share-member-email">{member.email}</div>
+                            </div>
+
+                            <select
+                              className="share-role-select"
+                              value={member.role}
+                              onChange={(e) => handleChangeRole(member.id, e.target.value)}
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="member">Member</option>
+                              <option value="guest">Guest</option>
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+
                     </div>
                   )}
                 </div>
