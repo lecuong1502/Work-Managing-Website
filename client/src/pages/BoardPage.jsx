@@ -13,7 +13,7 @@ import InboxPanel from "../components/InboxPanel";
 import BoardSwitcher from "../components/BoardSwitcher";
 import Calendar from "../pages/CalendarPage"
 import Toast from "../components/Toast";
-
+import { io } from "socket.io-client";
 
 const BoardPage = () => {
   const { boardId } = useParams();
@@ -49,17 +49,7 @@ const BoardPage = () => {
 
   const isCalendarMode = location.pathname.includes("/calendar");
 
-  useEffect(() => {
-    const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
-    const foundBoard = savedBoards.find((b) => b.id === Number(boardId));
-
-    if (foundBoard) {
-      setBoard(foundBoard);
-    } else {
-      alert("Board không tồn tại!");
-      navigate("/dashboard");
-    }
-  }, [boardId, navigate]);
+  
 
   const updateBoardToStorage = (updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
@@ -77,6 +67,73 @@ const BoardPage = () => {
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
 
+  useEffect(() => {
+    const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
+    const foundBoard = savedBoards.find((b) => b.id === Number(boardId));
+
+    if (foundBoard) {
+      setBoard(foundBoard);
+    } else {
+      alert("Board không tồn tại!");
+      navigate("/dashboard");
+    }
+  }, [boardId, navigate]);
+
+  // Socket.io
+  useEffect(() => {
+    if (!boardId) return;
+
+    // Lấy token từ storage
+    const token = sessionStorage.getItem("token");
+
+    // Nếu không có token, không kết nối để tránh lỗi Auth
+    if (!token) {
+        console.error("⚠️ Không tìm thấy Token, hủy kết nối Socket.");
+        return;
+    }
+
+    // Khởi tạo kết nối Socket
+    const socket = io("http://localhost:3000", {
+        transports: ["websocket"], // Bắt buộc dùng websocket
+        reconnectionAttempts: 5,   // Thử lại tối đa 5 lần nếu mất mạng
+        // Gửi token qua AUTH (Chuẩn Socket.io v4)
+        auth: {
+            token: token
+        },
+        // Gửi token qua QUERY (Dự phòng cho Backend cũ)
+        query: {
+            token: token
+        }
+    });
+
+    // Sự kiện: Kết nối thành công
+    socket.on("connect", () => {
+        socket.emit("join-board", boardId); 
+    });
+
+    // Sự kiện: Nhận dữ liệu cập nhật từ Server
+    socket.on("board_updated", (updatedBoardData) => {
+      
+      // Cập nhật State để UI thay đổi ngay lập tức
+      setBoard(updatedBoardData);
+      
+      // Cập nhật Session Storage để nếu F5 không bị mất cái mới
+      updateBoardToStorage(updatedBoardData);
+    });
+
+    socket.on("connect_error", (err) => {
+        
+        // Nếu lỗi do Auth (Token hết hạn), có thể logout user (tuỳ chọn)
+        if(err.message.includes("Authentication")) {
+            console.log("Token có thể đã hết hạn.");
+        }
+    });
+
+    // Cleanup: Ngắt kết nối khi rời trang này
+    return () => {
+      socket.disconnect();
+    };
+  }, [boardId]);
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
@@ -246,7 +303,7 @@ const BoardPage = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${sessionStorage.getItem("token")}`
         },
-        body: JSON.stringify({ boardId: board.id, memberEmail: email ,role: role }),
+        body: JSON.stringify({ boardId: board.id, memberEmail: email, role: role }),
       });
 
       const data = await res.json();
