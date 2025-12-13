@@ -26,7 +26,8 @@ const ListColumn = ({
         const fromList = board.lists.find(l => l.id === fromListId);
         if (!fromList) return;
 
-        const movedCard = fromList.cards.find(c => c.id === cardId);
+        const movedCard = { ...fromList.cards.find(c => c.id === cardId) };
+
         if (!movedCard) return;
 
         const destList = board.lists.find(l => l.id === toListId);
@@ -41,9 +42,11 @@ const ListColumn = ({
         const destListUpdated = newLists.find(l => l.id === toListId);
         destListUpdated.cards.splice(Math.min(finalIndex, destListUpdated.cards.length), 0, movedCard);
 
-        setBoard({ ...board, lists: newLists });
-        sessionStorage.setItem("boards", JSON.stringify({ ...board, lists: newLists }));
-
+        setBoard(prev => {
+            const updated = { ...prev, lists: newLists };
+            sessionStorage.setItem("boards", JSON.stringify(updated));
+            return updated;
+        });
         fetch("http://localhost:3000/api/cards/move", {
             method: "PUT",
             headers: {
@@ -59,9 +62,9 @@ const ListColumn = ({
                 index: finalIndex
             })
         })
-        .then(res => res.json())
-        .then(data => console.log("Backend:", data.message))
-        .catch(err => console.error("Lỗi di chuyển thẻ:", err));
+            .then(res => res.json())
+            .then(data => console.log("Backend:", data.message))
+            .catch(err => console.error("Lỗi di chuyển thẻ:", err));
     };
 
     const [, drop] = useDrop({
@@ -110,32 +113,32 @@ const ListColumn = ({
                         boardId={board.id}
                         index={idx}
                         onMoveCard={moveCard}
-                        onClick={() => setSelectedCard(card)}
+                        onClick={() => setSelectedCard({ ...card, listId: list.id, boardId: board.id })}
                     />
                 ))}
             </div>
             {addingCard[list.id] ? (
-                    <div className="add-card-form">
-                        <input
-                            type="text"
-                            value={newCardTitle}
-                            onChange={(e) => setNewCardTitle(e.target.value)}
-                            placeholder="Card title..."
-                        />
-                        <button onClick={() => {
-                            setNewCardTitle("");
-                            setAddingCard(prev => ({ ...prev, [list.id]: false }))
-                        }}>Cancel</button>
-                        <button onClick={() => handleAddCard(list.id, newCardTitle)}>Add</button>
-                    </div>
-                ) : (
-                    <button
-                        className="add-card-btn"
-                        onClick={() => setAddingCard(prev => ({ ...prev, [list.id]: true }))}
-                    >
-                        + Add a card
-                    </button>
-                )}
+                <div className="add-card-form">
+                    <input
+                        type="text"
+                        value={newCardTitle}
+                        onChange={(e) => setNewCardTitle(e.target.value)}
+                        placeholder="Card title..."
+                    />
+                    <button onClick={() => {
+                        setNewCardTitle("");
+                        setAddingCard(prev => ({ ...prev, [list.id]: false }))
+                    }}>Cancel</button>
+                    <button onClick={() => handleAddCard(list.id, newCardTitle)}>Add</button>
+                </div>
+            ) : (
+                <button
+                    className="add-card-btn"
+                    onClick={() => setAddingCard(prev => ({ ...prev, [list.id]: true }))}
+                >
+                    + Add a card
+                </button>
+            )}
         </div>
     );
 };

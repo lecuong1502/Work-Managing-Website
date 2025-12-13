@@ -1,25 +1,23 @@
 import React, { useEffect, useState } from "react";
 import "../styles/BoardSwitcher.css";
 
-export default function BoardSwitcher({ isOpen, onClose, onSelectBoard }) {
+const BoardSwitcher = ({ isOpen, onClose, onSelectBoard }) => {
   const [boards, setBoards] = useState([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (isOpen) fetchBoards();
-  }, [isOpen]);
+    if (!isOpen) return;
 
-  const fetchBoards = async () => {
-    try {
-      const res = await fetch("/Board.json");
-      const data = await res.json();
-      const userId = Number(sessionStorage.getItem("userId"));
-      const userBoards = data.boards.filter((b) => b.userId === userId);
-      setBoards(userBoards);
-    } catch (err) {
-      console.error("Lỗi tải board ảo:", err);
+    const saved = sessionStorage.getItem("boards");
+    if (saved) {
+      try {
+        setBoards(JSON.parse(saved));
+      } catch (e) {
+        console.error("Lỗi parse boards:", e);
+      }
     }
-  };
+  }, [isOpen]);
+  
 
   const filteredBoards = boards.filter((b) =>
     b.name.toLowerCase().includes(search.toLowerCase())
@@ -46,6 +44,7 @@ export default function BoardSwitcher({ isOpen, onClose, onSelectBoard }) {
           {filteredBoards.map((board) => (
             <div
               key={board.id}
+              style={{background: board.color}}
               onClick={() => onSelectBoard(board)}
               className="board-item"
             >
@@ -54,10 +53,14 @@ export default function BoardSwitcher({ isOpen, onClose, onSelectBoard }) {
           ))}
 
           {filteredBoards.length === 0 && (
-            <div className="board-switcher-empty">Không tìm thấy bảng nào</div>
+            <div className="board-switcher-empty">
+              Không tìm thấy bảng nào
+            </div>
           )}
         </div>
       </div>
     </>
   );
-}
+};
+
+export default BoardSwitcher;
