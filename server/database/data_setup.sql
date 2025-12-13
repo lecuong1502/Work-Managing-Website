@@ -1,6 +1,6 @@
 INSERT INTO users (username, email, password_hash, avatar_url, role) VALUES 
-("admin","a@admin.com","$2b$10$wKQuZsVqnRyg5X6HHZUBp.HITifdt8DDZSZ0kJfaVUo1KQReHg4t6","https://placehold.co/400x400/EEE/31343C?text=a",'admin');
-("cuong","c@sample.com","$2b$10$5NQzSQql41.0skcvMs.YOOGa/iPmq4MYPkdhsvvW7Ta2cMQ1AQHNi","https://placehold.co/400x400/EEE/31343C?text=c",'user');
+("admin","a@admin.com","$2b$10$wKQuZsVqnRyg5X6HHZUBp.HITifdt8DDZSZ0kJfaVUo1KQReHg4t6","https://placehold.co/400x400/EEE/31343C?text=a",'admin'),
+("cuong","c@sample.com","$10$s44WOOfetSdJfnP1R6Om2u/twAS9cjFZjhrC6Hk/iBCm7VqJWofCy","https://placehold.co/400x400/EEE/31343C?text=c",'user');
 -- admin password Cuong@1234
 -- INSERT INTO users (username, email, password_hash, avatar_url, role)
 
@@ -29,8 +29,8 @@ VALUES
 ('card_2', 'list_1', 'Phân công nhiệm vụ', 'Chia việc cho từng thành viên.', 1, NULL),
 ('card_3', 'list_4', 'Tạo component Login', 'Form đăng nhập với validation.', 0, NULL);
 
-INSERT INTO labels (label_id, card_id, name, color)
+INSERT INTO labels (card_id, name, color)
 VALUES
-(1, 'card_1', 'design', '#ff5733'),
-(2, 'card_2', 'management', '#33c1ff'),
-(3, 'card_3', 'frontend', '#22cc88');
+('card_1', 'design', '#ff5733'),
+('card_2', 'management', '#33c1ff'),
+('card_3', 'frontend', '#22cc88');

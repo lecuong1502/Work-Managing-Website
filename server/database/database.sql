@@ -11,7 +11,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(255),    
     role ENUM('admin', 'member') NOT NULL DEFAULT 'member',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ADD
@@ -81,8 +81,8 @@ CREATE TABLE cards (
 );
 
 -- ADD
--- INSERT INTO cards (list_id, title, description, position, due_date, status)
--- VALUES (1, "title", "description", 0, "2025-11-22");
+-- INSERT INTO cards (card_id, list_id, title, description, position, due_date, status)
+-- VALUES (card_1, 1, "title", "description", 0, "2025-11-22");
 
 CREATE TABLE card_members (
     card_id VARCHAR(255) NOT NULL,
@@ -138,8 +138,8 @@ CREATE TABLE labels (
 );
 
 -- ADD
--- INSERT INTO labels (label_id, card_id, name, color)
--- VALUES ( 1, 1, "name", "#000");
+-- INSERT INTO labels (card_id, name, color)
+-- VALUES ( 1, "name", "#000");
 
 CREATE TABLE notifications (
     notification_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -175,8 +175,8 @@ CREATE TABLE calendar_events (
     FOREIGN KEY (board_id) REFERENCES boards(board_id) ON DELETE CASCADE
 );
 
---INSERT INTO calendar_events (board_id, title, start_time, end_time, description)
---VALUES (1, "Sample Event", "2024-12-01 10:00:00", "2024-12-01 12:00:00", "This is a sample calendar event.");
+-- INSERT INTO calendar_events (board_id, title, start_time, end_time, description)
+-- VALUES (1, "Sample Event", "2024-12-01 10:00:00", "2024-12-01 12:00:00", "This is a sample calendar event.");
 
 CREATE TABLE checklists (
     checklist_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -186,8 +186,8 @@ CREATE TABLE checklists (
     FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE
 );
 
---INSERT INTO checklists (card_id, title)
---VALUES (1, "Sample Checklist");
+-- INSERT INTO checklists (card_id, title)
+-- VALUES (1, "Sample Checklist");
 
 CREATE TABLE checklist_items (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -198,5 +198,5 @@ CREATE TABLE checklist_items (
     FOREIGN KEY (checklist_id) REFERENCES checklists(checklist_id) ON DELETE CASCADE
 );
 
---INSERT INTO checklist_items (checklist_id, description, progress)
---VALUES (1, "Sample Item", 0);
+-- INSERT INTO checklist_items (checklist_id, description, progress)
+-- VALUES (1, "Sample Item", 0);
