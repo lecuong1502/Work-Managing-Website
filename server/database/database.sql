@@ -10,7 +10,8 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(255),    
-    role ENUM('admin', 'member') NOT NULL DEFAULT 'member'
+    role ENUM('admin', 'member') NOT NULL DEFAULT 'member',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 );
 
 -- ADD
@@ -39,6 +40,7 @@ CREATE TABLE boards (
 CREATE TABLE board_members (
     board_id INT NOT NULL,
     user_id INT NOT NULL,
+    add_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (board_id, user_id),
     FOREIGN KEY (board_id) REFERENCES boards(board_id) ON DELETE CASCADE,
@@ -51,7 +53,7 @@ CREATE TABLE board_members (
 
 
 CREATE TABLE lists (
-    list_id INT AUTO_INCREMENT PRIMARY KEY,
+    list_id VARCHAR(255) PRIMARY KEY,
     board_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     position INT NOT NULL DEFAULT 0,
@@ -60,17 +62,18 @@ CREATE TABLE lists (
 );
 
 -- ADD
--- INSERT INTO lists (board_id, title, position)
--- VALUES (1, "title", 0);
+-- INSERT INTO lists (list_id, board_id, title, position)
+-- VALUES ("list_1", 1, "title", 0);
 
 CREATE TABLE cards (
-    card_id INT AUTO_INCREMENT PRIMARY KEY,
-    list_id INT NOT NULL,
+    card_id VARCHAR(255) PRIMARY KEY,
+    list_id VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     position INT NOT NULL DEFAULT 0,
     due_date DATETIME,
-    status ENUM('in progress', 'completed') NOT NULL DEFAULT 'in progress',
+    status BOOLEAN DEFAULT FALSE,-- Trạng thái thẻ checkbox
+    hidden BOOLEAN DEFAULT FALSE,-- Trạng thái ẩn/thể hiện thẻ
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -79,10 +82,10 @@ CREATE TABLE cards (
 
 -- ADD
 -- INSERT INTO cards (list_id, title, description, position, due_date, status)
--- VALUES (1, "title", "description", 0, "2025-11-22", 'in progress');
+-- VALUES (1, "title", "description", 0, "2025-11-22");
 
 CREATE TABLE card_members (
-    card_id INT NOT NULL,
+    card_id VARCHAR(255) NOT NULL,
     user_id INT NOT NULL,
 
     PRIMARY KEY (card_id, user_id),
@@ -96,7 +99,7 @@ CREATE TABLE card_members (
 
 CREATE TABLE card_comments (
     comment_id INT AUTO_INCREMENT PRIMARY KEY,
-    card_id INT NOT NULL,
+    card_id VARCHAR(255) NOT NULL,
     user_id INT NOT NULL,
     comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -112,7 +115,7 @@ CREATE TABLE card_comments (
 
 CREATE TABLE card_attachments (
     attachment_id INT AUTO_INCREMENT PRIMARY KEY,
-    card_id INT NOT NULL,
+    card_id VARCHAR(255) NOT NULL,
     user_id INT NOT NULL,
     file_url VARCHAR(255),
     file_type VARCHAR(50),
@@ -127,28 +130,22 @@ CREATE TABLE card_attachments (
 
 CREATE TABLE labels (
     label_id INT AUTO_INCREMENT PRIMARY KEY,
+    card_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,          
-    color VARCHAR(7) NOT NULL           -- Hex color code (e.g., "#FF5733")
+    color VARCHAR(7) NOT NULL,           -- Hex color code (e.g., "#FF5733")
+
+    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE
 );
 
 -- ADD
--- INSERT INTO labels (label_id, name, color)
--- VALUES ( 1, "name", "#000");
-
-CREATE TABLE card_labels (
-    card_id INT NOT NULL,
-    label_id INT NOT NULL,
-
-    PRIMARY KEY (card_id, label_id),
-    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE,
-    FOREIGN KEY (label_id) REFERENCES labels(label_id) ON DELETE CASCADE
-);
+-- INSERT INTO labels (label_id, card_id, name, color)
+-- VALUES ( 1, 1, "name", "#000");
 
 CREATE TABLE notifications (
     notification_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,           -- Người nhận thông báo
     actor_id INT NOT NULL,          -- Người tạo ra hành động
-    card_id INT,
+    card_id VARCHAR(255) NOT NULL,  -- Thẻ liên quan đến thông báo
     type VARCHAR(50) NOT NULL,      -- Loại thông báo: 'assigned', 'comment', 'due_date'
     message TEXT,
     is_read BOOLEAN DEFAULT FALSE,  -- false = chưa đọc, true = đã đọc
@@ -167,3 +164,39 @@ CREATE TABLE notifications (
 -- INSERT INTO card_labels (card_id, label_id)
 -- VALUES ( 1, 1);
 
+CREATE TABLE calendar_events (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    board_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    description TEXT,
+
+    FOREIGN KEY (board_id) REFERENCES boards(board_id) ON DELETE CASCADE
+);
+
+--INSERT INTO calendar_events (board_id, title, start_time, end_time, description)
+--VALUES (1, "Sample Event", "2024-12-01 10:00:00", "2024-12-01 12:00:00", "This is a sample calendar event.");
+
+CREATE TABLE checklists (
+    checklist_id INT AUTO_INCREMENT PRIMARY KEY,
+    card_id VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+
+    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE
+);
+
+--INSERT INTO checklists (card_id, title)
+--VALUES (1, "Sample Checklist");
+
+CREATE TABLE checklist_items (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    checklist_id INT NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    progress INT NOT NULL DEFAULT 0,
+
+    FOREIGN KEY (checklist_id) REFERENCES checklists(checklist_id) ON DELETE CASCADE
+);
+
+--INSERT INTO checklist_items (checklist_id, description, progress)
+--VALUES (1, "Sample Item", 0);
