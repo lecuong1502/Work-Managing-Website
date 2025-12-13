@@ -72,6 +72,8 @@ pool.getConnection()
         console.error("Lỗi kết nối database:", err);
     });
 
+// --- HÀM TIỆN ÍCH ---
+
 // Hàm gửi thông báo (Lưu DB + Bắn Socket)
 async function sendNotification({ userId, actorId, cardId, type, message }) {
     try {
@@ -101,7 +103,6 @@ httpServer.listen(PORT, () => {
     console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
 
-// --- HÀM TIỆN ÍCH ---
 // Truy vấn ban đầu để lấy toàn bộ dữ liệu board với lists, cards, labels, members
 async function getBoardById(boardId) {
   try {
@@ -113,7 +114,7 @@ async function getBoardById(boardId) {
     if (boardRows.length === 0) return null;
     const board = boardRows[0];
 
-    console.log("Checkpoint 1: ", boardId);
+    //console.log("Checkpoint 1: ", boardId);
 
     // Lấy members của board
     const [memberRows] = await pool.query(
@@ -139,7 +140,7 @@ async function getBoardById(boardId) {
 
       // Lấy cards trong list
       const [cardRows] = await pool.query(
-        'SELECT card_id AS id, title, description, due_date AS dueDate FROM cards WHERE list_id = ? ORDER BY position',
+        'SELECT card_id AS id, title, description, due_date AS dueDate, position FROM cards WHERE list_id = ? ORDER BY position',
         [list.id]
       );
 
@@ -150,7 +151,8 @@ async function getBoardById(boardId) {
           description: card.description,
           dueDate: card.dueDate,
           labels: [],
-          members: []
+          members: [],
+          position: card.position
         };
 
         // Lấy labels của card
@@ -210,7 +212,8 @@ async function getListsById(listId) {
         status: card.status,
         hidden: card.hidden,
         labels: [],
-        members: []
+        members: [],
+        position: card.position
       };
 
       // Lấy labels của card
@@ -309,7 +312,7 @@ app.get('/', async (req, res) => {
     const boardIds = await pool.query("SELECT board_id FROM boards");
     for (const boardId of boardIds[0]) {
       const boardData = await getBoardById(boardId.board_id);
-      console.log("Lấy board cho user:", boardId.board_id, boardData);
+      //console.log("Lấy board cho user:", boardId.board_id, boardData);
       if (boardData) boards.push(boardData);
     }
     //console.log("Boards lấy từ DB:", boards);
@@ -748,23 +751,75 @@ app.put('/api/boards/lists/move', authMiddleware, async (req, res) => {
         return res.status(400).json({ message: 'Thiếu thông tin cần thiết.' });
     }
 
+    // Kiểm tra quyền sở hữu trong board_members
+    if (!await checkBoardMembership(userId, sourceBoardId) || !await checkBoardMembership(userId, destBoardId)) {
+        return res.status(404).json({ message: 'Board không tồn tại hoặc không có quyền.' });
+    }
+
+    // Kiểm tra tồn tại list trong source board
+    const [listRows] = await pool.query(
+        'SELECT card_id FROM cards WHERE list_id = ? AND board_id = ?',
+        [listId, sourceBoardId]
+    );
+    if (listRows.length === 0) {
+        return res.status(404).json({ message: 'List không tồn tại trong Board nguồn.' });
+    }
+
+    const connection = await pool.getConnection();
     try {
-        // Trong thực tế, cần tính lại position dựa trên index.
-        // Cách đơn giản nhất ở đây: Update board_id (nếu chuyển board) và gán position mới.
-        // Để làm chuẩn tính năng Drag & Drop, frontend nên gửi lên 'newPosition' (float) thay vì index.
-        // Ở đây mình tạm gán position = index * 10000 để demo logic cập nhật DB.
+        connection.beginTransaction();
 
-        const newPosition = (index + 1) * 10000;
-
-        await pool.query(
-            'UPDATE lists SET board_id = ?, position = ? WHERE list_id = ?',
-            [destBoardId, newPosition, listId]
+        const sourceBoards = await connection.query(
+            'SELECT * FROM lists WHERE board_id = ?',
+            [sourceBoardId]
         );
+        const destBoards = await connection.query(
+            'SELECT * FROM lists WHERE board_id = ?',
+            [destBoardId]
+        );
+        if (sourceBoards[0].length === 0 || destBoards[0].length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy Board nguồn hoặc đích.' });
+        }
 
+        // Board nguồn và đích
+        const sourceBoard = await getBoardById(sourceBoardId);
+        const destBoard = await getBoardById(destBoardId);
+
+        const listIndex = sourceBoard.lists.findIndex(l => l.id == listId);
+        if (listIndex === -1) {
+            return res.status(404).json({ message: 'List không tồn tại trong Board nguồn.' });
+        }
+
+        //Di chuyển List giữa 2 Board
+        const [movedList] = sourceBoard.lists.splice(listIndex, 1);
+        if (typeof index === 'number' && index >= 0 && index <= destBoard.lists.length) {
+            destBoard.lists.splice(index, 0, movedCard);
+        } else {
+            destBoard.lists.push(movedList);
+        }
+
+        // Đánh số lại position cho các board trong destBoard trong database
+        destBoard.lists.forEach( async (list, orderIndex) => {
+            await connection.query('UPDATE lists SET position = ?, board_id = ? WHERE list_id = ?',
+                [orderIndex, destBoardId, list.id]
+            )
+        });
+
+        // Đánh số lại position cho các board trong sourceBoard trong database
+        sourceBoard.lists.forEach( async (list, orderIndex) => {
+            await connection.query('UPDATE lists SET position = ?, board_id = ? WHERE list_id = ?',
+                [orderIndex, sourceBoardId, list.id]
+            )
+        });
+
+        await connection.commit();
         res.status(200).json({ message: 'Di chuyển list thành công' });
     } catch (err) {
         console.error(err);
+        await connection.rollback();
         res.status(500).json({ message: 'Lỗi di chuyển list' });
+    } finally {
+        connection.release();
     }
 });
 
@@ -772,39 +827,100 @@ app.put('/api/boards/lists/move', authMiddleware, async (req, res) => {
 
 // Move Card (Kéo thả Card)
 app.put('/api/cards/move', authMiddleware, async (req, res) => {
-    const { destListId, cardId, index } = req.body; // Chỉ cần biết list đích và vị trí
+    const userId = req.user.id;
+    const { 
+        sourceBoardId, sourceListId, 
+        destBoardId, destListId, 
+        cardId, index 
+    } = req.body;
 
+    if (!sourceBoardId || !sourceListId || !destBoardId || !destListId || !cardId) {
+        return res.status(400).json({ message: 'Thiếu thông tin cần thiết.' });
+    }
+
+    // Kiểm tra quyền sở hữu trong board_members
+    if (!await checkBoardMembership(userId, sourceBoardId) || !await checkBoardMembership(userId, destBoardId)) {
+        return res.status(404).json({ message: 'Board không tồn tại hoặc không có quyền.' });
+    }
+
+    // Kiểm tra tồn tại card trong source list
+    const [cardRows] = await pool.query(
+        'SELECT card_id FROM cards WHERE card_id = ? AND list_id = ?',
+        [cardId, sourceListId]
+    );
+    if (cardRows.length === 0) {
+        return res.status(404).json({ message: 'Card không tồn tại trong List nguồn.' });
+    }
+
+    const connection = await pool.getConnection();
     try {
-        // Tương tự Move List, cập nhật cha mới và vị trí mới
-        const newPosition = (index + 1) * 10000;
+        // Trong thực tế, cần tính lại position dựa trên index.
 
-        await pool.query(
-            'UPDATE cards SET list_id = ?, position = ? WHERE card_id = ?',
-            [destListId, newPosition, cardId]
+        connection.beginTransaction();
+        const sourceBoards = await connection.query(
+            'SELECT * FROM lists WHERE board_id = ?',
+            [sourceBoardId]
+        );
+        const destBoards = await connection.query(
+            'SELECT * FROM lists WHERE board_id = ?',
+            [destBoardId]
+        );
+        if (sourceBoards[0].length === 0 || destBoards[0].length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy Board nguồn hoặc đích.' });
+        }
+
+        const sourceLists = await connection.query(
+            'SELECT * FROM lists WHERE list_id = ?',
+            [sourceListId]
+        );
+        const destLists = await connection.query(
+            'SELECT * FROM lists WHERE list_id = ?',
+            [destListId]
         );
 
+        if (sourceLists[0].length === 0 || destLists[0].length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy List nguồn hoặc đích.' });
+        }
+        // List nguồn và đích
+        const sourceList = await getListsById(sourceListId);
+        const destList = await getListsById(destListId);
+
+        const cardIndex = sourceList.cards.findIndex(c => c.id === cardId);
+        if (cardIndex === -1) {
+            return res.status(404).json({ message: 'Card không tồn tại trong List nguồn.' });
+        }
+        
+        //Di chuyển card giữa 2 list
+        const [movedCard] = sourceList.cards.splice(cardIndex, 1);
+        if (typeof index === 'number' && index >= 0 && index <= destList.cards.length) {
+            destList.cards.splice(index, 0, movedCard);
+        } else {
+            destList.cards.push(movedCard);
+        }
+
+        // Đánh số lại position cho các card trong destList trong database
+        destList.cards.forEach( async (card, orderIndex) => {
+            await connection.query('UPDATE cards SET position = ?, list_id = ? WHERE card_id = ?',
+                [orderIndex, destListId, card.id]
+            )
+        });
+
+        // Đánh số lại position cho các card trong sourceList trong database
+        sourceList.cards.forEach( async (card, orderIndex) => {
+            await connection.query('UPDATE cards SET position = ?, list_id = ? WHERE card_id = ?',
+                [orderIndex, sourceListId, card.id]
+            )
+        });
+
+        await connection.commit();
         res.status(200).json({ message: 'Di chuyển card thành công' });
+        console.log(`Đã chuyển Card "${movedCard.title}" từ List "${sourceList.title}" sang List "${destList.title}" tại vị trí "${index}"`);
     } catch (err) {
+        connection.rollback();
         console.error(err);
         res.status(500).json({ message: 'Lỗi di chuyển card' });
-    }
-});
-
-app.post('/api/lists/:listId/cards', authMiddleware, async (req, res) => {
-    const { listId } = req.params;
-    const { title } = req.body;
-
-    try {
-        const [rows] = await pool.query('SELECT MAX(position) as maxPos FROM cards WHERE list_id = ?', [listId]);
-        const newPos = (rows[0].maxPos || 0) + 1000;
-
-        const [result] = await pool.query(
-            'INSERT INTO cards (list_id, title, position) VALUES (?, ?, ?)',
-            [listId, title, newPos]
-        );
-        res.status(201).json({ id: result.insertId.toString(), title, listId });
-    } catch (err) {
-        res.status(500).json({ message: 'Lỗi tạo card' });
+    } finally {
+        connection.release();
     }
 });
 
