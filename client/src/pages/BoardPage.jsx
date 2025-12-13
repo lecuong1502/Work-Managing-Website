@@ -81,52 +81,70 @@ const BoardPage = () => {
 
   // Socket.io
   useEffect(() => {
-    if (!boardId) return;
-
     // Lấy token từ storage
     const token = sessionStorage.getItem("token");
 
     // Nếu không có token, không kết nối để tránh lỗi Auth
     if (!token) {
-        console.error("⚠️ Không tìm thấy Token, hủy kết nối Socket.");
+        console.error("Không tìm thấy Token, hủy kết nối Socket.");
         return;
     }
 
-    // Khởi tạo kết nối Socket
+    // Khởi tạo kết nối Socket (không ép chỉ websocket để cho phép fallback polling nếu upgrade bị chặn)
     const socket = io("http://localhost:3000", {
-        transports: ["websocket"], // Bắt buộc dùng websocket
-        reconnectionAttempts: 5,   // Thử lại tối đa 5 lần nếu mất mạng
-        // Gửi token qua AUTH (Chuẩn Socket.io v4)
-        auth: {
-            token: token
-        },
-        // Gửi token qua QUERY (Dự phòng cho Backend cũ)
-        query: {
-            token: token
-        }
+      reconnectionAttempts: 5,   // Thử lại tối đa 5 lần nếu mất mạng
+      // Gửi token qua AUTH (Chuẩn Socket.io v4)
+      auth: {
+        token: token
+      },
+      // Gửi token qua QUERY (Dự phòng cho Backend cũ)
+      query: {
+        token: token
+      }
     });
 
     // Sự kiện: Kết nối thành công
     socket.on("connect", () => {
-        socket.emit("join-board", boardId); 
+        if (boardId) {
+            socket.emit("join-board", boardId);
+        }
+        console.log("Socket connected:", socket.id);
     });
 
     // Sự kiện: Nhận dữ liệu cập nhật từ Server
     socket.on("board_updated", (updatedBoardData) => {
       
       // Cập nhật State để UI thay đổi ngay lập tức
-      setBoard(updatedBoardData);
-      
-      // Cập nhật Session Storage để nếu F5 không bị mất cái mới
-      updateBoardToStorage(updatedBoardData);
+      if (updatedBoardData.id === Number(boardId)) {
+          setBoard(updatedBoardData);
+          updateBoardToStorage(updatedBoardData);
+      }
+    });
+
+    socket.on("notification_received", (noti) => {
+        setToast({ 
+            message: noti.message, 
+            type: "info"
+        });
+        
+        // if (noti.boardId === Number(boardId)) {
+        // }
     });
 
     socket.on("connect_error", (err) => {
-        
+        console.error('Socket connect_error:', err);
         // Nếu lỗi do Auth (Token hết hạn), có thể logout user (tuỳ chọn)
-        if(err.message.includes("Authentication")) {
+        if (err && err.message && err.message.includes("Authentication")) {
             console.log("Token có thể đã hết hạn.");
         }
+    });
+
+    socket.on('connect_timeout', (timeout) => {
+      console.warn('Socket connect_timeout:', timeout);
+    });
+
+    socket.on('reconnect_failed', () => {
+      console.warn('Socket reconnect_failed');
     });
 
     // Cleanup: Ngắt kết nối khi rời trang này
@@ -315,10 +333,15 @@ const BoardPage = () => {
         setEmail("");
         setShowShareForm(false);
 
-        setTimeout(() => {
-          window.location.reload(); // user mới sẽ thấy board được thêm
-        }, 500)
-        console.log("Member added:", data.member);
+        if (data.board) {
+            setBoard(data.board);
+            updateBoardToStorage(data.board);
+        } else {
+            setBoard(prev => ({
+                ...prev,
+                members: [...(prev.members || []), data.member]
+            }));
+        }
       }
     } catch (err) {
       console.log(data.message);
@@ -328,7 +351,9 @@ const BoardPage = () => {
     }
   };
 
-
+  const handleChangeRole = async (memberId, newRole) => {
+     console.log("Change role", memberId, newRole);
+  }
 
   if (!board) return <Loading />;
 

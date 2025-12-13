@@ -757,6 +757,8 @@ app.put('/api/cards/move', authMiddleware, (req, res) => {
         index 
     } = req.body;
 
+    const io = req.app.get('socketio');
+
     if (!sourceBoardId || !destBoardId || !sourceListId || !destListId || !cardId) {
         return res.status(400).json({ message: 'Thiếu thông tin ID cần thiết để di chuyển card.' });
     }
@@ -790,6 +792,20 @@ app.put('/api/cards/move', authMiddleware, (req, res) => {
     }
 
     console.log(`Đã chuyển Card "${movedCard.title}" từ List "${sourceList.title}" sang List "${destList.title}"`);
+
+    // Broadcast real-time update to clients in the involved board rooms
+    try {
+        if (io) {
+            const payload = { movedCard, sourceListId, destListId, sourceBoardId, destBoardId, index };
+            // Emit to source and destination board rooms (if different, both will receive)
+            io.to(String(sourceBoardId)).emit('CARD_MOVED', payload);
+            if (String(destBoardId) !== String(sourceBoardId)) {
+                io.to(String(destBoardId)).emit('CARD_MOVED', payload);
+            }
+        }
+    } catch (e) {
+        console.error('Socket emit error:', e);
+    }
 
     res.status(200).json({
         message: 'Di chuyển Card thành công',
