@@ -13,7 +13,8 @@ import InboxPanel from "../components/InboxPanel";
 import BoardSwitcher from "../components/BoardSwitcher";
 import Calendar from "../pages/CalendarPage"
 import Toast from "../components/Toast";
-import { io } from "socket.io-client";
+import socket from "../socket";
+
 
 const BoardPage = () => {
   const { boardId } = useParams();
@@ -49,7 +50,7 @@ const BoardPage = () => {
 
   const isCalendarMode = location.pathname.includes("/calendar");
 
-  
+
 
   const updateBoardToStorage = (updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
@@ -81,77 +82,31 @@ const BoardPage = () => {
 
   // Socket.io
   useEffect(() => {
-    // Lấy token từ storage
-    const token = sessionStorage.getItem("token");
-
-    // Nếu không có token, không kết nối để tránh lỗi Auth
-    if (!token) {
-        console.error("Không tìm thấy Token, hủy kết nối Socket.");
-        return;
+    if (!socket.connected) {
+      socket.connect();
     }
 
-    // Khởi tạo kết nối Socket (không ép chỉ websocket để cho phép fallback polling nếu upgrade bị chặn)
-    const socket = io("http://localhost:3000", {
-      reconnectionAttempts: 5,   // Thử lại tối đa 5 lần nếu mất mạng
-      // Gửi token qua AUTH (Chuẩn Socket.io v4)
-      auth: {
-        token: token
-      },
-      // Gửi token qua QUERY (Dự phòng cho Backend cũ)
-      query: {
-        token: token
-      }
-    });
+    socket.emit("join-board", boardId);
 
-    // Sự kiện: Kết nối thành công
-    socket.on("connect", () => {
-        if (boardId) {
-            socket.emit("join-board", boardId);
-        }
-        console.log("Socket connected:", socket.id);
-    });
-
-    // Sự kiện: Nhận dữ liệu cập nhật từ Server
     socket.on("board_updated", (updatedBoardData) => {
-      
-      // Cập nhật State để UI thay đổi ngay lập tức
       if (updatedBoardData.id === Number(boardId)) {
-          setBoard(updatedBoardData);
-          updateBoardToStorage(updatedBoardData);
+        setBoard(updatedBoardData);
+        updateBoardToStorage(updatedBoardData);
       }
     });
 
     socket.on("notification_received", (noti) => {
-        setToast({ 
-            message: noti.message, 
-            type: "info"
-        });
-        
-        // if (noti.boardId === Number(boardId)) {
-        // }
+      setToast({ message: noti.message, type: "info" });
     });
 
-    socket.on("connect_error", (err) => {
-        console.error('Socket connect_error:', err);
-        // Nếu lỗi do Auth (Token hết hạn), có thể logout user (tuỳ chọn)
-        if (err && err.message && err.message.includes("Authentication")) {
-            console.log("Token có thể đã hết hạn.");
-        }
-    });
-
-    socket.on('connect_timeout', (timeout) => {
-      console.warn('Socket connect_timeout:', timeout);
-    });
-
-    socket.on('reconnect_failed', () => {
-      console.warn('Socket reconnect_failed');
-    });
-
-    // Cleanup: Ngắt kết nối khi rời trang này
     return () => {
-      socket.disconnect();
+      socket.emit("leave-board", boardId);
+      socket.off("board_updated");
+      socket.off("board_member_added");
+      socket.off("notification_received");
     };
   }, [boardId]);
+
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
@@ -334,13 +289,13 @@ const BoardPage = () => {
         setShowShareForm(false);
 
         if (data.board) {
-            setBoard(data.board);
-            updateBoardToStorage(data.board);
+          setBoard(data.board);
+          updateBoardToStorage(data.board);
         } else {
-            setBoard(prev => ({
-                ...prev,
-                members: [...(prev.members || []), data.member]
-            }));
+          setBoard(prev => ({
+            ...prev,
+            members: [...(prev.members || []), data.member]
+          }));
         }
       }
     } catch (err) {
@@ -352,7 +307,7 @@ const BoardPage = () => {
   };
 
   const handleChangeRole = async (memberId, newRole) => {
-     console.log("Change role", memberId, newRole);
+    console.log("Change role", memberId, newRole);
   }
 
   if (!board) return <Loading />;

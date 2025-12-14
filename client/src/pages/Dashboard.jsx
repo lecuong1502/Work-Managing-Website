@@ -2,6 +2,7 @@ import React, { use, useEffect, useState } from "react";
 import { data, useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import SearchBar from "../components/SearchBar";
+import socket from "../socket";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -15,7 +16,29 @@ const Dashboard = () => {
   const [availableColors, setAvailableColors] = useState([]);
 
   const token = sessionStorage.getItem("token");
-  console.log("Token bên dashb",token)
+  console.log("Token bên dashb", token)
+
+  useEffect(() => {
+    const handleBoardJoined = (board) => {
+      console.log("Realtime board joined:", board);
+
+      setBoards(prev => {
+        const exists = prev.some(b => b.id === board.id);
+        if (exists) return prev;
+
+        const updated = [...prev, board];
+        sessionStorage.setItem("boards", JSON.stringify(updated));
+        return updated;
+      });
+    };
+
+    socket.on("board_joined", handleBoardJoined);
+
+    return () => {
+      socket.off("board_joined", handleBoardJoined);
+    };
+  }, []);
+
 
   useEffect(() => {
     const userId = Number(sessionStorage.getItem("userId"));
@@ -24,23 +47,31 @@ const Dashboard = () => {
       navigate("/");
       return;
     }
-    
+
     // Chưa chạy BackEnd thì dùng "Board.json"
-    fetch("http://localhost:3000/api/boards",{
+    fetch("http://localhost:3000/api/boards", {
       method: "GET",
-      headers:{
+      headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       }
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("data tổng thể",data);
+        console.log("data tổng thể", data);
         const userBoards = data;
-        setBoards(userBoards);
-        sessionStorage.setItem("boards", JSON.stringify(userBoards));
-        console.log("Data lấy được",userBoards)
-      }).catch((err) => console.error("Lỗi tải board",err));
+        setBoards(prev => {
+          const map = new Map();
+
+          [...prev, ...userBoards].forEach(b => {
+            map.set(b.id, b);
+          });
+
+          const merged = Array.from(map.values());
+          sessionStorage.setItem("boards", JSON.stringify(merged));
+          return merged;
+        });
+      }).catch((err) => console.error("Lỗi tải board", err));
 
     fetch("colors.json")
       .then((res) => res.json())
@@ -52,10 +83,8 @@ const Dashboard = () => {
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
   };
-  
-  const userId = Number(sessionStorage.getItem("userId"));
-  console.log("UserID bên dashb",userId)
 
+  const userId = Number(sessionStorage.getItem("userId"));
   const handleAddBoard = async (e) => {
     e.preventDefault();
     if (!newBoardName.trim() || !newBoardColor) return;
@@ -129,7 +158,7 @@ const Dashboard = () => {
                 required
               />
 
-               <input
+              <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

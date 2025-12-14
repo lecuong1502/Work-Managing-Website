@@ -47,83 +47,83 @@ const userNotifications = {};
 
 const DEFAULT_BOARDS_TEMPLATE = [
     {
-      "id": 1,
-      "userId": 1,
-      "name": "Công việc nhóm",
-      "description": "Các công việc cần hoàn thành theo nhóm.",
-      "color": "linear-gradient(135deg, #667eea, #764ba2)",
-      "visibility":"Workspace",
-      "members": [],
-      "lists": [
-        {
-          "id": "list_1",
-          "title": "To Do",
-          "cards": [
+        "id": 1,
+        "userId": 1,
+        "name": "Công việc nhóm",
+        "description": "Các công việc cần hoàn thành theo nhóm.",
+        "color": "linear-gradient(135deg, #667eea, #764ba2)",
+        "visibility": "Workspace",
+        "members": [],
+        "lists": [
             {
-              "id": "card_1",
-              "title": "Thiết kế giao diện trang chủ",
-              "description": "Dùng Figma để tạo layout cơ bản.",
-              "labels": ["design"],
-              "dueDate": "2025-11-10"
+                "id": "list_1",
+                "title": "To Do",
+                "cards": [
+                    {
+                        "id": "card_1",
+                        "title": "Thiết kế giao diện trang chủ",
+                        "description": "Dùng Figma để tạo layout cơ bản.",
+                        "labels": ["design"],
+                        "dueDate": "2025-11-10"
+                    },
+                    {
+                        "id": "card_2",
+                        "title": "Phân công nhiệm vụ",
+                        "description": "Chia việc cho từng thành viên.",
+                        "labels": ["management"]
+                    }
+                ]
             },
             {
-              "id": "card_2",
-              "title": "Phân công nhiệm vụ",
-              "description": "Chia việc cho từng thành viên.",
-              "labels": ["management"]
-            }
-          ]
-        },
-        {
-          "id": "list_2",
-          "title": "In Progress",
-          "cards": []
-        },
-        {
-          "id": "list_3",
-          "title": "Done",
-          "cards": []
-        },
-        { "id": "inbox", "title": "Inbox", "cards": [] }
-      ]
-    },
-    {
-      "id": 2,
-      "userId": 1,
-      "name": "Dự án React",
-      "description": "Làm project web quản lý công việc bằng React.",
-      "color": "linear-gradient(135deg, #fddb92, #d1fdff)",
-      "visibility":"Workspace",
-      "members": [],
-      "lists": [
-        {
-          "id": "list_4",
-          "title": "To Do",
-          "cards": [
+                "id": "list_2",
+                "title": "In Progress",
+                "cards": []
+            },
             {
-              "id": "card_3",
-              "title": "Tạo component Login",
-              "description": "Form đăng nhập với validation.",
-              "labels": ["frontend"]
-            }
-          ]
-        },
-        { "id": "inbox", "title": "Inbox", "cards": [] }
-      ]
+                "id": "list_3",
+                "title": "Done",
+                "cards": []
+            },
+            { "id": "inbox", "title": "Inbox", "cards": [] }
+        ]
     },
     {
-      "id": 3,
-       "userId": 2,
-      "name": "Việc cá nhân",
-      "description": "Danh sách việc riêng trong tuần.",
-      "color": "#722ed1",
-      "visibility":"Workspace",
-      "members": [],
-      "lists": [{ "id": "inbox", "title": "Inbox", "cards": [] }]
+        "id": 2,
+        "userId": 1,
+        "name": "Dự án React",
+        "description": "Làm project web quản lý công việc bằng React.",
+        "color": "linear-gradient(135deg, #fddb92, #d1fdff)",
+        "visibility": "Workspace",
+        "members": [],
+        "lists": [
+            {
+                "id": "list_4",
+                "title": "To Do",
+                "cards": [
+                    {
+                        "id": "card_3",
+                        "title": "Tạo component Login",
+                        "description": "Form đăng nhập với validation.",
+                        "labels": ["frontend"]
+                    }
+                ]
+            },
+            { "id": "inbox", "title": "Inbox", "cards": [] }
+        ]
+    },
+    {
+        "id": 3,
+        "userId": 2,
+        "name": "Việc cá nhân",
+        "description": "Danh sách việc riêng trong tuần.",
+        "color": "#722ed1",
+        "visibility": "Workspace",
+        "members": [],
+        "lists": [{ "id": "inbox", "title": "Inbox", "cards": [] }]
     }
 ];
- 
-   let userBoards = {};
+
+let userBoards = {};
 // let userBoards = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE));
 
 io.use((socket, next) => {
@@ -150,32 +150,22 @@ io.use((socket, next) => {
         next(new Error("Authentication error: Invalid token"));
     }
 });
-
-io.on('connection', (socket) => {
-    console.log(`User connected: ${socket.user.name} (ID: ${socket.user.id})`);
-    socket.join(`user_${socket.user.id}`);
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected');
-    });
-});
-
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.user.id}`);
 
-    // Khi client mở một board, họ sẽ emit sự kiện này để join vào "room" của board đó
+    socket.join(`user_${socket.user.id}`);
+
     socket.on("join-board", (boardId) => {
-        socket.join(boardId.toString()); // Đảm bảo ID là string để consistency
-        console.log(`User ${socket.user.id} joined room: ${boardId}`);
+        socket.join(boardId.toString());
+        console.log(`User ${socket.user.id} joined board ${boardId}`);
     });
 
-    // Khi client rời board (tùy chọn, socket tự handle khi disconnect nhưng explicit thì tốt hơn)
     socket.on("leave-board", (boardId) => {
         socket.leave(boardId.toString());
     });
 
     socket.on("disconnect", () => {
-        console.log("User disconnected");
+        console.log("User disconnected", socket.user.id);
     });
 });
 
@@ -459,11 +449,11 @@ app.get('/api/boards/:boardID', authMiddleware, (req, res) => {
 // let nextBoardId = userBoards.reduce((maxId, board) => Math.max(maxId, board.id), 0) + 1;
 
 // Post new boards
-app.post('/api/boards', authMiddleware,(req, res) => {
+app.post('/api/boards', authMiddleware, (req, res) => {
     const userId = req.user.id;
 
     const { name, description, color, visibility } = req.body;
-    
+
     if (!userId) {
         return res.status(401).json({ message: "Chưa xác thực" });
     }
@@ -489,7 +479,7 @@ app.post('/api/boards', authMiddleware,(req, res) => {
         description: description || '',
         color: color || 'linear-gradient(135deg, #667eea, #764ba2)',
         visibility: visibility || 'Workspace',
-        lists: [{ "id": "inbox", "title": "Inbox", "cards": []}] // Board mới mặc định không có list
+        lists: [{ "id": "inbox", "title": "Inbox", "cards": [] }] // Board mới mặc định không có list
     };
 
     boardsOfThisUser.push(newBoard);
@@ -499,8 +489,8 @@ app.post('/api/boards', authMiddleware,(req, res) => {
 })
 
 // Edit new boards
-app.put('/api/boards/:id', authMiddleware,(req, res) => {
-    const userId = req.user.id; 
+app.put('/api/boards/:id', authMiddleware, (req, res) => {
+    const userId = req.user.id;
 
     if (!userId) {
         return res.status(401).json({ message: "Chưa xác thực" });
@@ -511,7 +501,7 @@ app.put('/api/boards/:id', authMiddleware,(req, res) => {
     if (isNaN(boardId)) {
         return res.status(400).json({ message: 'Board ID không hợp lệ' });
     }
-    
+
     // Lấy dữ liệu mới từ body
     const { name, description, color, visibility } = req.body;
     if (!name) {
@@ -543,13 +533,13 @@ app.put('/api/boards/:id', authMiddleware,(req, res) => {
     };
 
     boardsOfThisUser[boardIndex] = updatedBoard;
-    
+
     console.log(`UserBoards của user ${userId} sau khi SỬA:`, userBoards[userId]);
     res.json(updatedBoard);
 });
 
 // Delete boards
-app.delete('/api/boards/:id', authMiddleware,(req, res) => {
+app.delete('/api/boards/:id', authMiddleware, (req, res) => {
     const userId = req.user.id;
     if (!userId) {
         return res.status(401).json({ message: "Chưa xác thực" });
@@ -573,7 +563,7 @@ app.delete('/api/boards/:id', authMiddleware,(req, res) => {
     }
 
     boardsOfThisUser.splice(boardIndex, 1);
-    
+
     console.log(`UserBoards của user ${userId} sau khi XOÁ:`, userBoards[userId]);
     res.status(204).send();
 });
@@ -588,8 +578,8 @@ app.post('/api/boards/:boardId/lists', authMiddleware, (req, res) => {
     const { boardId } = req.params;
     const { title } = req.body;
 
-    console.log("Kiểu dữ liệu",typeof(boardId));
-    
+    console.log("Kiểu dữ liệu", typeof (boardId));
+
 
     if (!title) {
         return res.status(400).json({ message: 'Tiêu đề list không được để trống.' });
@@ -614,15 +604,16 @@ app.post('/api/boards/:boardId/lists', authMiddleware, (req, res) => {
     }
 
     const newList = {
-    id: `list_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-    title: title,
-    cards: []
-};
+        id: `list_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        title: title,
+        cards: []
+    };
 
     board.lists.push(newList);
 
     console.log(`[SERVER] Đang bắn socket update cho phòng: ${boardId}`);
-    io.to(boardId.toString()).emit('LIST_CREATED', newList);
+    // io.to(boardId.toString()).emit('LIST_CREATED', newList);
+    io.to(boardId.toString()).emit("board_updated", board);
 
     res.status(201).json(newList);
 });
@@ -657,8 +648,9 @@ app.put('/api/boards/:boardId/lists/:listId', authMiddleware, (req, res) => {
 
     if (title) list.title = title;
 
-    
-    io.to(boardId).emit('LIST_UPDATED', list);
+
+    // io.to(boardId).emit('LIST_UPDATED', list);
+    io.to(boardId.toString()).emit("board_updated", board);
 
     res.status(200).json(list);
 });
@@ -670,7 +662,7 @@ app.delete('/api/boards/:boardId/lists/:listId', authMiddleware, (req, res) => {
 
     const io = req.app.get('socketio');
 
-    const allBoards = Object.values(userBoards).flat(); 
+    const allBoards = Object.values(userBoards).flat();
     const board = allBoards.find(b => b.id.toString() === boardId);
 
     if (!board) {
@@ -720,7 +712,7 @@ app.put('/api/boards/lists/move', authMiddleware, (req, res) => {
 
     // List cần chuyển trong Board nguồn
     const listIndex = sourceBoard.lists.findIndex(l => l.id === listId);
-    
+
     if (listIndex === -1) {
         return res.status(404).json({ message: 'Không tìm thấy List trong Board nguồn.' });
     }
@@ -748,13 +740,13 @@ app.put('/api/boards/lists/move', authMiddleware, (req, res) => {
 // Drop cards
 app.put('/api/cards/move', authMiddleware, (req, res) => {
     const userId = req.user.id;
-    const { 
-        sourceBoardId, 
-        sourceListId, 
-        destBoardId, 
-        destListId, 
-        cardId, 
-        index 
+    const {
+        sourceBoardId,
+        sourceListId,
+        destBoardId,
+        destListId,
+        cardId,
+        index
     } = req.body;
 
     const io = req.app.get('socketio');
@@ -780,7 +772,7 @@ app.put('/api/cards/move', authMiddleware, (req, res) => {
 
     const cardIndex = sourceList.cards.findIndex(c => String(c.id) === String(cardId));
     if (cardIndex === -1) {
-        return res.status(404).json({ message: `Card không tồn tại trong List nguồn.CardID là ${cardId}`});
+        return res.status(404).json({ message: `Card không tồn tại trong List nguồn.CardID là ${cardId}` });
     }
 
     const [movedCard] = sourceList.cards.splice(cardIndex, 1);
@@ -807,6 +799,8 @@ app.put('/api/cards/move', authMiddleware, (req, res) => {
         console.error('Socket emit error:', e);
     }
 
+    io.to(boardId.toString()).emit("board_updated", board);
+
     res.status(200).json({
         message: 'Di chuyển Card thành công',
         movedCard,
@@ -825,7 +819,7 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, (req, res) 
         return res.status(400).json({ message: 'Tiêu đề card là bắt buộc' });
     }
 
-    const allBoards = Object.values(userBoards).flat(); 
+    const allBoards = Object.values(userBoards).flat();
     const board = allBoards.find(b => b.id.toString() === boardId);
 
     if (!board) {
@@ -851,7 +845,7 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, (req, res) 
         id: `card_${randomId}`,
         title: title,
         description: description || '',
-        labels: labels || [],   
+        labels: labels || [],
         dueDate: dueDate || null,
         members: members || []
     };
@@ -861,7 +855,7 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, (req, res) 
     console.log(`User ${userId} đã thêm card "${title}" vào list "${list.title}"`);
     console.log("List sau khi thêm card:", list.cards);
 
-    
+    io.to(boardId.toString()).emit("board_updated", board);
     res.status(201).json(newCard);
 });
 
@@ -872,7 +866,7 @@ app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req
     const { boardId, listId, cardId } = req.params;
     const { title, description, labels, dueDate, members } = req.body;
 
-    const allBoards = Object.values(userBoards).flat(); 
+    const allBoards = Object.values(userBoards).flat();
     const board = allBoards.find(b => b.id.toString() === boardId);
 
     if (!board) return res.status(404).json({ message: 'Board không tồn tại.' });
@@ -894,7 +888,7 @@ app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req
     // --- LOGIC XỬ LÝ THAY ĐỔI VÀ THÔNG BÁO ---
     if (members !== undefined) {
         const oldMembers = card.members || [];
-        card.members = members; 
+        card.members = members;
 
         const addedMembers = members.filter(mId => !oldMembers.includes(mId));
 
@@ -926,6 +920,11 @@ app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req
     if (dueDate !== undefined) card.dueDate = dueDate;
 
     console.log(`Đã cập nhật card ${cardId}`);
+
+    // const io = req.app.get("io")
+
+    io.to(boardId.toString()).emit("board_updated",board);
+
     res.json(card);
 });
 
@@ -934,7 +933,7 @@ app.delete('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (
     const userId = Number(req.user.id);
     const { boardId, listId, cardId } = req.params;
 
-    const allBoards = Object.values(userBoards).flat(); 
+    const allBoards = Object.values(userBoards).flat();
     const board = allBoards.find(b => b.id.toString() === boardId);
 
     if (!board) return res.status(404).json({ message: 'Board không tồn tại.' });
@@ -972,7 +971,7 @@ app.get('/api/notifications', authMiddleware, (req, res) => {
 app.put('/api/notifications/:id/read', authMiddleware, (req, res) => {
     const userId = req.user.id;
     const notiId = req.params.id;
-    
+
     const notis = userNotifications[userId];
     if (notis) {
         const notification = notis.find(n => n.id === notiId);
@@ -987,9 +986,9 @@ app.put('/api/notifications/:id/read', authMiddleware, (req, res) => {
 app.post('/api/boards/add-member', authMiddleware, (req, res) => {
     try {
         const currentUserId = req.user.id;
-        const currentUserEmail = req.user.email; 
+        const currentUserEmail = req.user.email;
 
-        const { boardId, memberEmail , role } = req.body;
+        const { boardId, memberEmail, role } = req.body;
 
         if (!boardId || !memberEmail) {
             return res.status(400).json({ message: 'Vui lòng cung cấp Board ID và Email thành viên.' });
@@ -997,7 +996,7 @@ app.post('/api/boards/add-member', authMiddleware, (req, res) => {
 
         // Tìm người dùng muốn thêm (Member) trong database users
         const memberToAdd = users.find(u => u.email === memberEmail);
-        
+
         if (!memberToAdd) {
             return res.status(404).json({ message: 'Không tìm thấy người dùng với email này.' });
         }
@@ -1038,7 +1037,7 @@ app.post('/api/boards/add-member', authMiddleware, (req, res) => {
             role: role, // Role mặc định
             addedAt: new Date()
         };
-        
+
         targetBoard.members.push(newMemberInfo);
 
         // Kiểm tra xem người được mời đã có danh sách board chưa
@@ -1053,7 +1052,7 @@ app.post('/api/boards/add-member', authMiddleware, (req, res) => {
 
         // Tạo thông báo (Notification)
         const notiContent = {
-            id: `noti_${Date.now()}`, 
+            id: `noti_${Date.now()}`,
             type: 'invite',
             message: `${req.user.name} đã thêm bạn vào bảng "${targetBoard.name}"`,
             sender: { name: req.user.name, avatar: req.user.avatar_url },
@@ -1069,14 +1068,16 @@ app.post('/api/boards/add-member', authMiddleware, (req, res) => {
 
         // Gửi Socket Real-time (Để client bên kia tự cập nhật UI)
         io.to(`user_${memberToAdd.id}`).emit('notification_received', notiContent);
-        
+
         // Bắn sự kiện "Bạn vừa được thêm vào board" để client tự fetch lại list board
         io.to(`user_${memberToAdd.id}`).emit('board_joined', targetBoard);
+
+        io.to(targetBoard.id.toString()).emit('board_updated', targetBoard);
 
         res.status(200).json({
             message: 'Thêm thành viên thành công!',
             member: newMemberInfo,
-            board: targetBoard 
+            board: targetBoard
         });
 
     } catch (error) {
