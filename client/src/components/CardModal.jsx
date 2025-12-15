@@ -66,7 +66,7 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        saveToBackend(updatedCard);
+        onUpdate(updatedCard, listId);
         setShowDatePicker(false);
     };
 
@@ -77,34 +77,20 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        saveToBackend(updatedCard);
+        onUpdate(updatedCard, listId);
         setEditDescription(false);
     }
 
 
     const handleClear = () => {
         setDate(null);
-        saveToBackend({ ...card, labels: selectedLabels, dueDate: null });
+        onUpdate({ ...card, labels: selectedLabels, dueDate: null }, listId);
         setShowDatePicker(false);
-    };
-
-    const saveToBackend = async (updated) => {
-        const res = await fetch("http://localhost:3000/api/boards/" + boardId + "/lists/" + listId + "/cards/" + card.id, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${sessionStorage.getItem("token")}`
-            },
-            body: JSON.stringify(updated)
-        });
-
-        const data = await res.json();
-        onUpdate(data, listId);
     };
 
     const handleClose = async () => {
         const updatedCard = { ...card, labels: selectedLabels, description: editedDesciption, dueDate: formatDate(date) };
-        await saveToBackend(updatedCard);
+        onUpdate(updatedCard, listId);
         onClose();
 
     };
@@ -117,7 +103,7 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        await saveToBackend(updatedCard);
+        onUpdate(updatedCard, listId);
         onClose();
     };
 
@@ -131,7 +117,7 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        await saveToBackend(updatedCard);
+        onUpdate(updatedCard, listId);
     };
 
 

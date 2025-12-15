@@ -1,6 +1,9 @@
 import React, { useRef, useState } from "react";
 import "../styles/CardItem.css";
 import { useDrag, useDrop } from "react-dnd";
+import { ArchiveBoxIcon } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/24/solid";
+
 
 const CardItem = ({
     card,
@@ -9,12 +12,14 @@ const CardItem = ({
     index,
     onMoveCard,
     onClick,
-    onToggleComplete,   // <-- thêm
-    onArchive           // <-- thêm
+    onToggleState,
+    onArchive
 }) => {
 
     const ref = useRef();
-    const [showActions, setShowActions] = useState(false);
+
+    const isDone = card.state === "Done";
+
 
     const [{ isDragging }, drag] = useDrag({
         type: "card",
@@ -53,20 +58,19 @@ const CardItem = ({
     return (
         <div
             ref={ref}
-            className={`card-item ${card.completed ? "completed" : ""}`}
+            className={`card-item ${isDone ? "done" : ""}`}
             onClick={onClick}
             style={{ opacity: isDragging ? 0.5 : 1 }}
-            onMouseEnter={() => setShowActions(true)}
-            onMouseLeave={() => setShowActions(false)}
         >
             <div
-                className={`circle-toggle ${card.completed ? "on" : ""}`}
+                className={`circle-toggle ${isDone ? "on" : ""}`}
                 onClick={(e) => {
                     e.stopPropagation();
-                    onToggleComplete(card);
+                    onToggleState(card);
                 }}
             >
-                {card.completed && <span className="checkmark">✓</span>}
+                {isDone && <CheckIcon className="checkmark-icon" />}
+
             </div>
 
             <div className="card-content">
@@ -85,19 +89,21 @@ const CardItem = ({
 
             </div>
 
-            {showActions && (
+            {card.state === "Done" && (
                 <div className="card-actions">
                     <button
-                        className="card-action-btn archive-btn"
+                        className="archive-btn"
                         onClick={(e) => {
                             e.stopPropagation();
                             onArchive(card);
                         }}
+                        title="Archive card"
                     >
-                        archive
+                        <ArchiveBoxIcon className="archive-icon" />
                     </button>
                 </div>
             )}
+
         </div>
     );
 };

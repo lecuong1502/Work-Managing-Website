@@ -64,13 +64,15 @@ const DEFAULT_BOARDS_TEMPLATE = [
                         "title": "Thiết kế giao diện trang chủ",
                         "description": "Dùng Figma để tạo layout cơ bản.",
                         "labels": ["design"],
-                        "dueDate": "2025-11-10"
+                        "dueDate": "2025-11-10",
+                        "state": "Inprogress"
                     },
                     {
                         "id": "card_2",
                         "title": "Phân công nhiệm vụ",
                         "description": "Chia việc cho từng thành viên.",
-                        "labels": ["management"]
+                        "labels": ["management"],
+                        "state": "Inprogress"
                     }
                 ]
             },
@@ -104,7 +106,8 @@ const DEFAULT_BOARDS_TEMPLATE = [
                         "id": "card_3",
                         "title": "Tạo component Login",
                         "description": "Form đăng nhập với validation.",
-                        "labels": ["frontend"]
+                        "labels": ["frontend"],
+                        "state": "Inprogress"
                     }
                 ]
             },
@@ -799,7 +802,12 @@ app.put('/api/cards/move', authMiddleware, (req, res) => {
         console.error('Socket emit error:', e);
     }
 
-    io.to(boardId.toString()).emit("board_updated", board);
+    io.to(String(sourceBoardId)).emit("board_updated", sourceBoard);
+
+    if (String(destBoardId) !== String(sourceBoardId)) {
+        io.to(String(destBoardId)).emit("board_updated", destBoard);
+    }
+
 
     res.status(200).json({
         message: 'Di chuyển Card thành công',
@@ -847,7 +855,8 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, (req, res) 
         description: description || '',
         labels: labels || [],
         dueDate: dueDate || null,
-        members: members || []
+        members: members || [],
+        state: "Inprogress"
     };
 
     list.cards.push(newCard);
@@ -864,7 +873,7 @@ app.post('/api/boards/:boardId/lists/:listId/cards', authMiddleware, (req, res) 
 app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req, res) => {
     const userId = Number(req.user.id); // Người đang thực hiện hành động (Actor)
     const { boardId, listId, cardId } = req.params;
-    const { title, description, labels, dueDate, members } = req.body;
+    const { title, description, labels, dueDate, members, state } = req.body;
 
     const allBoards = Object.values(userBoards).flat();
     const board = allBoards.find(b => b.id.toString() === boardId);
@@ -918,12 +927,13 @@ app.put('/api/boards/:boardId/lists/:listId/cards/:cardId', authMiddleware, (req
     if (description !== undefined) card.description = description;
     if (labels !== undefined) card.labels = labels;
     if (dueDate !== undefined) card.dueDate = dueDate;
+    if (state !== undefined) card.state = state;
 
     console.log(`Đã cập nhật card ${cardId}`);
 
     // const io = req.app.get("io")
 
-    io.to(boardId.toString()).emit("board_updated",board);
+    io.to(boardId.toString()).emit("board_updated", board);
 
     res.json(card);
 });

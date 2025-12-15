@@ -18,7 +18,8 @@ const ListColumn = ({
     setSelectedCard,
     handleAddCard,
     newCardTitle,
-    setNewCardTitle
+    setNewCardTitle,
+    onUpdateCard
 }) => {
 
     const moveCard = (cardId, fromListId, toListId, toIndex) => {
@@ -79,6 +80,26 @@ const ListColumn = ({
         }
     });
 
+    const VISIBLE_CARD_STATES = ["Inprogress", "Done"];
+
+    const handleArchiveCard = (card) => {
+        onUpdateCard(
+            { ...card, state: "Archived" },
+            list.id
+        );
+    };
+
+    const handleToggleCardState = (card) => {
+        const nextState =
+            card.state === "Done" ? "Inprogress" : "Done";
+
+        onUpdateCard(
+            { ...card, state: nextState },
+            list.id
+        );
+    };
+
+
     return (
         <div ref={drop} className="list-column">
             <div className="list-header">
@@ -105,7 +126,7 @@ const ListColumn = ({
 
             <div className="card-container">
                 {list.cards.length === 0 && <p className="empty">Không có thẻ nào</p>}
-                {list.cards.map((card, idx) => (
+                {list.cards.filter(card => VISIBLE_CARD_STATES.includes(card.state)).map((card, idx) => (
                     <CardItem
                         key={card.id}
                         card={card}
@@ -114,6 +135,8 @@ const ListColumn = ({
                         index={idx}
                         onMoveCard={moveCard}
                         onClick={() => setSelectedCard({ ...card, listId: list.id, boardId: board.id })}
+                        onToggleState={handleToggleCardState}
+                        onArchive={handleArchiveCard}
                     />
                 ))}
             </div>

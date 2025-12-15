@@ -244,23 +244,43 @@ const BoardPage = () => {
     }
   };
 
-  const handleUpdateCard = (updatedCard, listId) => {
+  const handleUpdateCard = async (updatedCard, listId) => {
+    // 1. Update UI ngay
     setBoard(prevBoard => {
-      const newLists = prevBoard.lists.map(list => {
-        if (list.id === listId) {
-          const newCards = list.cards.map(c => c.id === updatedCard.id ? updatedCard : c);
-          return { ...list, cards: newCards };
-        }
-        return list;
-      });
+      const newLists = prevBoard.lists.map(list =>
+        list.id === listId
+          ? {
+            ...list,
+            cards: list.cards.map(c =>
+              c.id === updatedCard.id ? updatedCard : c
+            )
+          }
+          : list
+      );
 
       const updatedBoard = { ...prevBoard, lists: newLists };
       updateBoardToStorage(updatedBoard);
-
       return updatedBoard;
     });
 
+    // 2. Sync backend
+    try {
+      await fetch(
+        `http://localhost:3000/api/boards/${board.id}/lists/${listId}/cards/${updatedCard.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`
+          },
+          body: JSON.stringify(updatedCard)
+        }
+      );
+    } catch (err) {
+      console.error("Update card failed:", err);
+    }
   };
+
 
   const handleAddMember = async () => {
     if (!email) {
@@ -472,6 +492,7 @@ const BoardPage = () => {
                         handleAddCard={handleAddCard}
                         newCardTitle={newCardTitle}
                         setNewCardTitle={setNewCardTitle}
+                        onUpdateCard={handleUpdateCard}
                       />
                     ))}
 
