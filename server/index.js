@@ -234,9 +234,11 @@ app.post("/register", async (req, res) => {
 
   // Check format of email
   if (!validator.isEmail(email)) {
-    return res.status(400).json({
-      message: "Định dạng email không hợp lệ. Vui lòng kiểm tra lại.",
-    });
+    return res
+      .status(400)
+      .json({
+        message: "Định dạng email không hợp lệ. Vui lòng kiểm tra lại.",
+      });
   }
 
   // How strong is the password
@@ -728,9 +730,11 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
 
   // Validation
   if (!sourceBoardId || !destBoardId || !listId) {
-    return res.status(400).json({
-      message: "Thiếu thông tin: sourceBoardId, destBoardId hoặc listId.",
-    });
+    return res
+      .status(400)
+      .json({
+        message: "Thiếu thông tin: sourceBoardId, destBoardId hoặc listId.",
+      });
   }
 
   // 2. Tìm Board Nguồn và Board Đích
@@ -738,15 +742,19 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
   const destBoard = userBoards.find((b) => b.id == destBoardId);
 
   if (!sourceBoard) {
-    return res.status(404).json({
-      message: "Không tìm thấy Board nguồn hoặc không có quyền truy cập.",
-    });
+    return res
+      .status(404)
+      .json({
+        message: "Không tìm thấy Board nguồn hoặc không có quyền truy cập.",
+      });
   }
 
   if (!destBoard) {
-    return res.status(404).json({
-      message: "Không tìm thấy Board đích hoặc không có quyền truy cập.",
-    });
+    return res
+      .status(404)
+      .json({
+        message: "Không tìm thấy Board đích hoặc không có quyền truy cập.",
+      });
   }
 
   // List cần chuyển trong Board nguồn
@@ -833,9 +841,11 @@ app.put("/api/cards/move", authMiddleware, (req, res) => {
     (c) => String(c.id) === String(cardId)
   );
   if (cardIndex === -1) {
-    return res.status(404).json({
-      message: `Card không tồn tại trong List nguồn.CardID là ${cardId}`,
-    });
+    return res
+      .status(404)
+      .json({
+        message: `Card không tồn tại trong List nguồn.CardID là ${cardId}`,
+      });
   }
 
   const [movedCard] = sourceList.cards.splice(cardIndex, 1);
@@ -1130,9 +1140,11 @@ app.post("/api/boards/add-member", authMiddleware, (req, res) => {
     const targetBoard = userBoards[currentUserId].find((b) => b.id == boardId);
 
     if (!targetBoard) {
-      return res.status(404).json({
-        message: "Không tìm thấy Board hoặc bạn không có quyền truy cập.",
-      });
+      return res
+        .status(404)
+        .json({
+          message: "Không tìm thấy Board hoặc bạn không có quyền truy cập.",
+        });
     }
 
     // Kiểm tra xem thành viên này đã có trong board chưa
@@ -1206,9 +1218,11 @@ app.post("/api/boards/add-member", authMiddleware, (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi add member:", error);
-    res.status(500).json({
-      message: "Lỗi server khi thêm thành viên.",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({
+        message: "Lỗi server khi thêm thành viên.",
+        error: error.message,
+      });
   }
 });

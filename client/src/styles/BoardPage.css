@@ -68,7 +68,7 @@
   align-items: center;
   gap: 6px; 
   background-color: rgba(255,255,255,0.15);
-  color: white;
+  color: rgb(104, 86, 86);
   border: none;
   padding: 6px 12px;
   border-radius: 6px;
@@ -255,5 +255,109 @@
   overflow-x: hidden;
   height: 100%;
 }
+.share-board-popup {
+  position: absolute;
+  top: 45px;
+  right: 0;
+  width: 420px;
 
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px 20px;
+  border: 1px solid #ddd;
+  box-shadow: 0px 4px 18px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+}
 
+.share-header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.share-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.share-input-row input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.share-role-select {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.share-input-row button {
+  background: #0a66e8;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.share-input-row button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.share-members-section {
+  margin-top: 20px;
+}
+
+.share-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.share-member-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.share-member-avatar {
+  width: 38px;
+  height: 38px;
+  background: #e1e4e8;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-right: 12px;
+  font-size: 15px;
+}
+
+.share-member-info {
+  flex: 1;
+}
+
+.share-member-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.share-member-email {
+  font-size: 12px;
+  color: #666;
+}
+
+.share-role-select {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}

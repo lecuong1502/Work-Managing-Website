@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { use, useEffect, useState } from "react";
+import { data, useNavigate } from "react-router-dom";
 import "../styles/Dashboard.css";
 import SearchBar from "../components/SearchBar";
+import socket from "../socket";
 import AdminUserPage from "../pages/AdminUserPage";
 import Sidebar from "../components/Sidebar";
 import { BUSINESS_TEMPLATES, DESIGN_TEMPLATES } from "./templates";
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const [boards, setBoards] = useState([]);
@@ -22,6 +22,29 @@ const Dashboard = () => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   const token = sessionStorage.getItem("token");
+  console.log("Token bên dashb", token);
+
+  useEffect(() => {
+    const handleBoardJoined = (board) => {
+      console.log("Realtime board joined:", board);
+
+      setBoards((prev) => {
+        const exists = prev.some((b) => b.id === board.id);
+        if (exists) return prev;
+
+        const updated = [...prev, board];
+        sessionStorage.setItem("boards", JSON.stringify(updated));
+        return updated;
+      });
+    };
+
+    socket.on("board_joined", handleBoardJoined);
+
+    return () => {
+      socket.off("board_joined", handleBoardJoined);
+    };
+  }, []);
+
   useEffect(() => {
     const userId = Number(sessionStorage.getItem("userId"));
     const isLoggedIn = sessionStorage.getItem("loggedIn");
@@ -29,10 +52,10 @@ const Dashboard = () => {
       navigate("/");
       return;
     }
-    const existingBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
 
-    // Lấy danh sách board từ backend
+    // Chưa chạy BackEnd thì dùng "Board.json"
     fetch("http://localhost:3000/api/boards", {
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -40,32 +63,38 @@ const Dashboard = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        const userBoards = data.filter((b) => Number(b.userId) === userId);
-        const mergedBoards = userBoards.map((b) => {
-          const old = existingBoards.find((ob) => ob.id === b.id);
-          if (old && old.lists) {
-            return { ...b, lists: old.lists };
-          }
-          return b;
-        });
+        console.log("data tổng thể", data);
+        const userBoards = data;
+        setBoards((prev) => {
+          const map = new Map();
 
-        setBoards(mergedBoards);
-        sessionStorage.setItem("boards", JSON.stringify(mergedBoards));
+          [...prev, ...userBoards].forEach((b) => {
+            map.set(b.id, b);
+          });
+
+          const merged = Array.from(map.values());
+          sessionStorage.setItem("boards", JSON.stringify(merged));
+          return merged;
+        });
       })
       .catch((err) => console.error("Lỗi tải board", err));
+
     fetch("colors.json")
       .then((res) => res.json())
       .then((data) => setAvailableColors(data.colors))
       .catch((err) => console.error("Lỗi tải colors", err));
-  }, [navigate, token]);
+  }, [navigate]);
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
   };
 
+  const userId = Number(sessionStorage.getItem("userId"));
   const handleAddBoard = async (e) => {
     e.preventDefault();
     if (!newBoardName.trim() || !newBoardColor) return;
+
+    const userId = Number(sessionStorage.getItem("userId"));
 
     const newBoard = {
       name: newBoardName.trim(),
@@ -101,14 +130,13 @@ const Dashboard = () => {
       setNewBoardColor("");
       setShowForm(false);
     } catch (err) {
-      alert("Lỗi khi tạo Board");
+      alert(data.message || "Lỗi khi tạo Board");
     }
   };
 
   const filteredBoards = boards.filter((b) =>
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
   // dùng template -> tạo board + list + cảd
   const handleUseTemplate = async (template) => {
     if (!template) return;
@@ -207,7 +235,6 @@ const Dashboard = () => {
     }
   };
 
-  // ================== JSX ==================
   return (
     <>
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
@@ -232,15 +259,13 @@ const Dashboard = () => {
             {activeMenu === "boards" && (
               <>
                 <div className="dashboard-header">
-                  <h1>📋 My Boards</h1>
-                  <div>
-                    <button
-                      className="dashboard-button"
-                      onClick={() => setShowForm(!showForm)}
-                    >
-                      + Thêm board
-                    </button>
-                  </div>
+                  <h1>My Boards</h1>
+                  <button
+                    className="dashboard-button"
+                    onClick={() => setShowForm(!showForm)}
+                  >
+                    + Thêm board
+                  </button>
                 </div>
 
                 {showForm && (
@@ -248,7 +273,7 @@ const Dashboard = () => {
                     <div
                       className="modal-overlay"
                       onClick={() => setShowForm(false)}
-                    ></div>
+                    />
 
                     <form className="add-board-form" onSubmit={handleAddBoard}>
                       <input
@@ -267,33 +292,31 @@ const Dashboard = () => {
                         required
                       />
 
-                      <div>
-                        <p>Background</p>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "10px",
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          {availableColors.map((color) => (
-                            <div
-                              key={color}
-                              onClick={() => setNewBoardColor(color)}
-                              style={{
-                                width: "30px",
-                                height: "30px",
-                                borderRadius: "6px",
-                                background: color,
-                                cursor: "pointer",
-                                border:
-                                  newBoardColor === color
-                                    ? "3px solid #000"
-                                    : "2px solid #fff",
-                              }}
-                            />
-                          ))}
-                        </div>
+                      <p>Background</p>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {availableColors.map((color) => (
+                          <div
+                            key={color}
+                            onClick={() => setNewBoardColor(color)}
+                            style={{
+                              width: "30px",
+                              height: "30px",
+                              borderRadius: "6px",
+                              background: color,
+                              cursor: "pointer",
+                              border:
+                                newBoardColor === color
+                                  ? "3px solid #000"
+                                  : "2px solid #fff",
+                            }}
+                          />
+                        ))}
                       </div>
 
                       <div className="visibility-selection">
@@ -351,12 +374,14 @@ const Dashboard = () => {
                 </div>
 
                 {showUserManager && (
-                  <div style={{ marginTop: "30px" }}>
+                  <div style={{ marginTop: 30 }}>
                     <AdminUserPage />
                   </div>
                 )}
               </>
             )}
+
+            {/* mẫu bên sidebar*/}
             {activeMenu === "templates" && (
               <div className="templates-content">
                 {!selectedCategory && (
@@ -370,7 +395,7 @@ const Dashboard = () => {
 
                 {selectedCategory === "Business" && !selectedTemplate && (
                   <>
-                    <h1>📘 Các mẫu Business</h1>
+                    <h1>Các mẫu Business</h1>
                     <div className="template-grid">
                       {BUSINESS_TEMPLATES.map((tpl) => (
                         <div
@@ -394,7 +419,7 @@ const Dashboard = () => {
 
                 {selectedCategory === "Design" && !selectedTemplate && (
                   <>
-                    <h1>🎨 Các mẫu Design</h1>
+                    <h1>Các mẫu Design</h1>
                     <div className="template-grid">
                       {DESIGN_TEMPLATES.map((tpl) => (
                         <div
@@ -416,23 +441,13 @@ const Dashboard = () => {
                   </>
                 )}
 
-                {selectedCategory &&
-                  selectedCategory !== "Business" &&
-                  selectedCategory !== "Design" &&
-                  !selectedTemplate && (
-                    <>
-                      <h1>Các mẫu {selectedCategory}</h1>
-                      <p>Hiện tại chưa có template cho nhóm này.</p>
-                    </>
-                  )}
-
                 {selectedTemplate && (
                   <div className="template-detail">
                     <button
                       className="back-button"
                       onClick={() => setSelectedTemplate(null)}
                     >
-                      ← Quay lại danh sách {selectedCategory}
+                      ← Quay lại
                     </button>
 
                     <h1>{selectedTemplate.title}</h1>
@@ -440,14 +455,12 @@ const Dashboard = () => {
                       bởi {selectedTemplate.author}
                     </p>
 
-                    <div className="template-detail-actions">
-                      <button
-                        className="use-template-btn"
-                        onClick={() => handleUseTemplate(selectedTemplate)}
-                      >
-                        Sử dụng mẫu
-                      </button>
-                    </div>
+                    <button
+                      className="use-template-btn"
+                      onClick={() => handleUseTemplate(selectedTemplate)}
+                    >
+                      Sử dụng mẫu
+                    </button>
 
                     <img
                       src={selectedTemplate.bigImage || selectedTemplate.image}
@@ -455,10 +468,11 @@ const Dashboard = () => {
                       className="template-big-img"
                     />
 
-                    <h2 style={{ marginTop: 20 }}>Về mẫu này</h2>
                     <p
-                      className="template-description"
-                      style={{ whiteSpace: "pre-line", lineHeight: 1.6 }}
+                      style={{
+                        whiteSpace: "pre-line",
+                        lineHeight: 1.6,
+                      }}
                     >
                       {selectedTemplate.description}
                     </p>
@@ -466,6 +480,8 @@ const Dashboard = () => {
                 )}
               </div>
             )}
+
+            {/* admin user*/}
             {activeMenu === "admin-users" && (
               <div style={{ padding: "20px" }}>
                 <AdminUserPage />

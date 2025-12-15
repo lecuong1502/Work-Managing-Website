@@ -19,6 +19,7 @@ import InboxPanel from "../components/InboxPanel";
 import BoardSwitcher from "../components/BoardSwitcher";
 import Calendar from "../pages/CalendarPage";
 import Toast from "../components/Toast";
+import socket from "../socket";
 
 const BoardPage = () => {
   const { boardId } = useParams();
@@ -52,18 +53,6 @@ const BoardPage = () => {
 
   const isCalendarMode = location.pathname.includes("/calendar");
 
-  useEffect(() => {
-    const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
-    const foundBoard = savedBoards.find((b) => b.id === Number(boardId));
-
-    if (foundBoard) {
-      setBoard(foundBoard);
-    } else {
-      alert("Board không tồn tại!");
-      navigate("/dashboard");
-    }
-  }, [boardId, navigate]);
-
   const updateBoardToStorage = (updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
 
@@ -79,6 +68,45 @@ const BoardPage = () => {
 
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
+
+  useEffect(() => {
+    const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
+    const foundBoard = savedBoards.find((b) => b.id === Number(boardId));
+
+    if (foundBoard) {
+      setBoard(foundBoard);
+    } else {
+      alert("Board không tồn tại!");
+      navigate("/dashboard");
+    }
+  }, [boardId, navigate]);
+
+  // Socket.io
+  useEffect(() => {
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    socket.emit("join-board", boardId);
+
+    socket.on("board_updated", (updatedBoardData) => {
+      if (updatedBoardData.id === Number(boardId)) {
+        setBoard(updatedBoardData);
+        updateBoardToStorage(updatedBoardData);
+      }
+    });
+
+    socket.on("notification_received", (noti) => {
+      setToast({ message: noti.message, type: "info" });
+    });
+
+    return () => {
+      socket.emit("leave-board", boardId);
+      socket.off("board_updated");
+      socket.off("board_member_added");
+      socket.off("notification_received");
+    };
+  }, [boardId]);
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
@@ -220,23 +248,41 @@ const BoardPage = () => {
     }
   };
 
-  const handleUpdateCard = (updatedCard, listId) => {
+  const handleUpdateCard = async (updatedCard, listId) => {
+    // 1. Update UI ngay
     setBoard((prevBoard) => {
-      const newLists = prevBoard.lists.map((list) => {
-        if (list.id === listId) {
-          const newCards = list.cards.map((c) =>
-            c.id === updatedCard.id ? updatedCard : c
-          );
-          return { ...list, cards: newCards };
-        }
-        return list;
-      });
+      const newLists = prevBoard.lists.map((list) =>
+        list.id === listId
+          ? {
+              ...list,
+              cards: list.cards.map((c) =>
+                c.id === updatedCard.id ? updatedCard : c
+              ),
+            }
+          : list
+      );
 
       const updatedBoard = { ...prevBoard, lists: newLists };
       updateBoardToStorage(updatedBoard);
-
       return updatedBoard;
     });
+
+    // 2. Sync backend
+    try {
+      await fetch(
+        `http://localhost:3000/api/boards/${board.id}/lists/${listId}/cards/${updatedCard.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(updatedCard),
+        }
+      );
+    } catch (err) {
+      console.error("Update card failed:", err);
+    }
   };
 
   const handleAddMember = async () => {
@@ -269,10 +315,15 @@ const BoardPage = () => {
         setEmail("");
         setShowShareForm(false);
 
-        setTimeout(() => {
-          window.location.reload(); // user mới sẽ thấy board được thêm
-        }, 500);
-        console.log("Member added:", data.member);
+        if (data.board) {
+          setBoard(data.board);
+          updateBoardToStorage(data.board);
+        } else {
+          setBoard((prev) => ({
+            ...prev,
+            members: [...(prev.members || []), data.member],
+          }));
+        }
       }
     } catch (err) {
       console.log(data.message);
@@ -280,6 +331,10 @@ const BoardPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleChangeRole = async (memberId, newRole) => {
+    console.log("Change role", memberId, newRole);
   };
 
   if (!board) return <Loading />;
@@ -454,6 +509,7 @@ const BoardPage = () => {
                           handleAddCard={handleAddCard}
                           newCardTitle={newCardTitle}
                           setNewCardTitle={setNewCardTitle}
+                          onUpdateCard={handleUpdateCard}
                         />
                       ))}
 
