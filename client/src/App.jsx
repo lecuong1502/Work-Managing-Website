@@ -12,6 +12,8 @@ import DashboardPage from "./pages/Dashboard";
 import BoardPage from "./pages/BoardPage";
 import RegisterPage from "./pages/Register-Page";
 import CalendarPage from "./pages/CalendarPage";
+import AdminUserPage from "./pages/AdminUserPage";
+
 function App() {
   const isLoggedIn = sessionStorage.getItem("loggedIn") === "true";
 
@@ -19,6 +21,8 @@ function App() {
     <Router>
       {isLoggedIn ? (
         <Routes>
+          <Route path="/admin/users" element={<AdminUserPage />} />
+
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/board/:boardId" element={<BoardPage />}>
             <Route path="calendar" element={<CalendarPage />} />

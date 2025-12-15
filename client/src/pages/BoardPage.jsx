@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Outlet, useLocation, data } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  Outlet,
+  useLocation,
+  data,
+} from "react-router-dom";
 import "../styles/BoardPage.css";
 import { UserPlusIcon } from "@heroicons/react/24/solid";
 import SearchBar from "../components/SearchBar";
@@ -8,13 +14,12 @@ import ListColumn from "../components/ListColumn";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import BottomToolbar from "../components/BottomToolbar";
-import Loading from "../components/LoadingOverlay"
+import Loading from "../components/LoadingOverlay";
 import InboxPanel from "../components/InboxPanel";
 import BoardSwitcher from "../components/BoardSwitcher";
-import Calendar from "../pages/CalendarPage"
+import Calendar from "../pages/CalendarPage";
 import Toast from "../components/Toast";
 import socket from "../socket";
-
 
 const BoardPage = () => {
   const { boardId } = useParams();
@@ -44,13 +49,9 @@ const BoardPage = () => {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
 
-
-
   const openCount = Object.values(openPanel).filter(Boolean).length;
 
   const isCalendarMode = location.pathname.includes("/calendar");
-
-
 
   const updateBoardToStorage = (updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
@@ -59,7 +60,7 @@ const BoardPage = () => {
       boards = boards?.boards || [];
     }
 
-    const index = boards.findIndex(b => b.id === updatedBoard.id);
+    const index = boards.findIndex((b) => b.id === updatedBoard.id);
 
     if (index !== -1) {
       boards[index] = updatedBoard;
@@ -106,7 +107,6 @@ const BoardPage = () => {
       socket.off("notification_received");
     };
   }, [boardId]);
-
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
@@ -202,29 +202,33 @@ const BoardPage = () => {
     if (!cardTitle.trim()) return alert("Tiêu đề thẻ không được để trống");
 
     const bodyData = {
-      title: cardTitle.trim()
-    }
+      title: cardTitle.trim(),
+    };
 
     setLoading(true);
     try {
       const res = await fetch(
-        "http://localhost:3000/api/boards/" + board.id + "/lists/" + listId + "/cards",
+        "http://localhost:3000/api/boards/" +
+          board.id +
+          "/lists/" +
+          listId +
+          "/cards",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionStorage.getItem("token")}`
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
           },
-          body: JSON.stringify(bodyData)
+          body: JSON.stringify(bodyData),
         }
       );
 
       const data = await res.json();
-      const newList = board.lists.map(list => {
+      const newList = board.lists.map((list) => {
         if (list.id === listId) {
           return {
             ...list,
-            cards: [...list.cards, data]
+            cards: [...list.cards, data],
           };
         }
         return list;
@@ -236,7 +240,7 @@ const BoardPage = () => {
       updateBoardToStorage(newBoard);
 
       setNewCardTitle("");
-      setAddingCard(prev => ({ ...prev, [listId]: false }));
+      setAddingCard((prev) => ({ ...prev, [listId]: false }));
     } catch {
       console.error("Lỗi thêm card mới:", err);
     } finally {
@@ -246,15 +250,15 @@ const BoardPage = () => {
 
   const handleUpdateCard = async (updatedCard, listId) => {
     // 1. Update UI ngay
-    setBoard(prevBoard => {
-      const newLists = prevBoard.lists.map(list =>
+    setBoard((prevBoard) => {
+      const newLists = prevBoard.lists.map((list) =>
         list.id === listId
           ? {
-            ...list,
-            cards: list.cards.map(c =>
-              c.id === updatedCard.id ? updatedCard : c
-            )
-          }
+              ...list,
+              cards: list.cards.map((c) =>
+                c.id === updatedCard.id ? updatedCard : c
+              ),
+            }
           : list
       );
 
@@ -271,16 +275,15 @@ const BoardPage = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionStorage.getItem("token")}`
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
           },
-          body: JSON.stringify(updatedCard)
+          body: JSON.stringify(updatedCard),
         }
       );
     } catch (err) {
       console.error("Update card failed:", err);
     }
   };
-
 
   const handleAddMember = async () => {
     if (!email) {
@@ -294,9 +297,13 @@ const BoardPage = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionStorage.getItem("token")}`
+          Authorization: `Bearer ${sessionStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ boardId: board.id, memberEmail: email, role: role }),
+        body: JSON.stringify({
+          boardId: board.id,
+          memberEmail: email,
+          role: role,
+        }),
       });
 
       const data = await res.json();
@@ -304,7 +311,7 @@ const BoardPage = () => {
       if (!res.ok) {
         setToast({ message: data.message, type: "error" });
       } else {
-        setToast({ message: "Thêm thành viên thành công", type: "success" })
+        setToast({ message: "Thêm thành viên thành công", type: "success" });
         setEmail("");
         setShowShareForm(false);
 
@@ -312,9 +319,9 @@ const BoardPage = () => {
           setBoard(data.board);
           updateBoardToStorage(data.board);
         } else {
-          setBoard(prev => ({
+          setBoard((prev) => ({
             ...prev,
-            members: [...(prev.members || []), data.member]
+            members: [...(prev.members || []), data.member],
           }));
         }
       }
@@ -328,7 +335,7 @@ const BoardPage = () => {
 
   const handleChangeRole = async (memberId, newRole) => {
     console.log("Change role", memberId, newRole);
-  }
+  };
 
   if (!board) return <Loading />;
 
@@ -347,13 +354,14 @@ const BoardPage = () => {
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-container">
           <DndProvider backend={HTML5Backend}>
-
             {openPanel.inbox && (
               <div className="side-panel inbox-panel">
                 {openPanel.inbox && (
                   <div className="side-panel-content">
                     <InboxPanel
-                      inboxCards={board.lists.find(l => l.id === "inbox").cards}
+                      inboxCards={
+                        board.lists.find((l) => l.id === "inbox").cards
+                      }
                       board={board}
                       setBoard={setBoard}
                       addingCard={addingCard}
@@ -362,7 +370,8 @@ const BoardPage = () => {
                       setNewCardTitle={setNewCardTitle}
                       handleAddCard={handleAddCard}
                       selectedCard={selectedCard}
-                      setSelectedCard={setSelectedCard} />
+                      setSelectedCard={setSelectedCard}
+                    />
                   </div>
                 )}
               </div>
@@ -381,16 +390,17 @@ const BoardPage = () => {
             {openPanel.switcher && (
               <BoardSwitcher
                 isOpen={true}
-                onClose={() => setOpenPanel(prev => ({
-                  ...prev,
-                  switcher: false
-                })
-                )}
+                onClose={() =>
+                  setOpenPanel((prev) => ({
+                    ...prev,
+                    switcher: false,
+                  }))
+                }
                 onSelectBoard={(b) => {
                   handleBoardClick(b.id);
-                  setOpenPanel(prev => ({
+                  setOpenPanel((prev) => ({
                     ...prev,
-                    switcher: false
+                    switcher: false,
                   }));
                 }}
               />
@@ -446,14 +456,20 @@ const BoardPage = () => {
                             </div>
 
                             <div className="share-member-info">
-                              <div className="share-member-name">{member.name}</div>
-                              <div className="share-member-email">{member.email}</div>
+                              <div className="share-member-name">
+                                {member.name}
+                              </div>
+                              <div className="share-member-email">
+                                {member.email}
+                              </div>
                             </div>
 
                             <select
                               className="share-role-select"
                               value={member.role}
-                              onChange={(e) => handleChangeRole(member.id, e.target.value)}
+                              onChange={(e) =>
+                                handleChangeRole(member.id, e.target.value)
+                              }
                             >
                               <option value="admin">Admin</option>
                               <option value="member">Member</option>
@@ -462,7 +478,6 @@ const BoardPage = () => {
                           </div>
                         ))}
                       </div>
-
                     </div>
                   )}
                 </div>
@@ -473,28 +488,30 @@ const BoardPage = () => {
               ) : (
                 <>
                   <div className="lists-container">
-                    {board.lists.filter(l => l.id !== "inbox").map((list) => (
-                      <ListColumn
-                        key={list.id}
-                        list={list}
-                        index={board.lists.indexOf(list)}
-                        board={board}
-                        setBoard={setBoard}
-                        renamingList={renamingList}
-                        setRenamingList={setRenamingList}
-                        newListName={newListName}
-                        setNewListName={setNewListName}
-                        handleRenameList={handleRenameList}
-                        setAddingCard={setAddingCard}
-                        addingCard={addingCard}
-                        selectedCard={selectedCard}
-                        setSelectedCard={setSelectedCard}
-                        handleAddCard={handleAddCard}
-                        newCardTitle={newCardTitle}
-                        setNewCardTitle={setNewCardTitle}
-                        onUpdateCard={handleUpdateCard}
-                      />
-                    ))}
+                    {board.lists
+                      .filter((l) => l.id !== "inbox")
+                      .map((list) => (
+                        <ListColumn
+                          key={list.id}
+                          list={list}
+                          index={board.lists.indexOf(list)}
+                          board={board}
+                          setBoard={setBoard}
+                          renamingList={renamingList}
+                          setRenamingList={setRenamingList}
+                          newListName={newListName}
+                          setNewListName={setNewListName}
+                          handleRenameList={handleRenameList}
+                          setAddingCard={setAddingCard}
+                          addingCard={addingCard}
+                          selectedCard={selectedCard}
+                          setSelectedCard={setSelectedCard}
+                          handleAddCard={handleAddCard}
+                          newCardTitle={newCardTitle}
+                          setNewCardTitle={setNewCardTitle}
+                          onUpdateCard={handleUpdateCard}
+                        />
+                      ))}
 
                     {addingList ? (
                       <div className="add-list-form">
@@ -505,11 +522,16 @@ const BoardPage = () => {
                           onChange={(e) => setNewListTitle(e.target.value)}
                           autoFocus
                         />
-                        <button onClick={() => setAddingList(false)}>Cancel</button>
+                        <button onClick={() => setAddingList(false)}>
+                          Cancel
+                        </button>
                         <button onClick={handleAddList}>Add</button>
                       </div>
                     ) : (
-                      <div className="add-list" onClick={() => setAddingList(true)}>
+                      <div
+                        className="add-list"
+                        onClick={() => setAddingList(true)}
+                      >
                         + Add another list
                       </div>
                     )}
@@ -518,12 +540,13 @@ const BoardPage = () => {
                   {selectedCard && (
                     <CardModal
                       card={selectedCard}
-                      list={board.lists.find(l => l.id === selectedCard.listId)}
+                      list={board.lists.find(
+                        (l) => l.id === selectedCard.listId
+                      )}
                       boardId={selectedCard.boardId}
                       listId={selectedCard.listId}
                       onUpdate={handleUpdateCard}
-                      onClose={() => setSelectedCard(null)
-                      }
+                      onClose={() => setSelectedCard(null)}
                     />
                   )}
                 </>
@@ -531,7 +554,6 @@ const BoardPage = () => {
             </div>
           </DndProvider>
         </div>
-
 
         <BottomToolbar openPanel={openPanel} setOpenPanel={setOpenPanel} />
       </div>

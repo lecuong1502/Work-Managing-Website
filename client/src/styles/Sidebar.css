@@ -1,0 +1,80 @@
+.sidebar {
+  width: 260px;
+  background: #f4f5f7;
+  min-height: 100vh;
+  padding: 16px 12px;
+  box-sizing: border-box;
+  border-right: 1px solid #dfe1e6;
+}
+
+.sidebar-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+}
+
+.sidebar-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sidebar-item:hover {
+  background: #e4f0f6;
+}
+
+.sidebar-item.active {
+  background: #0c66e4;
+  color: #fff;
+}
+
+.sidebar-workspace {
+  border-top: 1px solid #dfe1e6;
+  padding-top: 12px;
+}
+
+.workspace-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #6b778c;
+  margin-bottom: 8px;
+}
+
+.workspace-item {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.workspace-item:hover {
+  background: #e4f0f6;
+}
+.sidebar-submenu {
+  list-style: none;
+  margin: 4px 0 0 24px;
+  padding: 0;
+}
+
+.sidebar-subitem {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sidebar-subitem:hover {
+  background: #f3f4f6;
+}
+
+.sidebar-subitem.active {
+  background: #e5efff;
+  color: #2563eb;
+  font-weight: 600;
+}
