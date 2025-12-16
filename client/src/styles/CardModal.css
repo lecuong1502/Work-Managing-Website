@@ -508,3 +508,108 @@
 .modal-title-input:focus {
   border-color: #2b6adf;
 }
+
+.checklist {
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: #f8f9fb;
+    border-radius: 10px;
+    border: 1px solid #e2e6ea;
+}
+
+.checklist h4 {
+    margin: 0 0 10px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #172b4d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+    .progress {
+    font-size: 13px;
+    color: #5e6c84;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.progress::after {
+    content: "";
+    display: block;
+    height: 6px;
+    background: #dfe1e6;
+    border-radius: 4px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.progress::before {
+    content: "";
+    position: absolute;
+    height: 6px;
+    background: #5aac44;
+    border-radius: 4px;
+    width: calc(var(--progress) * 1%);
+    bottom: 0;
+    left: 0;
+}
+.checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 4px;
+    font-size: 14px;
+    color: #172b4d;
+}
+
+.checklist-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.checklist-item span {
+    flex: 1;
+    transition: color 0.2s ease;
+}
+.checklist-item input:checked + span {
+    text-decoration: line-through;
+    color: #6b778c;
+}
+.checklist-add-item {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.checklist-add-item input {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 13px;
+    border: 1px solid #dfe1e6;
+    border-radius: 6px;
+    outline: none;
+}
+
+.checklist-add-item input:focus {
+    border-color: #0079bf;
+}
+
+.checklist-add-item button {
+    padding: 6px 12px;
+    font-size: 13px;
+    background: #0079bf;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.checklist-add-item button:hover {
+    background: #026aa7;
+}
+.loading-checklist {
+    font-size: 13px;
+    color: #6b778c;
+    margin-top: 8px;
+}

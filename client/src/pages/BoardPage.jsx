@@ -7,7 +7,7 @@ import {
   data,
 } from "react-router-dom";
 import "../styles/BoardPage.css";
-import { UserPlusIcon } from "@heroicons/react/24/solid";
+import { UserPlusIcon, LockClosedIcon, UsersIcon } from "@heroicons/react/24/solid";
 import SearchBar from "../components/SearchBar";
 import CardModal from "../components/CardModal";
 import ListColumn from "../components/ListColumn";
@@ -20,6 +20,7 @@ import BoardSwitcher from "../components/BoardSwitcher";
 import Calendar from "../pages/CalendarPage";
 import Toast from "../components/Toast";
 import socket from "../socket";
+
 
 const BoardPage = () => {
   const { boardId } = useParams();
@@ -36,7 +37,8 @@ const BoardPage = () => {
   const [newListName, setNewListName] = useState("");
   const [newCardTitle, setNewCardTitle] = useState("");
   const [loading, setLoading] = useState(false);
-  const [numpanel, setNumpanel] = useState(0);
+
+  const [showVisibilityMenu, setShowVisibilityMenu] = useState(false);
 
   const [openPanel, setOpenPanel] = useState({
     inbox: false,
@@ -209,10 +211,10 @@ const BoardPage = () => {
     try {
       const res = await fetch(
         "http://localhost:3000/api/boards/" +
-          board.id +
-          "/lists/" +
-          listId +
-          "/cards",
+        board.id +
+        "/lists/" +
+        listId +
+        "/cards",
         {
           method: "POST",
           headers: {
@@ -249,16 +251,15 @@ const BoardPage = () => {
   };
 
   const handleUpdateCard = async (updatedCard, listId) => {
-    // 1. Update UI ngay
     setBoard((prevBoard) => {
       const newLists = prevBoard.lists.map((list) =>
         list.id === listId
           ? {
-              ...list,
-              cards: list.cards.map((c) =>
-                c.id === updatedCard.id ? updatedCard : c
-              ),
-            }
+            ...list,
+            cards: list.cards.map((c) =>
+              c.id === updatedCard.id ? updatedCard : c
+            ),
+          }
           : list
       );
 
@@ -266,8 +267,6 @@ const BoardPage = () => {
       updateBoardToStorage(updatedBoard);
       return updatedBoard;
     });
-
-    // 2. Sync backend
     try {
       await fetch(
         `http://localhost:3000/api/boards/${board.id}/lists/${listId}/cards/${updatedCard.id}`,
@@ -336,6 +335,35 @@ const BoardPage = () => {
   const handleChangeRole = async (memberId, newRole) => {
     console.log("Change role", memberId, newRole);
   };
+
+  const handleChangeVisibility = async (newVisibility) => {
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/boards/${board.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            name: board.name,
+            visibility: newVisibility,
+          }),
+        }
+      );
+
+      const updatedBoard = await res.json();
+
+      setBoard(updatedBoard);
+      updateBoardToStorage(updatedBoard);
+
+      setShowVisibilityMenu(false);
+    } catch (err) {
+      console.error("Lỗi đổi visibility:", err);
+    }
+  };
+
 
   if (!board) return <Loading />;
 
@@ -413,73 +441,111 @@ const BoardPage = () => {
                   <p className="description">{board.description}</p>
                 </div>
 
-                <div style={{ position: "relative" }}>
-                  <button
-                    className="add-member-btn"
-                    onClick={() => setShowShareForm(!showShareForm)}
-                  >
-                    <UserPlusIcon className="icon" />
-                    Add Member
-                  </button>
+                <div className="board-header-actions">
 
-                  {showShareForm && (
-                    <div className="share-board-popup">
-                      <div className="share-header">Share board</div>
-                      <div className="share-input-row">
-                        <input
-                          type="email"
-                          placeholder="Email address or name"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                        />
+                  <div style={{ position: "relative" }}>
+                    <button
+                      className="change-visibility-btn"
+                      onClick={() => setShowVisibilityMenu(!showVisibilityMenu)}
+                    >
+                      {board.visibility === "Workspace" ? (
+                        <>
+                          <UsersIcon className="icon" />
+                          Workspace
+                        </>
+                      ) : (
+                        <>
+                          <LockClosedIcon className="icon" />
+                          Private
+                        </>
+                      )}
+                    </button>
 
-                        <select
-                          value={role}
-                          onChange={(e) => setRole(e.target.value)}
-                          className="share-role-select"
-                        >
-                          <option value="member">Member</option>
-                          <option value="admin">Admin</option>
-                        </select>
-
-                        <button onClick={handleAddMember} disabled={loading}>
-                          {loading ? "Adding..." : "Share"}
-                        </button>
+                    {showVisibilityMenu && (
+                      <div className="visibility-menu">
+                        <div onClick={() => handleChangeVisibility("Workspace")}>
+                          <UsersIcon className="icon" />
+                          Workspace
+                        </div>
+                        <div onClick={() => handleChangeVisibility("Private")}>
+                          <LockClosedIcon className="icon" />
+                          Private
+                        </div>
                       </div>
-                      <div className="share-members-section">
-                        <div className="share-section-title">Board members</div>
+                    )}
+                  </div>
 
-                        {board?.members?.map((member) => (
-                          <div key={member.id} className="share-member-item">
-                            <div className="share-member-avatar">
-                              {member.name?.charAt(0)?.toUpperCase()}
-                            </div>
 
-                            <div className="share-member-info">
-                              <div className="share-member-name">
-                                {member.name}
+                  <div style={{ position: "relative" }}>
+                    <button
+                      className="add-member-btn"
+                      onClick={() => setShowShareForm(!showShareForm)}
+                    >
+                      <UserPlusIcon className="icon" />
+                      Add Member
+                    </button>
+
+                    {showShareForm && (
+                      <div className="share-board-popup">
+                        <div className="share-header">Share board</div>
+                        <div className="share-input-row">
+                          <input
+                            type="email"
+                            placeholder="Email address or name"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                          />
+
+                          <select
+                            value={role}
+                            onChange={(e) => setRole(e.target.value)}
+                            className="share-role-select"
+                          >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                          </select>
+
+                          <button onClick={handleAddMember} disabled={loading}>
+                            {loading ? "Adding..." : "Share"}
+                          </button>
+                        </div>
+
+
+                        <div className="share-members-section">
+                          <div className="share-section-title">Board members</div>
+
+                          {board?.members?.map((member) => (
+                            <div key={member.id} className="share-member-item">
+                              <div className="share-member-avatar">
+                                {member.name?.charAt(0)?.toUpperCase()}
                               </div>
-                              <div className="share-member-email">
-                                {member.email}
-                              </div>
-                            </div>
 
-                            <select
-                              className="share-role-select"
-                              value={member.role}
-                              onChange={(e) =>
-                                handleChangeRole(member.id, e.target.value)
-                              }
-                            >
-                              <option value="admin">Admin</option>
-                              <option value="member">Member</option>
-                              <option value="guest">Guest</option>
-                            </select>
-                          </div>
-                        ))}
+                              <div className="share-member-info">
+                                <div className="share-member-name">
+                                  {member.name}
+                                </div>
+                                <div className="share-member-email">
+                                  {member.email}
+                                </div>
+                              </div>
+
+                              <select
+                                className="share-role-select"
+                                value={member.role}
+                                onChange={(e) =>
+                                  handleChangeRole(member.id, e.target.value)
+                                }
+                              >
+                                <option value="admin">Admin</option>
+                                <option value="member">Member</option>
+                                <option value="guest">Guest</option>
+                              </select>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 

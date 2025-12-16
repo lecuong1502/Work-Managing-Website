@@ -3,7 +3,7 @@ import "../styles/CardModal.css"
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { useState } from "react";
-
+import socket from "../socket";
 
 const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
     if (!card) return null;
@@ -25,6 +25,11 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
 
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
+
+    const [checklists, setChecklists] = useState([]);
+    const [loadingChecklist, setLoadingChecklist] = useState(false);
+    const [newItemText, setNewItemText] = useState({});
+
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -120,6 +125,85 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
         onUpdate(updatedCard, listId);
     };
 
+    const fetchChecklists = async () => {
+        setLoadingChecklist(true);
+        try {
+            const res = await fetch(
+                `http://localhost:3000/api/cards/${card.id}/checklists`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                    },
+                }
+            );
+            const data = await res.json();
+            setChecklists(data);
+        } catch (err) {
+            console.error("Load checklist failed:", err);
+        } finally {
+            setLoadingChecklist(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!card?.id) return;
+        fetchChecklists();
+    }, [card.id]);
+
+
+
+    useEffect(() => {
+        const handler = ({ cardId }) => {
+            if (cardId === card.id) {
+                fetchChecklists();
+            }
+        };
+
+        socket.on("CHECKLIST_UPDATED", handler);
+
+        return () => {
+            socket.off("CHECKLIST_UPDATED", handler);
+        };
+    }, [card.id]);
+
+    const toggleItem = async (itemId) => {
+        try {
+            await fetch(
+                `http://localhost:3000/api/checklist-items/${itemId}/toggle`,
+                {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                    },
+                }
+            );
+        } catch (err) {
+            console.error("Toggle checklist item failed:", err);
+        }
+    };
+
+    const addChecklistItem = async (checklistId) => {
+        const text = newItemText[checklistId];
+        if (!text || !text.trim()) return;
+
+        try {
+            await fetch(
+                `http://localhost:3000/api/checklists/${checklistId}/items`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                    },
+                    body: JSON.stringify({ description: text.trim() }),
+                }
+            );
+
+            setNewItemText(prev => ({ ...prev, [checklistId]: "" }));
+        } catch (err) {
+            console.error("Add checklist item failed:", err);
+        }
+    };
 
     return (
         <div className="modal-overlay" onClick={handleOverlayClose}>
@@ -197,6 +281,53 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
                                         }}>Cancel</button>
                                     </div>
                                 )}
+
+                                {loadingChecklist && <p>Loading checklist...</p>}
+
+                                {checklists.map((cl) => (
+                                    <div key={cl.checklist_id} className="checklist">
+                                        <h4>{cl.title}</h4>
+
+                                        <div
+                                            className="progress"
+                                            style={{ "--progress": cl.progress }}
+                                        >
+                                            Progress: {cl.progress}%
+                                        </div>
+
+
+                                        {cl.items.map((item) => (
+                                            <div key={item.item_id} className="checklist-item">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={item.is_completed}
+                                                    onChange={() => toggleItem(item.item_id)}
+                                                />
+                                                <span>{item.description}</span>
+                                            </div>
+                                        ))}
+
+                                        <div className="checklist-add-item">
+                                            <input
+                                                type="text"
+                                                placeholder="Add an item..."
+                                                value={newItemText[cl.checklist_id] || ""}
+                                                onChange={(e) =>
+                                                    setNewItemText(prev => ({
+                                                        ...prev,
+                                                        [cl.checklist_id]: e.target.value
+                                                    }))
+                                                }
+                                                onKeyDown={(e) =>
+                                                    e.key === "Enter" && addChecklistItem(cl.checklist_id)
+                                                }
+                                            />
+                                            <button onClick={() => addChecklistItem(cl.checklist_id)}>
+                                                Add
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
 
 
                             </div>

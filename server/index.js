@@ -208,7 +208,7 @@ const initMockDatabase = () => {
                     // Xóa field checklist trong template gốc để chuẩn hóa dữ liệu (Card không chứa trực tiếp checklist nữa)
                     delete card.checklists;
                 }
-                
+
                 // Đảm bảo card nào cũng có field isDone
                 if (card.isDone === undefined) card.isDone = false;
             });
@@ -663,12 +663,11 @@ app.put("/api/boards/:id", authMiddleware, (req, res) => {
     // Cập nhật board tại index đó
     const originalBoard = boardsOfThisUser[boardIndex];
     const updatedBoard = {
-        ...originalBoard, // Giữ lại ID và lists cũ
-        name: name,
-        description:
-            description !== undefined ? description : originalBoard.description,
-        color: color || originalBoard.color,
-        visibility: visibility || originalBoard.visibility,
+        ...originalBoard,
+        name: name !== undefined ? name : originalBoard.name,
+        description: description !== undefined ? description : originalBoard.description,
+        color: color !== undefined ? color : originalBoard.color,
+        visibility: visibility !== undefined ? visibility : originalBoard.visibility,
     };
 
     boardsOfThisUser[boardIndex] = updatedBoard;
@@ -1425,7 +1424,7 @@ app.post("/api/boards/:boardId/events", authMiddleware, (req, res) => {
     };
 
     calendarEvents.push(newEvent);
-    
+
     // Socket.io
     io.emit("SERVER_EVENT_CREATED", newEvent);
 
@@ -1547,19 +1546,19 @@ app.put("/api/cards/:cardId/status", authMiddleware, (req, res) => {
 
     // Toggle trạng thái isDone (status BOOLEAN)
     foundCard.isDone = !foundCard.isDone;
-    
+
     // Cập nhật state text 
     if (foundCard.isDone) {
-        foundCard.state = "Done"; 
+        foundCard.state = "Done";
     } else {
         foundCard.state = "Inprogress";
     }
-    
+
     foundCard.updated_at = new Date();
 
     // Socket: Báo cho mọi người biết card này đã đổi trạng thái
     io.emit("CARD_UPDATED", { boardId: foundBoard.id, card: foundCard });
-    
+
     io.emit("board_updated", foundBoard);
 
     res.status(200).json(foundCard);
@@ -1578,7 +1577,7 @@ app.get("/api/cards/:cardId/checklists", authMiddleware, (req, res) => {
     // Map items vào từng checklist (SQL Join Logic)
     const result = checklists.map(cl => {
         const items = mockChecklistItems.filter(item => item.checklist_id === cl.checklist_id);
-        
+
         // Tính toán tiến độ (progress)
         const total = items.length;
         const completed = items.filter(i => i.is_completed).length;
@@ -1635,7 +1634,7 @@ app.put("/api/checklist-items/:itemId/toggle", authMiddleware, (req, res) => {
 
     // Tìm checklist cha để lấy card_id gửi socket
     const checklist = mockChecklists.find(cl => cl.checklist_id === item.checklist_id);
-    
+
     if (checklist) {
         io.emit("CHECKLIST_UPDATED", { cardId: checklist.card_id });
     }

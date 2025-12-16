@@ -2,6 +2,8 @@ import React from "react";
 import CardItem from "./CardItem";
 import "../styles/ListColumn.css";
 import { useDrop } from "react-dnd";
+import { PencilIcon } from "@heroicons/react/24/outline";
+
 
 const ListColumn = ({
   list,
@@ -127,7 +129,7 @@ const ListColumn = ({
                 setNewListName(list.title);
               }}
             >
-              <img src="/assets/edit.svg" alt="rename"></img>
+              <PencilIcon className="icon" />
             </button>
           </div>
         )}
