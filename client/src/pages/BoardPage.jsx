@@ -364,6 +364,35 @@ const BoardPage = () => {
     }
   };
 
+  //Drag drop list
+
+  const moveList = (fromIndex, toIndex) => {
+    setBoard((prev) => {
+      const newLists = [...prev.lists];
+      const [moved] = newLists.splice(fromIndex, 1);
+      newLists.splice(toIndex, 0, moved);
+
+      const updated = { ...prev, lists: newLists };
+      sessionStorage.setItem("boards", JSON.stringify(updated));
+      return updated;
+    });
+
+    fetch("http://localhost:3000/api/boards/lists/move", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({
+        sourceBoardId: board.id,
+        destBoardId: board.id,
+        listId: board.lists[fromIndex].id,
+        index: toIndex,
+      }),
+    });
+  };
+
+
 
   if (!board) return <Loading />;
 
@@ -381,7 +410,7 @@ const BoardPage = () => {
 
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-container">
-          <DndProvider backend={HTML5Backend}>
+          <DndProvider backend={HTML5Backend}>  
             {openPanel.inbox && (
               <div className="side-panel inbox-panel">
                 {openPanel.inbox && (
@@ -475,7 +504,6 @@ const BoardPage = () => {
                     )}
                   </div>
 
-
                   <div style={{ position: "relative" }}>
                     <button
                       className="add-member-btn"
@@ -561,6 +589,7 @@ const BoardPage = () => {
                           key={list.id}
                           list={list}
                           index={board.lists.indexOf(list)}
+                          moveList={moveList}
                           board={board}
                           setBoard={setBoard}
                           renamingList={renamingList}

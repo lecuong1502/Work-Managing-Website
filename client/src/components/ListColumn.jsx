@@ -1,12 +1,14 @@
 import React from "react";
 import CardItem from "./CardItem";
 import "../styles/ListColumn.css";
-import { useDrop } from "react-dnd";
+import { useDrag, useDrop } from "react-dnd";
 import { PencilIcon } from "@heroicons/react/24/outline";
 
 
 const ListColumn = ({
   list,
+  index,
+  moveList,
   board,
   setBoard,
   renamingList,
@@ -82,17 +84,68 @@ const ListColumn = ({
       .catch((err) => console.error("Lỗi di chuyển thẻ:", err));
   };
 
-  const [, drop] = useDrop({
+  const listRef = React.useRef(null);
+  const cardDropRef = React.useRef(null);
+
+
+  // const [, drop] = useDrop({
+  //   accept: ["card", "list"],
+  //   hover: (item, monitor) => {
+  //     if (!monitor.isOver({ shallow: true })) return;
+
+  //     // DRAG LIST
+  //     if (item.type === "list") {
+  //       if (item.listId === list.id) return;
+
+  //       moveList(item.index, index);
+  //       item.index = index;
+  //     }
+  //   },
+  //   drop: (item, monitor) => {
+  //     if (!monitor.isOver({ shallow: true })) return;
+
+  //     // DROP CARD
+  //     if (item.type === "card") {
+  //       const { cardId, fromListId } = item;
+  //       moveCard(cardId, fromListId, list.id, list.cards.length);
+  //     }
+  //   },
+  // });
+
+  const [, listDrop] = useDrop({
+    accept: "list",
+    hover(item, monitor) {
+      if (!monitor.isOver({ shallow: true })) return;
+      if (item.index === index) return;
+
+      moveList(item.index, index);
+      item.index = index;
+    },
+  });
+
+  const [, drag] = useDrag({
+    type: "list",
+    item: { type: "list", index },
+  });
+
+  drag(listDrop(listRef));
+
+
+  const [, cardDrop] = useDrop({
     accept: "card",
-    drop: (item, monitor) => {
+    drop(item, monitor) {
       if (!monitor.isOver({ shallow: true })) return;
 
       const { cardId, fromListId } = item;
-      const toListId = list.id;
 
-      moveCard(cardId, fromListId, toListId, list.cards.length);
+      if (fromListId !== list.id) {
+        moveCard(cardId, fromListId, list.id, list.cards.length);
+        item.fromListId = list.id;
+      }
     },
   });
+
+  cardDrop(cardDropRef);
 
   const VISIBLE_CARD_STATES = ["Inprogress", "Done"];
 
@@ -107,7 +160,7 @@ const ListColumn = ({
   };
 
   return (
-    <div ref={drop} className="list-column">
+    <div ref={listRef} className="list-column">
       <div className="list-header">
         {renamingList === list.id ? (
           <div className="rename-list-box">
@@ -135,7 +188,7 @@ const ListColumn = ({
         )}
       </div>
 
-      <div className="card-container">
+      <div ref={cardDropRef} className="card-container">
         {list.cards.length === 0 && <p className="empty">Không có thẻ nào</p>}
         {list.cards
           .filter((card) => VISIBLE_CARD_STATES.includes(card.state))

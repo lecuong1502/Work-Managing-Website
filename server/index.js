@@ -837,51 +837,143 @@ app.delete("/api/boards/:boardId/lists/:listId", authMiddleware, (req, res) => {
 });
 
 // Drop lists
+// app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
+//     const { sourceBoardId, destBoardId, listId, index } = req.body;
+
+//     // Validation
+//     if (!sourceBoardId || !destBoardId || !listId) {
+//         return res
+//             .status(400)
+//             .json({
+//                 message: "Thiếu thông tin: sourceBoardId, destBoardId hoặc listId.",
+//             });
+//     }
+
+//     // 2. Tìm Board Nguồn và Board Đích
+//     const sourceBoard = userBoards.find((b) => b.id == sourceBoardId);
+//     const destBoard = userBoards.find((b) => b.id == destBoardId);
+
+//     if (!sourceBoard) {
+//         return res
+//             .status(404)
+//             .json({
+//                 message: "Không tìm thấy Board nguồn hoặc không có quyền truy cập.",
+//             });
+//     }
+
+//     if (!destBoard) {
+//         return res
+//             .status(404)
+//             .json({
+//                 message: "Không tìm thấy Board đích hoặc không có quyền truy cập.",
+//             });
+//     }
+
+//     // List cần chuyển trong Board nguồn
+//     const listIndex = sourceBoard.lists.findIndex((l) => l.id === listId);
+
+//     if (listIndex === -1) {
+//         return res
+//             .status(404)
+//             .json({ message: "Không tìm thấy List trong Board nguồn." });
+//     }
+
+//     // CẮT List ra khỏi Board nguồn (Dùng splice)
+//     const [movedList] = sourceBoard.lists.splice(listIndex, 1);
+
+//     // THÊM List vào Board đích
+//     if (
+//         typeof index === "number" &&
+//         index >= 0 &&
+//         index <= destBoard.lists.length
+//     ) {
+//         destBoard.lists.splice(index, 0, movedList);
+//     } else {
+//         destBoard.lists.push(movedList);
+//     }
+
+//     console.log(
+//         `Đã chuyển list "${movedList.title}" từ Board ${sourceBoardId} sang Board ${destBoardId}`
+//     );
+
+//     res.status(200).json({
+//         message: "Di chuyển List thành công",
+//         sourceBoardId,
+//         destBoardId,
+//         movedList,
+//     });
+// });
+
+// Move list
 app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
-    const { sourceBoardId, destBoardId, listId, index } = req.body;
+    const userId = req.user.id;
+    const {
+        sourceBoardId,
+        destBoardId,
+        listId,
+        index
+    } = req.body;
 
-    // Validation
+    const io = req.app.get("socketio");
+
+    // 1. Validate input
     if (!sourceBoardId || !destBoardId || !listId) {
-        return res
-            .status(400)
-            .json({
-                message: "Thiếu thông tin: sourceBoardId, destBoardId hoặc listId.",
-            });
+        return res.status(400).json({
+            message: "Thiếu thông tin cần thiết để di chuyển list."
+        });
     }
 
-    // 2. Tìm Board Nguồn và Board Đích
-    const sourceBoard = userBoards.find((b) => b.id == sourceBoardId);
-    const destBoard = userBoards.find((b) => b.id == destBoardId);
-
-    if (!sourceBoard) {
-        return res
-            .status(404)
-            .json({
-                message: "Không tìm thấy Board nguồn hoặc không có quyền truy cập.",
-            });
+    if (!userBoards || typeof userBoards !== "object") {
+        return res.status(500).json({
+            message: "userBoards chưa được khởi tạo."
+        });
     }
 
-    if (!destBoard) {
-        return res
-            .status(404)
-            .json({
-                message: "Không tìm thấy Board đích hoặc không có quyền truy cập.",
-            });
+    // 2. Gom tất cả board
+    const allBoards = Object.values(userBoards).flat();
+
+    const sourceBoard = allBoards.find(b => String(b.id) === String(sourceBoardId));
+    const destBoard   = allBoards.find(b => String(b.id) === String(destBoardId));
+
+    if (!sourceBoard || !destBoard) {
+        return res.status(404).json({
+            message: "Không tìm thấy board nguồn hoặc board đích."
+        });
     }
 
-    // List cần chuyển trong Board nguồn
-    const listIndex = sourceBoard.lists.findIndex((l) => l.id === listId);
+    // 3. Check quyền
+    const hasPermission = (board) => {
+        const isOwner  = board.userId === userId;
+        const isMember = board.members?.some(m => m.id === userId);
+        return isOwner || isMember;
+    };
+
+    if (!hasPermission(sourceBoard) || !hasPermission(destBoard)) {
+        return res.status(403).json({
+            message: "Bạn không có quyền chỉnh sửa board này."
+        });
+    }
+
+    if (!Array.isArray(sourceBoard.lists) || !Array.isArray(destBoard.lists)) {
+        return res.status(500).json({
+            message: "Dữ liệu list không hợp lệ."
+        });
+    }
+
+    // 4. Lấy list cần move
+    const listIndex = sourceBoard.lists.findIndex(
+        l => String(l.id) === String(listId)
+    );
 
     if (listIndex === -1) {
-        return res
-            .status(404)
-            .json({ message: "Không tìm thấy List trong Board nguồn." });
+        return res.status(404).json({
+            message: "List không tồn tại trong board nguồn."
+        });
     }
 
-    // CẮT List ra khỏi Board nguồn (Dùng splice)
     const [movedList] = sourceBoard.lists.splice(listIndex, 1);
 
-    // THÊM List vào Board đích
+    // 5. Chèn vào board đích
     if (
         typeof index === "number" &&
         index >= 0 &&
@@ -893,16 +985,38 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
     }
 
     console.log(
-        `Đã chuyển list "${movedList.title}" từ Board ${sourceBoardId} sang Board ${destBoardId}`
+        `Đã chuyển List "${movedList.title}" từ Board ${sourceBoardId} sang Board ${destBoardId}`
     );
 
+    // 6. Emit socket realtime
+    if (io) {
+        const payload = {
+            movedList,
+            sourceBoardId,
+            destBoardId,
+            index
+        };
+
+        io.to(String(sourceBoardId)).emit("LIST_MOVED", payload);
+
+        if (String(destBoardId) !== String(sourceBoardId)) {
+            io.to(String(destBoardId)).emit("LIST_MOVED", payload);
+        }
+
+        io.to(String(sourceBoardId)).emit("board_updated", sourceBoard);
+
+        if (String(destBoardId) !== String(sourceBoardId)) {
+            io.to(String(destBoardId)).emit("board_updated", destBoard);
+        }
+    }
+
+    // 7. Response
     res.status(200).json({
         message: "Di chuyển List thành công",
-        sourceBoardId,
-        destBoardId,
-        movedList,
+        movedList
     });
 });
+
 
 // Drop cards
 app.put("/api/cards/move", authMiddleware, (req, res) => {
