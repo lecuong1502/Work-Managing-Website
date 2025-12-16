@@ -1,6 +1,6 @@
 INSERT INTO users (username, email, password_hash, avatar_url, role) VALUES 
 ("admin","a@admin.com","$2b$10$wKQuZsVqnRyg5X6HHZUBp.HITifdt8DDZSZ0kJfaVUo1KQReHg4t6","https://placehold.co/400x400/EEE/31343C?text=a",'admin'),
-("cuong","c@sample.com","$10$s44WOOfetSdJfnP1R6Om2u/twAS9cjFZjhrC6Hk/iBCm7VqJWofCy","https://placehold.co/400x400/EEE/31343C?text=c",'user');
+("cuong","c@sample.com","$10$s44WOOfetSdJfnP1R6Om2u/twAS9cjFZjhrC6Hk/iBCm7VqJWofCy","https://placehold.co/400x400/EEE/31343C?text=c",'member');
 -- admin password Cuong@1234
 -- INSERT INTO users (username, email, password_hash, avatar_url, role)
 
