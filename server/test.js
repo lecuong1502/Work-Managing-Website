@@ -146,7 +146,7 @@ async function getBoardById(boardId) {
 
       // Lấy cards trong list
       const [cardRows] = await pool.query(
-        "SELECT card_id AS id, title, description, due_date AS dueDate, position FROM cards WHERE list_id = ? ORDER BY position",
+        "SELECT card_id AS id, title, description, due_date AS dueDate, state, position FROM cards WHERE list_id = ? ORDER BY position",
         [list.id]
       );
 
@@ -155,7 +155,8 @@ async function getBoardById(boardId) {
           id: card.id,
           title: card.title,
           description: card.description,
-          dueDate: card.dueDate,
+          dueDate: convertDateBtoF(card.dueDate),
+          state: card.state,
           labels: [],
           members: [],
           position: card.position,
@@ -203,7 +204,7 @@ async function getListsById(listId) {
 
     // Lấy cards trong list
     const [cardRows] = await pool.query(
-      "SELECT card_id AS id, title, description, due_date AS dueDate, status, hidden, position FROM cards WHERE list_id = ? ORDER BY position",
+      "SELECT card_id AS id, title, description, due_date AS dueDate, state, position FROM cards WHERE list_id = ? ORDER BY position",
       [listId]
     );
 
@@ -214,9 +215,8 @@ async function getListsById(listId) {
         id: card.id,
         title: card.title,
         description: card.description,
-        dueDate: card.dueDate,
-        status: card.status,
-        hidden: card.hidden,
+        dueDate: convertDateBtoF(card.dueDate),
+        state: card.state,
         labels: [],
         members: [],
         position: card.position,
@@ -254,12 +254,13 @@ async function getCardById(cardId) {
     // Lấy thông tin card
     const [cardRows] = await pool.query(
       `SELECT card_id AS id, list_id, title, description, position, 
-              due_date AS dueDate, status, hidden, created_at, updated_at
+              due_date AS dueDate, state, created_at, updated_at
        FROM cards WHERE card_id = ?`,
       [cardId]
     );
     if (cardRows.length === 0) return null;
     const card = cardRows[0];
+    card.dueDate=convertDateBtoF(card.dueDate);
 
     // Lấy labels
     const [labelRows] = await pool.query(
@@ -304,6 +305,21 @@ async function getCardById(cardId) {
   } finally {
     //await connection.end();
   }
+}
+
+function convertDateFtoB(dateDDMMYYYY) {
+    if (dateDDMMYYYY == null) return null;
+    const parts = dateDDMMYYYY.split('/');
+    const dateFormatted = `${parts[1]}/${parts[0]}/${parts[2]}`;
+    const dateYYYYMMDD = new Date(dateFormatted);
+    return dateYYYYMMDD;
+}
+
+function convertDateBtoF(dateYYYYMMDD) {
+    if (dateYYYYMMDD == null) return null;
+    const datetimeFromMySQL = new Date(dateYYYYMMDD);
+    const dateDDMMYYYY = datetimeFromMySQL.toLocaleDateString('vi-VN');
+    return dateDDMMYYYY;
 }
 
 // --- ROUTE (API ENDPOINTS) ---
@@ -1081,6 +1097,7 @@ app.post(
         title: title,
         description: description || "",
         position: newPosition,
+        state: "Inprogress",
         labels: labels || [],
         due_date: dueDate || null,
         members: members || [],
@@ -1120,7 +1137,7 @@ app.put(
   async (req, res) => {
     const userId = req.user.id;
     const { boardId, listId, cardId } = req.params;
-    const { title, description, labels, dueDate, status, hidden, members } =
+    const { title, description, labels, dueDate, state, members } =
       req.body;
 
     // Kiểm tra quyền sở hữu trong board_members
@@ -1205,7 +1222,7 @@ app.put(
 
       // Lấy card cũ để so sánh
       const oldCards = await connection.query(
-        "SELECT title, description, due_date, status, hidden FROM cards WHERE card_id = ?",
+        "SELECT title, description, due_date, state FROM cards WHERE card_id = ?",
         cardId
       );
       const oldCard = oldCards[0];
@@ -1214,15 +1231,13 @@ app.put(
       const newTitle = title !== undefined ? title : oldCard.title;
       const newDescription =
         description !== undefined ? description : oldCard.description;
-      const newDueDate = dueDate !== undefined ? dueDate : oldCard.due_date;
-      const newStatus = status !== undefined ? status : oldCard.status;
-      const newHidden = hidden !== undefined ? hidden : oldCard.hidden;
+      const newDueDate = dueDate !== undefined ? convertDateFtoB(dueDate) : oldCard.due_date;
+      const newState = state !== undefined ? state : oldCard.state;
       // Cập nhật bảng cards
       await connection.query(
-        "UPDATE cards SET title = ?, description = ?, due_date = ?, status = ?, hidden = ? WHERE card_id = ?",
-        [newTitle, newDescription, newDueDate, newStatus, newHidden, cardId]
+        "UPDATE cards SET title = ?, description = ?, due_date = ?, state = ? WHERE card_id = ?",
+        [newTitle, newDescription, newDueDate, newState, cardId]
       );
-
       await connection.commit();
 
       const updatedCard = await getCardById(cardId);
@@ -1387,6 +1402,133 @@ app.delete("/api/users/:id", async (req, res) => {
     console.error("Lỗi DELETE /api/users/:id:", err);
     res.status(500).json({ message: "Lỗi server" });
   }
+});
+
+// CALENDAR API ENDPOINTS
+
+// Lấy danh sách sự kiện của một board
+app.get("/api/boards/:boardId/events", authMiddleware, async (req, res) => {
+    const userId = Number(req.user.id);
+    const boardId = Number(req.params.boardId);
+
+     // Kiểm tra quyền sở hữu trong board_members
+    if (!(await checkBoardMembership(userId, boardID))) {
+        return res
+            .status(404)
+            .json({ message: "Board không tồn tại hoặc không có quyền." });
+    }
+
+    // Lọc sự kiện thuộc board_id này từ "bảng" calendarEvents
+    const connection = await pool.getConnection();
+    try {
+        connection.beginTransaction();
+        const events = await connection.query("SELECT * FROM calendar_events WHERE board_id = ?", [boardId]);
+        res.status(201).json(events);
+        connection.commit;
+
+        // Socket.io
+        io.emit("SERVER_EVENT_CREATED", newEvent);
+    } catch (e) {
+        connection.rollback();
+        console.log(e);
+        res.status(500).json({ message: "Lỗi server" });
+    } finally {
+        connection.release();
+    }
+});
+
+// Cập nhật sự kiện (Kéo thả lịch, đổi tên, v.v.)
+app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
+    const userId = Number(req.user.id);
+    const eventId = Number(req.params.eventId);
+    const { title, start_time, end_time, description } = req.body;
+
+    // Tìm event trong "bảng" calendarEvents
+    const eventIndex = pool.query("SELECT * FROM calendar_events WHERE event_id = ?", [eventId]);
+    if (eventIndex.length === 0) {
+        return res.status(404).json({ message: "Sự kiện không tồn tại." });
+    }
+
+    const event = calendarIndex[0];
+
+    // Kiểm tra quyền sở hữu trong board_members
+    if (!(await checkBoardMembership(userId, event.board_id))) {
+        return res
+            .status(404)
+            .json({ message: "Board không tồn tại hoặc không có quyền." });
+    }
+
+    // Cập nhật
+    const updatedEvent = {
+        ...event,
+        title: title || event.title,
+        start_time: start_time || event.start_time,
+        end_time: end_time || event.end_time,
+        description: description !== undefined ? description : event.description,
+    };
+
+    const connection = await pool.getConnection()
+    try {
+        connection.beginTransaction();
+        await connection
+                .query(`UPDATE calendar_events 
+                SET title = ?, start_time = ?, end_time = ?, description = ? WHERE event_id = ?`,
+                [updatedEvent.title, updatedEvent.start_time, updatedEvent.end_time, updatedEvent.description]);
+        connection.commit();
+        //Socket.io
+        io.emit("SERVER_EVENT_UPDATED", updatedEvent);
+
+        console.log("Event Updated:", updatedEvent);
+        res.status(200).json(updatedEvent);
+    } catch (e) {
+        console.log(e);
+        connection.rollback();
+        res.status(500).json({ message: "Lỗi server" });
+    } finally {
+        connection.release();
+    }
+
+});
+
+// Delete events
+app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
+    const userId = Number(req.user.id);
+    const eventId = Number(req.params.eventId);
+
+    // Tìm event trong "bảng" calendarEvents
+    const eventIndex = pool.query("SELECT * FROM calendar_events WHERE event_id = ?", [eventId]);
+    if (eventIndex.length === 0) {
+        return res.status(404).json({ message: "Sự kiện không tồn tại." });
+    }
+
+    const event = calendarIndex[0];
+
+    // Kiểm tra quyền sở hữu trong board_members
+    if (!(await checkBoardMembership(userId, event.board_id))) {
+        return res
+            .status(404)
+            .json({ message: "Board không tồn tại hoặc không có quyền." });
+    }
+
+    // Xóa 
+    const connection = await pool.getConnection()
+    try {
+        connection.beginTransaction();
+        await connection.query(`DELETE FROM calendar_events WHERE event_id = ?`,[eventId]);
+        connection.commit();
+        //Socket.io
+        io.emit("SERVER_EVENT_DELETED", { event_id: eventId });
+
+        console.log(`Event ID ${eventId} đã bị xóa.`);
+        res.status(200).json({ message: "Đã xóa sự kiện thành công." });
+    } catch (e) {
+        console.log(e);
+        connection.rollback();
+        res.status(500).json({ message: "Lỗi server" });
+    } finally {
+        connection.release();
+    }
+    
 });
 
 // Frontend Socket.io

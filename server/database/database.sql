@@ -29,7 +29,7 @@ CREATE TABLE boards (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 -- ADD
@@ -58,7 +58,7 @@ CREATE TABLE lists (
     title VARCHAR(255) NOT NULL,
     position INT NOT NULL DEFAULT 0,
 
-    FOREIGN KEY (board_id) REFERENCES boards(board_id)
+    FOREIGN KEY (board_id) REFERENCES boards(board_id) ON DELETE CASCADE
 );
 
 -- ADD
@@ -72,16 +72,15 @@ CREATE TABLE cards (
     description TEXT,
     position INT NOT NULL DEFAULT 0,
     due_date DATETIME,
-    status BOOLEAN DEFAULT FALSE,-- Trạng thái thẻ checkbox
-    hidden BOOLEAN DEFAULT FALSE,-- Trạng thái ẩn/thể hiện thẻ
+    state VARCHAR(10) DEFAULT "Inprogress", -- Inprogress/Done/Archived
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (list_id) REFERENCES lists(list_id)
+    FOREIGN KEY (list_id) REFERENCES lists(list_id) ON DELETE CASCADE
 );
 
 -- ADD
--- INSERT INTO cards (card_id, list_id, title, description, position, due_date, status)
+-- INSERT INTO cards (card_id, list_id, title, description, position, due_date, state)
 -- VALUES (card_1, 1, "title", "description", 0, "2025-11-22");
 
 CREATE TABLE card_members (
@@ -105,8 +104,8 @@ CREATE TABLE card_comments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (card_id) REFERENCES cards(card_id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
+    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 -- ADD
@@ -120,8 +119,8 @@ CREATE TABLE card_attachments (
     file_url VARCHAR(255),
     file_type VARCHAR(50),
 
-    FOREIGN KEY (card_id) REFERENCES cards(card_id),
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
+    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 -- ADD
