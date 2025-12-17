@@ -221,6 +221,22 @@ initMockDatabase();
 
 let eventIdCounter = calendarEvents.length > 0 ? Math.max(...calendarEvents.map((e) => e.event_id)) + 1 : 1;
 
+const checkEditPermission = (board, userId) => {
+    const isOwner = board.userId === userId;
+    const isMember = board.members?.some(m => m.id === userId);
+
+    if (isOwner) return true; // Owner luôn được sửa
+
+    if (isMember) {
+        // Nếu là Workspace: Member được sửa
+        if (board.visibility === "Workspace") return true;
+        // Nếu là Private: Member KHÔNG được sửa
+        if (board.visibility === "Private") return false;
+    }
+
+    return false;
+}
+
 io.use((socket, next) => {
     // Log ra để kiểm tra xem Token nằm ở đâu
     console.log("--- DEBUG SOCKET HANDSHAKE ---");
@@ -561,16 +577,34 @@ app.get("/api/boards/:boardID", authMiddleware, (req, res) => {
             .json({ message: "Bạn không có quyền truy cập board này." });
     }
 
+    // Owner: Luôn được sửa
+    // Member: Được sửa nếu visibility là 'Workspace', 'Private' thì chỉ xem
+    let canEdit = false;
+
+    if (isOwner) {
+        canEdit = true;
+    } else if (isMember) {
+        if (board.visibility === "Workspace") {
+            canEdit = true;
+        } else if (board.visibility === "Private") {
+            canEdit = false; // Member chỉ được xem
+        }
+    }
+
     // Lấy events mới nhất từ biến calendarEvents ghép vào
     const currentEvents = calendarEvents.filter(e => e.board_id === board.id);
 
     // Tạo object trả về 
     const responseData = {
         ...board,
-        events: currentEvents
+        events: currentEvents,
+        permissions: {
+            isOwner: isOwner,
+            canEdit: canEdit
+        }
     };
 
-    res.status(200).json(board);
+    res.status(200).json(responseData);
 });
 
 // Add, edit, delete boards in database
@@ -624,88 +658,98 @@ app.post("/api/boards", authMiddleware, (req, res) => {
     res.status(201).json(newBoard);
 });
 
-// Edit new boards
+// Edit board (Owner hoặc Member Workspace)
 app.put("/api/boards/:id", authMiddleware, (req, res) => {
-    const userId = req.user.id;
-
-    if (!userId) {
-        return res.status(401).json({ message: "Chưa xác thực" });
-    }
-
-    // Lấy boardId từ URL params
-    const boardId = parseInt(req.params.id, 10);
-    if (isNaN(boardId)) {
-        return res.status(400).json({ message: "Board ID không hợp lệ" });
-    }
-
-    // Lấy dữ liệu mới từ body
+    const userId = Number(req.user.id);
+    const boardId = req.params.id;
     const { name, description, color, visibility } = req.body;
-    if (!name) {
-        return res.status(400).json({ message: "Tên board là bắt buộc" });
+
+    // TÌM BOARD TRONG TOÀN BỘ DB
+    let targetBoard = null;
+
+    // Duyệt qua tất cả các key user trong userBoards
+    const allUserIds = Object.keys(userBoards);
+    for (const ownerId of allUserIds) {
+        const found = userBoards[ownerId].find(b => String(b.id) === String(boardId));
+        if (found) {
+            targetBoard = found;
+            break;
+        }
     }
 
-    // Lấy mảng board của user
-    const boardsOfThisUser = userBoards[userId];
-    if (!boardsOfThisUser) {
-        return res
-            .status(404)
-            .json({ message: "Không tìm thấy dữ liệu board cho user này" });
-    }
-
-    // Tìm index của board cần cập nhật
-    const boardIndex = boardsOfThisUser.findIndex((b) => b.id === boardId);
-
-    if (boardIndex === -1) {
-        // Board ID này không tồn tại trong mảng của user
+    if (!targetBoard) {
         return res.status(404).json({ message: "Không tìm thấy board" });
     }
 
-    // Cập nhật board tại index đó
-    const originalBoard = boardsOfThisUser[boardIndex];
-    const updatedBoard = {
-        ...originalBoard,
-        name: name !== undefined ? name : originalBoard.name,
-        description: description !== undefined ? description : originalBoard.description,
-        color: color !== undefined ? color : originalBoard.color,
-        visibility: visibility !== undefined ? visibility : originalBoard.visibility,
-    };
+    // KIỂM TRA QUYỀN
+    if (!checkEditPermission(targetBoard, userId)) {
+        return res.status(403).json({
+            message: "Bạn không có quyền chỉnh sửa board này (Private Mode hoặc bạn không phải thành viên)."
+        });
+    }
 
-    boardsOfThisUser[boardIndex] = updatedBoard;
+    // THỰC HIỆN UPDATE
+    if (name !== undefined) targetBoard.name = name;
+    if (description !== undefined) targetBoard.description = description;
+    if (color !== undefined) targetBoard.color = color;
 
-    console.log(`UserBoards của user ${userId} sau khi SỬA:`, userBoards[userId]);
-    res.json(updatedBoard);
+    // Đặc biệt: Chỉ Owner mới được đổi Visibility (Member không được đổi)
+    if (visibility !== undefined) {
+        if (targetBoard.userId === userId) {
+            targetBoard.visibility = visibility;
+        }
+
+        // SOCKET REAL-TIME
+        io.emit("board_updated", targetBoard);
+
+        res.status(200).json(targetBoard);
+    }
 });
 
-// Delete boards
+// Delete board (CHỈ OWNER MỚI ĐƯỢC XÓA)
 app.delete("/api/boards/:id", authMiddleware, (req, res) => {
-    const userId = req.user.id;
-    if (!userId) {
-        return res.status(401).json({ message: "Chưa xác thực" });
+    const userId = Number(req.user.id);
+    const boardId = req.params.id;
+
+    // TÌM BOARD VÀ VỊ TRÍ CỦA NÓ
+    let ownerIdOfBoard = null;
+    let boardIndex = -1;
+
+    // Duyệt tìm xem board này nằm trong mảng của user nào
+    const allUserIds = Object.keys(userBoards);
+    for (const uId of allUserIds) {
+        const idx = userBoards[uId].findIndex(b => String(b.id) === String(boardId));
+        if (idx !== -1) {
+            ownerIdOfBoard = uId; // ID của chủ sở hữu board
+            boardIndex = idx;
+            break;
+        }
     }
 
-    const boardId = parseInt(req.params.id, 10);
-    if (isNaN(boardId)) {
-        return res.status(400).json({ message: "Board ID không hợp lệ" });
-    }
-
-    const boardsOfThisUser = userBoards[userId];
-    if (!boardsOfThisUser) {
-        return res
-            .status(404)
-            .json({ message: "Không tìm thấy dữ liệu board cho user này" });
-    }
-
-    const boardIndex = boardsOfThisUser.findIndex((b) => b.id === boardId);
-
-    if (boardIndex === -1) {
-        // Board ID này không tồn tại trong mảng của user
+    if (boardIndex === -1 || !ownerIdOfBoard) {
         return res.status(404).json({ message: "Không tìm thấy board" });
     }
 
-    boardsOfThisUser.splice(boardIndex, 1);
+    // CHECK QUYỀN: CHỈ OWNER ĐƯỢC XÓA
+    if (String(userId) !== String(ownerIdOfBoard)) {
+        return res.status(403).json({
+            message: "Bạn chỉ là thành viên. Chỉ chủ sở hữu (Owner) mới được xóa Board."
+        });
+    }
 
-    console.log(`UserBoards của user ${userId} sau khi XOÁ:`, userBoards[userId]);
-    res.status(204).send();
+    // XÓA BOARD KHỎI MẢNG
+    const deletedBoard = userBoards[ownerIdOfBoard][boardIndex]; // Lưu lại để dùng nếu cần
+    userBoards[ownerIdOfBoard].splice(boardIndex, 1);
+
+    console.log(`User ${userId} đã xóa board ID ${boardId}`);
+
+    // CLEAN UP DỮ LIỆU LIÊN QUAN
+    calendarEvents = calendarEvents.filter(e => String(e.board_id) !== String(boardId));
+
+    // SOCKET: Báo cho mọi người board đã bị xóa (để frontend redirect về Home)
+    io.emit("BOARD_DELETED", { boardId: boardId });
+
+    res.status(200).json({ message: "Đã xóa board thành công" });
 });
 
 // Lưu ý, phải lưu token bằng localStorage trong frontend thì mới chạy đúng được
@@ -745,6 +789,10 @@ app.post("/api/boards/:boardId/lists", authMiddleware, (req, res) => {
         return res
             .status(403)
             .json({ message: "Bạn không có quyền thêm list vào board này." });
+    }
+
+    if (!checkEditPermission(board, userId)) {
+        return res.status(403).json({ message: "Bạn không có quyền thêm list (Private Mode hoặc Read-only)." });
     }
 
     const newList = {
@@ -787,6 +835,10 @@ app.put("/api/boards/:boardId/lists/:listId", authMiddleware, (req, res) => {
             .json({ message: "Bạn không có quyền sửa list trong board này." });
     }
 
+    if (!checkEditPermission(board, userId)) {
+        return res.status(403).json({ message: "Bạn không có quyền sửa list này." });
+    }
+
     const list = board.lists.find((l) => l.id === listId);
     if (!list) {
         return res.status(404).json({ message: "List không tồn tại." });
@@ -822,6 +874,10 @@ app.delete("/api/boards/:boardId/lists/:listId", authMiddleware, (req, res) => {
         return res
             .status(403)
             .json({ message: "Bạn không có quyền xóa list trong board này." });
+    }
+
+    if (!checkEditPermission(board, userId)) {
+        return res.status(403).json({ message: "Bạn không có quyền sửa list này." });
     }
 
     const listIndex = board.lists.findIndex((l) => l.id === listId);
@@ -933,7 +989,7 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
     const allBoards = Object.values(userBoards).flat();
 
     const sourceBoard = allBoards.find(b => String(b.id) === String(sourceBoardId));
-    const destBoard   = allBoards.find(b => String(b.id) === String(destBoardId));
+    const destBoard = allBoards.find(b => String(b.id) === String(destBoardId));
 
     if (!sourceBoard || !destBoard) {
         return res.status(404).json({
@@ -941,17 +997,12 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
         });
     }
 
-    // 3. Check quyền
-    const hasPermission = (board) => {
-        const isOwner  = board.userId === userId;
-        const isMember = board.members?.some(m => m.id === userId);
-        return isOwner || isMember;
-    };
+    if (!checkEditPermission(sourceBoard, userId)) {
+        return res.status(403).json({ message: "Bạn không có quyền sửa list này." });
+    }
 
-    if (!hasPermission(sourceBoard) || !hasPermission(destBoard)) {
-        return res.status(403).json({
-            message: "Bạn không có quyền chỉnh sửa board này."
-        });
+    if (!checkEditPermission(destBoard, userId)) {
+         return res.status(403).json({ message: "Bạn không có quyền sửa đổi board đích." });
     }
 
     if (!Array.isArray(sourceBoard.lists) || !Array.isArray(destBoard.lists)) {
@@ -1018,9 +1069,11 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
 });
 
 
-// Drop cards
+// ==========================================
+// API DI CHUYỂN THẺ (DRAG & DROP)
+// ==========================================
 app.put("/api/cards/move", authMiddleware, (req, res) => {
-    const userId = req.user.id;
+    const userId = Number(req.user.id);
     const {
         sourceBoardId,
         sourceListId,
@@ -1030,113 +1083,75 @@ app.put("/api/cards/move", authMiddleware, (req, res) => {
         index,
     } = req.body;
 
-    const io = req.app.get("socketio");
+    const io = req.app.get("socketio") || io; // Đảm bảo lấy được socket io
 
-    if (
-        !sourceBoardId ||
-        !destBoardId ||
-        !sourceListId ||
-        !destListId ||
-        !cardId
-    ) {
-        return res
-            .status(400)
-            .json({ message: "Thiếu thông tin ID cần thiết để di chuyển card." });
+    // 1. Kiểm tra dữ liệu đầu vào
+    if (!sourceBoardId || !destBoardId || !sourceListId || !destListId || !cardId) {
+        return res.status(400).json({ message: "Thiếu thông tin ID để di chuyển thẻ." });
     }
 
+    // 2. Tìm Board nguồn và Board đích
     const allBoards = Object.values(userBoards).flat();
-    const sourceBoard = allBoards.find((b) => b.id == sourceBoardId);
-    const destBoard = allBoards.find((b) => b.id == destBoardId);
+    const sourceBoard = allBoards.find((b) => String(b.id) === String(sourceBoardId));
+    const destBoard = allBoards.find((b) => String(b.id) === String(destBoardId));
 
     if (!sourceBoard || !destBoard) {
-        return res
-            .status(404)
-            .json({ message: "Không tìm thấy Board hoặc không có quyền truy cập." });
+        return res.status(404).json({ message: "Không tìm thấy Board." });
     }
 
-    // Hàm kiểm tra quyền (Owner hoặc Member)
-    const checkPermission = (board) => {
-        const isOwner = board.userId === userId;
-        const isMember = board.members?.some(m => m.id === userId);
-        return isOwner || isMember;
-    };
-
-    // Check quyền truy cập cả board nguồn và board đích
-    if (!checkPermission(sourceBoard) || !checkPermission(destBoard)) {
-        return res
-            .status(403)
-            .json({ message: "Bạn không có quyền chỉnh sửa trên board này." });
+    // 3. CHECK QUYỀN (Sử dụng hàm checkEditPermission đã viết)
+    // Người dùng phải có quyền sửa ở CẢ 2 Board (nếu chuyển sang board khác)
+    if (!checkEditPermission(sourceBoard, userId) || !checkEditPermission(destBoard, userId)) {
+        return res.status(403).json({ message: "Bạn không có quyền di chuyển thẻ trong board này (Private Mode)." });
     }
 
+    // 4. Tìm List nguồn và List đích
     const sourceList = sourceBoard.lists.find((l) => l.id === sourceListId);
     const destList = destBoard.lists.find((l) => l.id === destListId);
 
     if (!sourceList || !destList) {
-        return res
-            .status(404)
-            .json({ message: "Không tìm thấy List nguồn hoặc đích." });
+        return res.status(404).json({ message: "Không tìm thấy List nguồn hoặc đích." });
     }
 
-    const cardIndex = sourceList.cards.findIndex(
-        (c) => String(c.id) === String(cardId)
-    );
+    // 5. Tìm vị trí thẻ trong List nguồn
+    const cardIndex = sourceList.cards.findIndex((c) => String(c.id) === String(cardId));
     if (cardIndex === -1) {
-        return res
-            .status(404)
-            .json({
-                message: `Card không tồn tại trong List nguồn.CardID là ${cardId}`,
-            });
+        return res.status(404).json({ message: "Thẻ không tồn tại trong List nguồn." });
     }
 
+    // 6. CẮT thẻ khỏi nguồn
     const [movedCard] = sourceList.cards.splice(cardIndex, 1);
 
-    if (
-        typeof index === "number" &&
-        index >= 0 &&
-        index <= destList.cards.length
-    ) {
+    // 7. CHÈN thẻ vào đích
+    if (typeof index === "number" && index >= 0 && index <= destList.cards.length) {
         destList.cards.splice(index, 0, movedCard);
     } else {
         destList.cards.push(movedCard);
     }
 
-    console.log(
-        `Đã chuyển Card "${movedCard.title}" từ List "${sourceList.title}" sang List "${destList.title}"`
-    );
+    console.log(`User ${userId} đã chuyển thẻ "${movedCard.title}"`);
 
-    // Broadcast real-time update to clients in the involved board rooms
-    try {
-        if (io) {
-            const payload = {
-                movedCard,
-                sourceListId,
-                destListId,
-                sourceBoardId,
-                destBoardId,
-                index,
-            };
-            // Emit to source and destination board rooms (if different, both will receive)
-            io.to(String(sourceBoardId)).emit("CARD_MOVED", payload);
-            if (String(destBoardId) !== String(sourceBoardId)) {
-                io.to(String(destBoardId)).emit("CARD_MOVED", payload);
-            }
-        }
-    } catch (e) {
-        console.error("Socket emit error:", e);
-    }
-
-    io.to(String(sourceBoardId)).emit("board_updated", sourceBoard);
-
-    if (String(destBoardId) !== String(sourceBoardId)) {
-        io.to(String(destBoardId)).emit("board_updated", destBoard);
-    }
-
-    res.status(200).json({
-        message: "Di chuyển Card thành công",
+    // 8. SOCKET REAL-TIME
+    const payload = {
         movedCard,
         sourceListId,
         destListId,
-    });
+        sourceBoardId,
+        destBoardId,
+        index,
+    };
+
+    // Gửi sự kiện cho Board nguồn
+    io.to(String(sourceBoardId)).emit("CARD_MOVED", payload);
+    io.to(String(sourceBoardId)).emit("board_updated", sourceBoard);
+
+    // Nếu Board đích khác Board nguồn, gửi thêm cho Board đích
+    if (String(destBoardId) !== String(sourceBoardId)) {
+        io.to(String(destBoardId)).emit("CARD_MOVED", payload);
+        io.to(String(destBoardId)).emit("board_updated", destBoard);
+    }
+
+    res.status(200).json({ message: "Di chuyển thẻ thành công", movedCard });
 });
 
 // Create new cards
@@ -1169,6 +1184,10 @@ app.post(
             return res
                 .status(403)
                 .json({ message: "Bạn không có quyền xóa list trong board này." });
+        }
+
+        if (!checkEditPermission(board, userId)) {
+            return res.status(403).json({ message: "Bạn không có quyền sửa list này." });
         }
 
         const list = board.lists.find((l) => l.id === listId);
@@ -1226,6 +1245,10 @@ app.put(
             return res
                 .status(403)
                 .json({ message: "Bạn không có quyền xóa list trong board này." });
+        }
+
+        if (!checkEditPermission(board, userId)) {
+            return res.status(403).json({ message: "Bạn không có quyền sửa list này." });
         }
 
         const list = board.lists.find((l) => l.id === listId);
@@ -1301,6 +1324,10 @@ app.delete(
             return res
                 .status(403)
                 .json({ message: "Bạn không có quyền xóa list trong board này." });
+        }
+
+        if (!checkEditPermission(board, userId)) {
+            return res.status(403).json({ message: "Bạn không có quyền sửa list này." });
         }
 
         const list = board.lists.find((l) => l.id === listId);

@@ -71,16 +71,60 @@ const BoardPage = () => {
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
 
+  // Sửa lại useEffect lấy dữ liệu Board
   useEffect(() => {
-    const savedBoards = JSON.parse(sessionStorage.getItem("boards")) || [];
-    const foundBoard = savedBoards.find((b) => b.id === Number(boardId));
+    const fetchBoardData = async () => {
+      // 1. Thử lấy từ cache để hiển thị ngay lập tức (tránh màn hình trắng)
+      try {
+        const savedBoardsData = JSON.parse(sessionStorage.getItem("boards"));
+        let savedBoards = [];
+        if (Array.isArray(savedBoardsData)) {
+          savedBoards = savedBoardsData;
+        } else if (savedBoardsData?.boards && Array.isArray(savedBoardsData.boards)) {
+          savedBoards = savedBoardsData.boards;
+        }
+        
+        const cachedBoard = savedBoards.find((b) => b.id === Number(boardId));
+        if (cachedBoard) {
+          setBoard(cachedBoard); // Hiện tạm data cũ trong khi chờ server
+        }
+      } catch (e) {
+        console.log("Lỗi đọc cache, sẽ fetch từ server...");
+      }
 
-    if (foundBoard) {
-      setBoard(foundBoard);
-    } else {
-      alert("Board không tồn tại!");
-      navigate("/dashboard");
-    }
+      // 2. GỌI API LẤY DỮ LIỆU MỚI NHẤT TỪ SERVER (QUAN TRỌNG)
+      try {
+        const token = sessionStorage.getItem("token");
+        const res = await fetch(`http://localhost:3000/api/boards/${boardId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (res.ok) {
+          const serverBoardData = await res.json();
+          setBoard(serverBoardData);
+          updateBoardToStorage(serverBoardData); // Cập nhật lại cache cho lần sau
+        } else {
+          // Xử lý lỗi nếu không có quyền hoặc board không tồn tại
+          if (res.status === 403) {
+            alert("Bạn không có quyền truy cập vào Board này!");
+            navigate("/dashboard");
+          } else if (res.status === 404) {
+            alert("Board không tồn tại!");
+            navigate("/dashboard");
+          } else {
+            console.error("Lỗi tải board:", res.statusText);
+          }
+        }
+      } catch (error) {
+        console.error("Lỗi kết nối server:", error);
+      }
+    };
+
+    fetchBoardData();
   }, [boardId, navigate]);
 
   // Socket.io
