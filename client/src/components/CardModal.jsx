@@ -4,10 +4,13 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { useState } from "react";
 import socket from "../socket";
+import ActivityItem from "./ActivityItem";
+import CommentItem from "./CommentItem";
+import { CheckIcon } from "@heroicons/react/24/solid";
 
-const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
+const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) => {
     if (!card) return null;
-    console.log("CardModal:  ", boardId, listId);
+
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [date, setDate] = useState(card?.dueDate ? new Date(card.dueDate) : null);
     const [showLabelPopup, setShowLabelPopup] = useState(false);
@@ -23,25 +26,79 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
     const [editedTitle, setEditedTitle] = useState(card.title || "");
 
 
-    const [messages, setMessages] = useState([]);
+    const [comments, setComments] = useState([]);
     const [input, setInput] = useState("");
 
     const [checklists, setChecklists] = useState([]);
     const [loadingChecklist, setLoadingChecklist] = useState(false);
     const [newItemText, setNewItemText] = useState({});
 
+    const [showMemberPopup, setShowMemberPopup] = useState(false);
+
+    const boardMembers = board.members || [];
+
+
+
+    const [activities, setActivities] = useState([])
+
+    useEffect(() => {
+        if (!card?.id) return;
+
+        const fetchActivities = async () => {
+            try {
+                const res = await fetch(
+                    `http://localhost:3000/api/cards/${card.id}/activities`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                        },
+                    }
+                );
+                const data = await res.json();
+                setActivities(data);
+            } catch (err) {
+                console.error("Load activities failed", err);
+            }
+        };
+
+        fetchActivities();
+    }, [card.id]);
+
+
+    //them member vao card
+    const handleAddMember = (member) => {
+        const currentMembers = card.members || [];
+        if (currentMembers.includes(member.id)) return;
+
+        onUpdate(
+            {
+                ...card,
+                members: [...currentMembers, member.id],
+            },
+            listId
+        );
+
+        setShowMemberPopup(false);
+    };
 
     const handleSend = () => {
         if (!input.trim()) return;
 
-        // Thêm tin nhắn test local
-        setMessages(prev => [...prev, {
-            user: "You",
-            text: input
-        }]);
+        const newComment = {
+            id: `cmt_${Date.now()}`,
+            text: input,
+            createdAt: new Date(),
+            user: {
+                id: "me",
+                name: "You",
+                avatar: null,
+            },
+        };
 
+        setComments(prev => [...prev, newComment]);
         setInput("");
     };
+
 
 
     useEffect(() => {
@@ -111,6 +168,7 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
         onUpdate(updatedCard, listId);
         onClose();
     };
+    //changtitle
 
     const handleSaveTitle = async () => {
         setEditTitle(false);
@@ -124,7 +182,7 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
         };
         onUpdate(updatedCard, listId);
     };
-
+    //checklist
     const fetchChecklists = async () => {
         setLoadingChecklist(true);
         try {
@@ -165,7 +223,7 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
             socket.off("CHECKLIST_UPDATED", handler);
         };
     }, [card.id]);
-
+    //toggle Item in Checklist
     const toggleItem = async (itemId) => {
         try {
             await fetch(
@@ -204,6 +262,38 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
             console.error("Add checklist item failed:", err);
         }
     };
+    ////comment and notifications
+    useEffect(() => {
+        if (!card?.id) return;
+
+        const handler = (activity) => {
+            // chỉ nhận activity của card đang mở
+            if (activity.target?.cardId === card.id.toString()) {
+                setActivities(prev => {
+                    if (prev.some(a => a.id === activity.id)) return prev;
+                    return [activity, ...prev];
+                });
+            }
+        };
+
+        socket.on("activity_created", handler);
+
+        return () => {
+            socket.off("activity_created", handler);
+        };
+    }, [card.id]);
+
+
+
+    const merged = [
+        ...comments.map(c => ({ ...c, type: "comment" })),
+        ...activities.map(a => ({ ...a, type: "activity" })),
+    ].sort(
+        (a, b) =>
+            new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+    );
+
+
 
     return (
         <div className="modal-overlay" onClick={handleOverlayClose}>
@@ -259,7 +349,33 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
                                     <button><img src="/assets/check-circle.svg" /> Checklist</button>
                                     <button><img src="/assets/paperclip.svg" /> Attachment</button>
                                     <button onClick={() => setShowDatePicker(!showDatePicker)}>Due Date</button>
+                                    <button onClick={() => setShowMemberPopup(true)}>Members</button>
                                 </div>
+
+                                {showMemberPopup && (
+                                    <div className="label-popup" onClick={(e) => e.stopPropagation()}>
+                                        <h3>Add members</h3>
+
+                                        {boardMembers.map(member => {
+                                            const isAdded = card.members?.includes(member.id);
+
+                                            return (
+                                                <div
+                                                    key={member.id}
+                                                    className="label-row"
+                                                    onClick={() => handleAddMember(member)}
+                                                >
+                                                    <span>{member.name}</span>
+                                                    {isAdded && <span style={{ marginLeft: "auto" }}><CheckIcon></CheckIcon></span>}
+                                                </div>
+                                            );
+                                        })}
+
+
+                                        <button onClick={() => setShowMemberPopup(false)}>Close</button>
+                                    </div>
+                                )}
+
 
                                 {date && <p><strong>Due:</strong> {formatDate(date)}</p>}
 
@@ -347,18 +463,14 @@ const CardModal = ({ card, list, boardId, listId, onUpdate, onClose }) => {
                         />
 
                         <div className="activity-list">
-                            {messages.map((m, idx) => (
-                                <div key={idx} className="activity-item">
-                                    <div className="avatar">{m.user[0]}</div>
-                                    <div className="activity-content">
-                                        <div className="activity-header">
-                                            <span className="activity-user">{m.user}</span>
-                                            <span className="activity-time">just now</span>
-                                        </div>
-                                        <div className="activity-text">{m.text}</div>
-                                    </div>
-                                </div>
-                            ))}
+                            {merged.map(item => {
+                                if (item.type === "comment") {
+                                    return <CommentItem key={item.id} comment={item} />;
+                                }
+                                return <ActivityItem key={item.id} activity={item} />;
+                            })}
+
+
                         </div>
                     </div>
                 </div>
