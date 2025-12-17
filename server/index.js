@@ -1707,6 +1707,46 @@ app.get("/api/cards/:cardId/checklists", authMiddleware, (req, res) => {
     res.status(200).json(result);
 });
 
+// Tạo 1 checklist
+app.post("/api/cards/:cardId/checklists", authMiddleware, (req, res) => {
+    const { cardId } = req.params;
+    const { title } = req.body;
+
+    if (!title) return res.status(400).json({ message: "Tiêu đề không được để trống" });
+
+    const newChecklist = {
+        checklist_id: checklistIdCounter++,
+        card_id: cardId,
+        title: title
+    };
+
+    mockChecklists.push(newChecklist);
+
+    // Socket: Báo cập nhật
+    io.emit("CHECKLIST_UPDATED", { cardId });
+
+    res.status(201).json(newChecklist);
+});
+
+// Delete Checklist
+app.delete("/api/checklists/:checklistId", authMiddleware, (req, res) => {
+    const checklistId = Number(req.params.checklistId);
+
+    // Tìm checklist để lấy card_id trước khi xóa (để emit socket)
+    const checklist = mockChecklists.find(cl => cl.checklist_id === checklistId);
+    if (!checklist) return res.status(404).json({ message: "Checklist không tồn tại" });
+
+    // Xóa các items thuộc checklist này
+    mockChecklistItems = mockChecklistItems.filter(item => item.checklist_id !== checklistId);
+
+    // Xóa checklist
+    mockChecklists = mockChecklists.filter(cl => cl.checklist_id !== checklistId);
+
+    io.emit("CHECKLIST_UPDATED", { cardId: checklist.card_id });
+
+    res.status(200).json({ message: "Đã xóa checklist thành công" });
+});
+
 /**
  * @route   POST /api/checklists/:checklistId/items
  * @desc    Thêm 1 việc nhỏ vào checklist
@@ -1714,6 +1754,8 @@ app.get("/api/cards/:cardId/checklists", authMiddleware, (req, res) => {
 app.post("/api/checklists/:checklistId/items", authMiddleware, (req, res) => {
     const checklistId = Number(req.params.checklistId);
     const { description } = req.body;
+
+    if (!description) return res.status(400).json({ message: "Nội dung không được để trống" });
 
     const checklist = mockChecklists.find(cl => cl.checklist_id === checklistId);
     if (!checklist) return res.status(404).json({ message: "Checklist không tồn tại." });
@@ -1749,6 +1791,46 @@ app.put("/api/checklist-items/:itemId/toggle", authMiddleware, (req, res) => {
     // Tìm checklist cha để lấy card_id gửi socket
     const checklist = mockChecklists.find(cl => cl.checklist_id === item.checklist_id);
 
+    if (checklist) {
+        io.emit("CHECKLIST_UPDATED", { cardId: checklist.card_id });
+    }
+
+    res.status(200).json(item);
+});
+
+// Delete items in checklist
+app.delete("/api/checklist-items/:itemId", authMiddleware, (req, res) => {
+    const itemId = Number(req.params.itemId);
+
+    const item = mockChecklistItems.find(i => i.item_id === itemId);
+    if (!item) return res.status(404).json({ message: "Item không tồn tại." });
+
+    // Lưu lại checklist_id để tìm card_id
+    const parentChecklistId = item.checklist_id;
+
+    // Xóa item khỏi mảng
+    mockChecklistItems = mockChecklistItems.filter(i => i.item_id !== itemId);
+
+    // Tìm checklist cha để emit socket
+    const checklist = mockChecklists.find(cl => cl.checklist_id === parentChecklistId);
+    if (checklist) {
+        io.emit("CHECKLIST_UPDATED", { cardId: checklist.card_id });
+    }
+
+    res.status(200).json({ message: "Đã xóa item" });
+});
+
+// Edit items in checklist
+app.put("/api/checklist-items/:itemId", authMiddleware, (req, res) => {
+    const itemId = Number(req.params.itemId);
+    const { description } = req.body;
+
+    const item = mockChecklistItems.find(i => i.item_id === itemId);
+    if (!item) return res.status(404).json({ message: "Item không tồn tại." });
+
+    item.description = description;
+
+    const checklist = mockChecklists.find(cl => cl.checklist_id === item.checklist_id);
     if (checklist) {
         io.emit("CHECKLIST_UPDATED", { cardId: checklist.card_id });
     }
