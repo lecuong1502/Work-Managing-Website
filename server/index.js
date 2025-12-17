@@ -933,7 +933,7 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
     const allBoards = Object.values(userBoards).flat();
 
     const sourceBoard = allBoards.find(b => String(b.id) === String(sourceBoardId));
-    const destBoard   = allBoards.find(b => String(b.id) === String(destBoardId));
+    const destBoard = allBoards.find(b => String(b.id) === String(destBoardId));
 
     if (!sourceBoard || !destBoard) {
         return res.status(404).json({
@@ -943,7 +943,7 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
 
     // 3. Check quyền
     const hasPermission = (board) => {
-        const isOwner  = board.userId === userId;
+        const isOwner = board.userId === userId;
         const isMember = board.members?.some(m => m.id === userId);
         return isOwner || isMember;
     };
@@ -1203,80 +1203,151 @@ app.post(
 );
 
 // Edit cards
-// Edit cards (Đã tích hợp Socket Notification)
-app.put(
-    "/api/boards/:boardId/lists/:listId/cards/:cardId",
-    authMiddleware,
-    (req, res) => {
-        const userId = Number(req.user.id); // Người đang thực hiện hành động (Actor)
-        const { boardId, listId, cardId } = req.params;
-        const { title, description, labels, dueDate, members, state } = req.body;
+////sendactivity
+const cardActivities = {};
 
-        const allBoards = Object.values(userBoards).flat();
-        const board = allBoards.find((b) => b.id.toString() === boardId);
+const sendActivity = ({ actor, card, boardId, message, type }) => {
+    const activity = {
+        id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        type,
+        message,
+        createdAt: new Date(),
+        sender: {
+            id: actor.id.toString(),
+            name: actor.name,
+            avatar: actor.avatar_url,
+        },
+        target: {
+            boardId: boardId.toString(),
+            cardId: card.id.toString(),
+        },
+    };
 
-        if (!board)
-            return res.status(404).json({ message: "Board không tồn tại." });
-
-        // Kiểm tra quyền
-        const isOwner = board.userId === userId;
-        const isMember = board.members?.some((m) => m.id === userId);
-
-        if (!isOwner && !isMember) {
-            return res
-                .status(403)
-                .json({ message: "Bạn không có quyền xóa list trong board này." });
-        }
-
-        const list = board.lists.find((l) => l.id === listId);
-        if (!list) return res.status(404).json({ message: "List không tồn tại." });
-
-        const card = list.cards.find((c) => c.id === cardId);
-        if (!card) return res.status(404).json({ message: "Card không tồn tại." });
-
-        // --- LOGIC XỬ LÝ THAY ĐỔI VÀ THÔNG BÁO ---
-        if (members !== undefined) {
-            const oldMembers = card.members || [];
-            card.members = members;
-
-            const addedMembers = members.filter((mId) => !oldMembers.includes(mId));
-
-            if (addedMembers.length > 0) {
-                const actor = {
-                    id: req.user.id,
-                    name: req.user.name,
-                    avatar_url: req.user.avatar_url,
-                };
-
-                addedMembers.forEach((targetUserId) => {
-                    if (Number(targetUserId) !== Number(userId)) {
-                        sendNotification({
-                            userId: Number(targetUserId), // User nhận
-                            actor: actor, // User gửi
-                            card: card, // Card liên quan
-                            boardId: boardId,
-                            type: "assigned",
-                            message: `đã thêm bạn vào thẻ "${card.title || "Không tên"}"`,
-                        });
-                    }
-                });
-            }
-        }
-
-        if (title !== undefined) card.title = title;
-        if (description !== undefined) card.description = description;
-        if (labels !== undefined) card.labels = labels;
-        if (dueDate !== undefined) card.dueDate = dueDate;
-        if (state !== undefined) card.state = state;
-
-        console.log(`Đã cập nhật card ${cardId}`);
-
-        // const io = req.app.get("io")
-
-        io.to(boardId.toString()).emit("board_updated", board);
-
-        res.json(card);
+    if (!cardActivities[card.id]) {
+        cardActivities[card.id] = [];
     }
+
+    cardActivities[card.id].unshift(activity);
+
+    // emit realtime cho tất cả user đang mở board
+    io.to(boardId.toString()).emit("activity_created", activity);
+};
+
+app.get("/api/cards/:cardId/activities", authMiddleware, (req, res) => {
+    const { cardId } = req.params;
+    res.json(cardActivities[cardId] || []);
+});
+
+// Edit cards (Đã tích hợp Socket Notification)
+app.put("/api/boards/:boardId/lists/:listId/cards/:cardId", authMiddleware, (req, res) => {
+    const userId = Number(req.user.id); // Người đang thực hiện hành động (Actor)
+    const { boardId, listId, cardId } = req.params;
+    const { title, description, labels, dueDate, members, state } = req.body;
+
+    const allBoards = Object.values(userBoards).flat();
+    const board = allBoards.find((b) => b.id.toString() === boardId);
+
+    if (!board)
+        return res.status(404).json({ message: "Board không tồn tại." });
+
+    // Kiểm tra quyền
+    const isOwner = board.userId === userId;
+    const isMember = board.members?.some((m) => m.id === userId);
+
+    if (!isOwner && !isMember) {
+        return res
+            .status(403)
+            .json({ message: "Bạn không có quyền xóa list trong board này." });
+    }
+
+    const list = board.lists.find((l) => l.id === listId);
+    if (!list) return res.status(404).json({ message: "List không tồn tại." });
+
+    const card = list.cards.find((c) => c.id === cardId);
+    if (!card) return res.status(404).json({ message: "Card không tồn tại." });
+
+    // --- LOGIC XỬ LÝ THAY ĐỔI VÀ THÔNG BÁO ---
+    if (members !== undefined) {
+        const oldMembers = card.members || [];
+        card.members = members;
+
+        const addedMembers = members.filter(mId => !oldMembers.includes(mId));
+
+        if (addedMembers.length > 0) {
+            const actor = {
+                id: req.user.id,
+                name: req.user.name,
+                avatar_url: req.user.avatar_url,
+            };
+
+            addedMembers.forEach(targetUserId => {
+                const addedUser = board.members.find(m => m.id === targetUserId);
+
+                // ACTIVITY – gửi cho toàn board
+                sendActivity({
+                    actor,
+                    card,
+                    boardId,
+                    type: "assigned",
+                    message: `added ${addedUser?.name || "a member"} to this card`,
+                });
+
+                // OTIFICATION – chỉ gửi cho người được thêm
+                if (Number(targetUserId) !== Number(userId)) {
+                    sendNotification({
+                        userId: Number(targetUserId),
+                        actor,
+                        card,
+                        boardId,
+                        type: "assigned",
+                        message: `added you to the card "${card.title || "Untitled"}"`,
+                    });
+                }
+            });
+        }
+    }
+
+    const oldCard = JSON.parse(JSON.stringify(card));
+
+
+    if (title !== undefined && title !== oldCard.title) {
+        card.title = title;
+
+        sendActivity({
+            actor: req.user,
+            card,
+            boardId,
+            type: "update",
+            message: `đã đổi tên thẻ từ "${oldCard.title}" thành "${title}"`,
+        });
+    }
+
+    if (description !== undefined) card.description = description;
+    if (labels !== undefined) card.labels = labels;
+    if (dueDate !== undefined && dueDate !== oldCard.dueDate) {
+        card.dueDate = dueDate;
+
+        sendActivity({
+            actor: req.user,
+            card,
+            boardId,
+            type: "due",
+            message: dueDate
+                ? `đã đặt hạn chót ${dueDate}`
+                : `đã xoá hạn chót`,
+        });
+    }
+
+    if (state !== undefined) card.state = state;
+    if (members !== undefined) card.member = members
+    console.log(`Đã cập nhật card ${cardId}`);
+
+    // const io = req.app.get("io")
+
+    io.to(boardId.toString()).emit("board_updated", board);
+
+    res.json(card);
+}
 );
 
 // Delete cards

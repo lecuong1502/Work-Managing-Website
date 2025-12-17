@@ -410,7 +410,7 @@ const BoardPage = () => {
 
       <div className="board-page" style={{ background: board.color }}>
         <div className="board-container">
-          <DndProvider backend={HTML5Backend}>  
+          <DndProvider backend={HTML5Backend}>
             {openPanel.inbox && (
               <div className="side-panel inbox-panel">
                 {openPanel.inbox && (
@@ -634,6 +634,7 @@ const BoardPage = () => {
 
                   {selectedCard && (
                     <CardModal
+                      board={board}
                       card={selectedCard}
                       list={board.lists.find(
                         (l) => l.id === selectedCard.listId
