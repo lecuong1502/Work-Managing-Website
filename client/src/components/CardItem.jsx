@@ -26,7 +26,8 @@ const CardItem = ({
         item: {
             cardId: card.id,
             fromListId: listId,
-            sourceBoardId: boardId,
+            boardId: boardId,
+            cardData: card,
             originalIndex: index
         },
         collect: (monitor) => ({
@@ -43,6 +44,8 @@ const CardItem = ({
             const hoverIndex = index;
             const fromList = item.fromListId;
             const toList = listId;
+
+            if (item.boardId !== boardId) return;
 
             if (dragIndex === hoverIndex && fromList === toList) return;
 

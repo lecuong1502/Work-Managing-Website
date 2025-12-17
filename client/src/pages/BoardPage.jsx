@@ -38,6 +38,8 @@ const BoardPage = () => {
   const [newCardTitle, setNewCardTitle] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [inboxCards, setInboxCards] = useState([]);
+
   const [showVisibilityMenu, setShowVisibilityMenu] = useState(false);
 
   const [openPanel, setOpenPanel] = useState({
@@ -71,6 +73,69 @@ const BoardPage = () => {
     sessionStorage.setItem("boards", JSON.stringify(boards));
   };
 
+  // Fetch Global Inbox
+  const fetchInbox = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch("http://localhost:3000/api/inbox", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInboxCards(data);
+      }
+    } catch (err) {
+      console.error("Lỗi tải inbox:", err);
+    }
+  };
+
+  // Gọi fetchInbox khi mount
+  useEffect(() => {
+    fetchInbox();
+  }, []);
+
+  // Add Card to Inbox
+  const handleAddInboxCard = async (cardTitle) => {
+    if (!cardTitle.trim()) return;
+
+    const tempId = `temp_${Date.now()}`;
+    const optimisticCard = {
+        id: tempId,
+        title: cardTitle,
+        state: "Inbox",
+        isGlobalInbox: true
+    };
+
+    setInboxCards((prev) => [optimisticCard, ...prev]);
+    setNewCardTitle("");
+    setAddingCard((prev) => ({ ...prev, inbox: false }));
+
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch("http://localhost:3000/api/inbox/cards", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title: cardTitle }),
+      });
+
+      if (res.ok) {
+        const newCard = await res.json();
+        // Cập nhật UI Inbox ngay lập tức
+        setInboxCards((prev) => 
+            prev.map(c => c.id === tempId ? newCard : c)
+        );
+      } else {
+        setInboxCards((prev) => prev.filter(c => c.id !== tempId));
+        alert("Lỗi kết nối: Không thể thêm thẻ vào Inbox");
+      }
+    } catch (err) {
+      console.error("Lỗi thêm thẻ vào inbox:", err);
+    }
+  };
+
   // Sửa lại useEffect lấy dữ liệu Board
   useEffect(() => {
     const fetchBoardData = async () => {
@@ -83,7 +148,7 @@ const BoardPage = () => {
         } else if (savedBoardsData?.boards && Array.isArray(savedBoardsData.boards)) {
           savedBoards = savedBoardsData.boards;
         }
-        
+
         const cachedBoard = savedBoards.find((b) => b.id === Number(boardId));
         if (cachedBoard) {
           setBoard(cachedBoard); // Hiện tạm data cũ trong khi chờ server
@@ -139,6 +204,7 @@ const BoardPage = () => {
       if (updatedBoardData.id === Number(boardId)) {
         setBoard(updatedBoardData);
         updateBoardToStorage(updatedBoardData);
+        fetchInbox();
       }
     });
 
@@ -460,9 +526,8 @@ const BoardPage = () => {
                 {openPanel.inbox && (
                   <div className="side-panel-content">
                     <InboxPanel
-                      inboxCards={
-                        board.lists.find((l) => l.id === "inbox").cards
-                      }
+                      inboxCards={inboxCards}
+                      setInboxCards={setInboxCards}
                       board={board}
                       setBoard={setBoard}
                       addingCard={addingCard}
@@ -470,6 +535,7 @@ const BoardPage = () => {
                       newCardTitle={newCardTitle}
                       setNewCardTitle={setNewCardTitle}
                       handleAddCard={handleAddCard}
+                      onAddInboxCard={handleAddInboxCard}
                       selectedCard={selectedCard}
                       setSelectedCard={setSelectedCard}
                     />

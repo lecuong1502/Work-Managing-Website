@@ -14,7 +14,8 @@ const InboxPanel = ({
   setNewCardTitle,
   handleAddCard,
   selectedCard,
-  setSelectedCard
+  setSelectedCard,
+  onAddInboxCard
 }) => {
 
   const moveCard = (cardId, fromListId, toListId, toIndex) => {
@@ -76,59 +77,59 @@ const InboxPanel = ({
 
   const socketRef = useRef(null);
 
-  useEffect(() => {
-    const token = sessionStorage.getItem("token");
-    try {
-      const s = io("http://localhost:3000", { auth: { token } });
-      s.on('connect', () => console.log('InboxPanel socket connected', s.id));
-      s.on('connect_error', (err) => {
-        console.error('InboxPanel socket connect_error:', err);
-        // Show more details when available
-        if (err && err.data) console.error('connect_error data:', err.data);
-      });
-      s.on('reconnect_failed', () => console.warn('InboxPanel socket reconnect_failed'));
-      socketRef.current = s;
+  // useEffect(() => {
+  //   const token = sessionStorage.getItem("token");
+  //   try {
+  //     const s = io("http://localhost:3000", { auth: { token } });
+  //     s.on('connect', () => console.log('InboxPanel socket connected', s.id));
+  //     s.on('connect_error', (err) => {
+  //       console.error('InboxPanel socket connect_error:', err);
+  //       // Show more details when available
+  //       if (err && err.data) console.error('connect_error data:', err.data);
+  //     });
+  //     s.on('reconnect_failed', () => console.warn('InboxPanel socket reconnect_failed'));
+  //     socketRef.current = s;
 
-      // join the board room so this client receives board-scoped updates
-      if (board && board.id) {
-        s.emit("join-board", board.id);
-      }
+  //     // join the board room so this client receives board-scoped updates
+  //     if (board && board.id) {
+  //       s.emit("join-board", board.id);
+  //     }
 
-      // When a card is moved elsewhere, refresh the board so UI updates immediately
-      s.on('CARD_MOVED', (payload) => {
-        console.log('[socket] CARD_MOVED received in InboxPanel:', payload);
-        try {
-          // Only refresh if the event is relevant to current board
-          if (board && (String(payload.sourceBoardId) === String(board.id) || String(payload.destBoardId) === String(board.id))) {
-            const token = sessionStorage.getItem('token');
-            fetch(`http://localhost:3000/api/boards/${board.id}`, {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              }
-            })
-              .then(res => res.json())
-              .then(data => {
-                // Replace entire board state with fresh server data
-                if (data && data.id) {
-                  setBoard(data);
-                  sessionStorage.setItem('boards', JSON.stringify(data));
-                }
-              })
-              .catch(err => console.error('Failed to refresh board after CARD_MOVED:', err));
-          }
-        } catch (e) {
-          console.error('Error handling CARD_MOVED in InboxPanel:', e);
-        }
-      });
+  //     // When a card is moved elsewhere, refresh the board so UI updates immediately
+  //     s.on('CARD_MOVED', (payload) => {
+  //       console.log('[socket] CARD_MOVED received in InboxPanel:', payload);
+  //       try {
+  //         // Only refresh if the event is relevant to current board
+  //         if (board && (String(payload.sourceBoardId) === String(board.id) || String(payload.destBoardId) === String(board.id))) {
+  //           const token = sessionStorage.getItem('token');
+  //           fetch(`http://localhost:3000/api/boards/${board.id}`, {
+  //             headers: {
+  //               'Content-Type': 'application/json',
+  //               'Authorization': `Bearer ${token}`
+  //             }
+  //           })
+  //             .then(res => res.json())
+  //             .then(data => {
+  //               // Replace entire board state with fresh server data
+  //               if (data && data.id) {
+  //                 setBoard(data);
+  //                 sessionStorage.setItem('boards', JSON.stringify(data));
+  //               }
+  //             })
+  //             .catch(err => console.error('Failed to refresh board after CARD_MOVED:', err));
+  //         }
+  //       } catch (e) {
+  //         console.error('Error handling CARD_MOVED in InboxPanel:', e);
+  //       }
+  //     });
 
-      return () => {
-        if (socketRef.current) socketRef.current.disconnect();
-      };
-    } catch (e) {
-      console.error('Socket init error', e);
-    }
-  }, [board]);
+  //     return () => {
+  //       if (socketRef.current) socketRef.current.disconnect();
+  //     };
+  //   } catch (e) {
+  //     console.error('Socket init error', e);
+  //   }
+  // }, [board]);
 
   const [, drop] = useDrop({
     accept: "card",
@@ -137,6 +138,11 @@ const InboxPanel = ({
       moveCard(item.cardId, item.fromListId, "inbox");
     },
   });
+
+  const handleSubmit = () => {
+      if (!newCardTitle.trim()) return;
+      onAddInboxCard(newCardTitle); 
+  };
 
   return (
     <div ref={drop} className="inbox-panel">
@@ -148,11 +154,12 @@ const InboxPanel = ({
         <CardItem
           key={card.id}
           card={card}
-          listId="inbox"
-          boardId={board.id}
           index={idx}
+          boardId="inbox-global"
+          listId="inbox-list"
+          
           onMoveCard={moveCard}
-          onClick={() => setSelectedCard({ ...card, listId:"inbox", boardId: board.id })}
+          onClick={() => setSelectedCard({ ...card, listId:"inbox-list" })}
         />
       ))}
 
@@ -163,6 +170,10 @@ const InboxPanel = ({
             value={newCardTitle}
             onChange={(e) => setNewCardTitle(e.target.value)}
             placeholder="Card title..."
+            autoFocus
+            onKeyDown={(e) => {
+                if (e.key === "Enter") handleSubmit();
+            }}
           />
 
           <button
@@ -174,7 +185,7 @@ const InboxPanel = ({
             Cancel
           </button>
 
-          <button onClick={() => handleAddCard("inbox", newCardTitle)}>
+          <button onClick={handleSubmit}>
             Add
           </button>
         </div>

@@ -25,45 +25,68 @@ const ListColumn = ({
   setNewCardTitle,
   onUpdateCard,
 }) => {
-  const moveCard = (cardId, fromListId, toListId, toIndex) => {
-    console.log(
-      "Di chuyển thẻ:",
-      cardId,
-      "từ",
-      fromListId,
-      "đến",
-      toListId,
-      "vị trí",
-      toIndex
-    );
-    const fromList = board.lists.find((l) => l.id === fromListId);
-    if (!fromList) return;
+  const moveCard = (cardId, fromListId, toListId, toIndex, sourceBoardId, cardData) => {
+    
+    // Check xem có phải di chuyển nội bộ trong board này không
+    const isInternalMove = !sourceBoardId || String(sourceBoardId) === String(board.id);
 
-    const movedCard = { ...fromList.cards.find((c) => c.id === cardId) };
+    console.log(`Move: ${cardId} | Internal: ${isInternalMove} | Data:`, cardData);
 
-    if (!movedCard) return;
+    // --- 1. CẬP NHẬT GIAO DIỆN NGAY LẬP TỨC (OPTIMISTIC UI) ---
+    setBoard((prevBoard) => {
+        // Clone deep để không ảnh hưởng state cũ
+        const newLists = prevBoard.lists.map(l => ({
+            ...l, 
+            cards: [...l.cards] 
+        }));
 
-    const destList = board.lists.find((l) => l.id === toListId);
-    const finalIndex = toIndex !== undefined ? toIndex : destList.cards.length;
+        // A. Nếu là nội bộ: Xóa thẻ ở list cũ
+        if (isInternalMove) {
+            const sourceList = newLists.find(l => l.id === fromListId);
+            if (sourceList) {
+                sourceList.cards = sourceList.cards.filter(c => c.id !== cardId);
+            }
+        }
 
-    const newLists = board.lists.map((l) => {
-      if (l.id === fromListId) {
-        return { ...l, cards: l.cards.filter((c) => c.id !== cardId) };
-      }
-      return l;
+        // B. Thêm thẻ vào list đích (Áp dụng cho cả Nội bộ và Inbox)
+        const destList = newLists.find(l => l.id === toListId);
+        if (destList) {
+            // Lấy dữ liệu thẻ:
+            // - Nếu nội bộ: Lấy từ list cũ
+            // - Nếu từ Inbox: Lấy từ cardData được truyền vào
+            let cardToAdd = null;
+
+            if (isInternalMove) {
+                const originalSourceList = prevBoard.lists.find(l => l.id === fromListId);
+                cardToAdd = originalSourceList?.cards.find(c => c.id === cardId);
+            } else {
+                // QUAN TRỌNG: Đây là thẻ từ Inbox
+                cardToAdd = cardData; 
+            }
+
+            if (cardToAdd) {
+                // Reset trạng thái thẻ để nó hiện ra (Inbox state là "Inbox", vào board phải là "Inprogress")
+                const normalizedCard = { 
+                    ...cardToAdd, 
+                    state: "Inprogress", // Bắt buộc đổi state này để không bị filter ẩn đi
+                    isGlobalInbox: false // Xóa cờ này đi
+                };
+
+                const finalIndex = toIndex !== undefined ? toIndex : destList.cards.length;
+                destList.cards.splice(finalIndex, 0, normalizedCard);
+            }
+        }
+
+        const updatedBoard = { ...prevBoard, lists: newLists };
+        sessionStorage.setItem("boards", JSON.stringify(updatedBoard));
+        return updatedBoard;
     });
-    const destListUpdated = newLists.find((l) => l.id === toListId);
-    destListUpdated.cards.splice(
-      Math.min(finalIndex, destListUpdated.cards.length),
-      0,
-      movedCard
-    );
 
-    setBoard((prev) => {
-      const updated = { ...prev, lists: newLists };
-      sessionStorage.setItem("boards", JSON.stringify(updated));
-      return updated;
-    });
+    // --- 2. GỌI API ---
+    // Tính toán index cho API
+    const destListRef = board.lists.find((l) => l.id === toListId);
+    const apiIndex = toIndex !== undefined ? toIndex : (destListRef?.cards.length || 0);
+
     fetch("http://localhost:3000/api/cards/move", {
       method: "PUT",
       headers: {
@@ -71,17 +94,17 @@ const ListColumn = ({
         Authorization: `Bearer ${sessionStorage.getItem("token")}`,
       },
       body: JSON.stringify({
-        sourceBoardId: board.id,
+        sourceBoardId: sourceBoardId || board.id,
         sourceListId: fromListId,
         destBoardId: board.id,
         destListId: toListId,
         cardId,
-        index: finalIndex,
+        index: apiIndex,
       }),
     })
       .then((res) => res.json())
-      .then((data) => console.log("Backend:", data.message))
-      .catch((err) => console.error("Lỗi di chuyển thẻ:", err));
+      .then((data) => console.log("Backend sync success:", data.message))
+      .catch((err) => console.error("API Error:", err));
   };
 
   const listRef = React.useRef(null);
@@ -136,11 +159,18 @@ const ListColumn = ({
     drop(item, monitor) {
       if (!monitor.isOver({ shallow: true })) return;
 
-      const { cardId, fromListId } = item;
+      const { cardId, fromListId, boardId, cardData } = item;
 
-      if (fromListId !== list.id) {
-        moveCard(cardId, fromListId, list.id, list.cards.length);
+      const isDifferentList = fromListId !== list.id;
+      const isDifferentBoard = boardId && String(boardId) !== String(board.id);
+
+      if (isDifferentList || isDifferentBoard) {
+        // Truyền boardId (source) vào hàm moveCard
+        moveCard(cardId, fromListId, list.id, list.cards.length, boardId, cardData);
+        
+        // Cập nhật lại item để DND hiểu vị trí mới
         item.fromListId = list.id;
+        item.boardId = board.id; // Cập nhật lại thành board hiện tại
       }
     },
   });
