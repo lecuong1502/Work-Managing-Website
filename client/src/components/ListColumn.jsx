@@ -18,8 +18,10 @@ const ListColumn = ({
   handleRenameList,
   addingCard,
   setAddingCard,
-  selectedCard,
-  setSelectedCard,
+  selectedCardId,
+  setSelectedCardId,
+  selectedListId,
+  setSelectedListId,
   handleAddCard,
   newCardTitle,
   setNewCardTitle,
@@ -86,31 +88,6 @@ const ListColumn = ({
 
   const listRef = React.useRef(null);
   const cardDropRef = React.useRef(null);
-
-
-  // const [, drop] = useDrop({
-  //   accept: ["card", "list"],
-  //   hover: (item, monitor) => {
-  //     if (!monitor.isOver({ shallow: true })) return;
-
-  //     // DRAG LIST
-  //     if (item.type === "list") {
-  //       if (item.listId === list.id) return;
-
-  //       moveList(item.index, index);
-  //       item.index = index;
-  //     }
-  //   },
-  //   drop: (item, monitor) => {
-  //     if (!monitor.isOver({ shallow: true })) return;
-
-  //     // DROP CARD
-  //     if (item.type === "card") {
-  //       const { cardId, fromListId } = item;
-  //       moveCard(cardId, fromListId, list.id, list.cards.length);
-  //     }
-  //   },
-  // });
 
   const [, listDrop] = useDrop({
     accept: "list",
@@ -201,7 +178,7 @@ const ListColumn = ({
               index={idx}
               onMoveCard={moveCard}
               onClick={() =>
-                setSelectedCard({ ...card, listId: list.id, boardId: board.id })
+                setSelectedCardId(card.id) & setSelectedListId(list.id)
               }
               onToggleState={handleToggleCardState}
               onArchive={handleArchiveCard}

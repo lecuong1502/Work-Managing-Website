@@ -1322,8 +1322,30 @@ app.put("/api/boards/:boardId/lists/:listId/cards/:cardId", authMiddleware, (req
         });
     }
 
-    if (description !== undefined) card.description = description;
-    if (labels !== undefined) card.labels = labels;
+    if (description !== undefined && description !== oldCard.description) {
+        card.description = description;
+
+        sendActivity({
+            actor: req.user,
+            card,
+            boardId,
+            type: "update",
+            message: `đã cập nhật mô tả thẻ`,
+        });
+    }
+
+    if (labels !== undefined) {
+        card.labels = labels;
+
+        sendActivity({
+            actor: req.user,
+            card,
+            boardId,
+            type: "label",
+            message: `đã cập nhật nhãn của thẻ`,
+        });
+    }
+
     if (dueDate !== undefined && dueDate !== oldCard.dueDate) {
         card.dueDate = dueDate;
 
@@ -1345,6 +1367,12 @@ app.put("/api/boards/:boardId/lists/:listId/cards/:cardId", authMiddleware, (req
     // const io = req.app.get("io")
 
     io.to(boardId.toString()).emit("board_updated", board);
+
+    io.to(boardId.toString()).emit("CARD_UPDATED", {
+        listId,
+        card,
+    });
+
 
     res.json(card);
 }
@@ -1387,6 +1415,8 @@ app.delete(
         console.log(`Đã xóa card ${cardId}`);
 
         io.to(boardId.toString()).emit("board_updated", board);
+
+
         res.status(204).send();
     }
 );
