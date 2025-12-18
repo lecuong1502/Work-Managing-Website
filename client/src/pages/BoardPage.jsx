@@ -573,8 +573,10 @@ const BoardPage = () => {
                       setNewCardTitle={setNewCardTitle}
                       handleAddCard={handleAddCard}
                       onAddInboxCard={handleAddInboxCard}
-                      selectedCard={selectedCard}
-                      setSelectedCard={setSelectedCard}
+                      selectedCardId={selectedCardId}
+                      setSelectedCardId={setSelectedCardId}
+                      selectedListId={selectedListId}
+                      setSelectedListId={setSelectedListId}
                     />
                   </div>
                 )}
