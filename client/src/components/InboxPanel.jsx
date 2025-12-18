@@ -13,8 +13,10 @@ const InboxPanel = ({
   newCardTitle,
   setNewCardTitle,
   handleAddCard,
-  selectedCard,
-  setSelectedCard,
+  selectedCardId,
+  setSelectedCardId,
+  selectedListId,
+
   onAddInboxCard
 }) => {
 
@@ -156,10 +158,9 @@ const InboxPanel = ({
           card={card}
           index={idx}
           boardId="inbox-global"
-          listId="inbox-list"
-          
+          listId="inbox-list"   
           onMoveCard={moveCard}
-          onClick={() => setSelectedCard({ ...card, listId:"inbox-list" })}
+          onClick={() => setSelectedCardId(card.id) & setSelectedListId("inbox-list")}
         />
       ))}
 

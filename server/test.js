@@ -78,12 +78,12 @@ pool
 // --- HÀM TIỆN ÍCH ---
 
 // Hàm gửi thông báo (Lưu DB + Bắn Socket)
-async function sendNotification({ userId, actorId, cardId, type, message }) {
+async function sendNotification({ userId, actorId, cardId, boardId, type, message }) {
   try {
     // 1. Lưu vào Database
     const [result] = await pool.query(
-      "INSERT INTO notifications (user_id, actor_id, card_id, type, message) VALUES (?, ?, ?, ?, ?)",
-      [userId, actorId, cardId, type, message]
+      "INSERT INTO notifications (user_id, actor_id, card_id, board_id, type, message) VALUES (?, ?, ?, ?, ?, ?)",
+      [userId, actorId, cardId, boardId, type, message]
     );
 
     const notificationData = {
@@ -91,6 +91,7 @@ async function sendNotification({ userId, actorId, cardId, type, message }) {
       userId,
       actorId,
       cardId,
+      boardId,
       type,
       message,
       isRead: 0,
@@ -124,10 +125,18 @@ async function getBoardById(boardId) {
 
     // Lấy members của board
     const [memberRows] = await pool.query(
-      "SELECT u.user_id AS id, u.username FROM board_members bm JOIN users u ON bm.user_id = u.user_id WHERE bm.board_id = ?",
+      `SELECT u.user_id AS id, u.username as name, u.email as email, u.created_at as addedAt, u.avatar_url as avatar_url, u.role as role
+      FROM board_members bm JOIN users u ON bm.user_id = u.user_id WHERE bm.board_id = ?`,
       [boardId]
     );
     board.members = memberRows;
+
+    // Lấy events của board
+    const [eventRows] = await pool.query(
+      "SELECT event_id AS event_id, title, start_time, end_time, description FROM calendar_events WHERE board_id = ?",
+      [boardId]
+    );
+    board.events = eventRows;
 
     // Lấy lists
     const [listRows] = await pool.query(
@@ -331,8 +340,8 @@ app.get("/", async (req, res) => {
 
     // Lấy tất cả boards
     const boards = [];
-    const boardIds = await pool.query("SELECT board_id FROM boards");
-    for (const boardId of boardIds[0]) {
+    const [boardIds] = await pool.query("SELECT board_id FROM boards");
+    for (const boardId of boardIds) {
       const boardData = await getBoardById(boardId.board_id);
       //console.log("Lấy board cho user:", boardId.board_id, boardData);
       if (boardData) boards.push(boardData);
@@ -545,7 +554,9 @@ app.get("/api/boards", authMiddleware, async (req, res) => {
     );
     const boardIds = boards.map((b) => b.boardId);
     const boardsWithLists = [];
+    const inboxId = `inbox_${userId}`;
     for (const boardId of boardIds) {
+      if (boardId === inboxId) continue;
       const boardData = await getBoardById(boardId);
       if (boardData) {
         boardsWithLists.push(boardData);
@@ -566,7 +577,7 @@ app.get("/api/boards/:boardID", authMiddleware, async (req, res) => {
   // Kiểm tra quyền sở hữu trong board_members
   if (!(await checkBoardMembership(userId, boardID))) {
     return res
-      .status(404)
+      .status(403)
       .json({ message: "Board không tồn tại hoặc không có quyền." });
   }
 
@@ -595,10 +606,13 @@ app.post("/api/boards", authMiddleware, async (req, res) => {
   try {
     connection.beginTransaction();
 
+    const boardId = `board_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`;
+
     // Tạo board mới trong DB
     const [result] = await connection.query(
-      "INSERT INTO boards (user_id, title, description, color, visibility) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO boards (board_id, user_id, title, description, color, visibility) VALUES (?, ?, ?, ?, ?, ?)",
       [
+        boardId,
         userId,
         name,
         description || "",
@@ -608,7 +622,7 @@ app.post("/api/boards", authMiddleware, async (req, res) => {
     );
 
     const newBoard = {
-      id: result.insertId,
+      id: boardId,
       userId: Number(userId),
       name: name,
       description: description || "",
@@ -620,7 +634,7 @@ app.post("/api/boards", authMiddleware, async (req, res) => {
     // Thêm vào bảng board_members
     await connection.query(
       "INSERT INTO board_members (board_id, user_id) VALUES (?, ?)",
-      [result.insertId, userId]
+      [boardId, userId]
     );
 
     res.status(201).json(newBoard);
@@ -644,7 +658,7 @@ app.put("/api/boards/:id", authMiddleware, async (req, res) => {
   // Kiểm tra quyền sở hữu trong board_members
   if (!(await checkBoardMembership(userId, boardID))) {
     return res
-      .status(404)
+      .status(403)
       .json({ message: "Board không tồn tại hoặc không có quyền." });
   }
 
@@ -710,7 +724,7 @@ app.post("/api/boards/:boardId/lists", authMiddleware, async (req, res) => {
   // Kiểm tra quyền sở hữu trong board_members
   if (!(await checkBoardMembership(userId, boardId))) {
     return res
-      .status(404)
+      .status(403)
       .json({ message: "Board không tồn tại hoặc không có quyền." });
   }
 
@@ -739,6 +753,10 @@ app.post("/api/boards/:boardId/lists", authMiddleware, async (req, res) => {
 
     res.status(201).json(newList);
     await connection.commit();
+    //Socket.io
+    const io = req.app.get("socketio");
+    io.to(boardId).emit("board_updated", getBoardById(boardId));
+
   } catch (err) {
     await connection.rollback();
     console.error(err);
@@ -760,7 +778,7 @@ app.put(
     // Kiểm tra quyền sở hữu trong board_members
     if (!(await checkBoardMembership(userId, boardId))) {
       return res
-        .status(404)
+        .status(403)
         .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
@@ -787,6 +805,10 @@ app.put(
 
       const updatedList = await getListsById(listId);
       res.status(200).json(updatedList);
+
+      //Socket.io
+      const io = req.app.get("socketio");
+      io.to(boardId).emit("board_updated", getBoardById(boardId));
     } catch (err) {
       await connection.rollback();
       console.error(err);
@@ -809,7 +831,7 @@ app.delete(
     // Kiểm tra quyền sở hữu trong board_members
     if (!(await checkBoardMembership(userId, boardId))) {
       return res
-        .status(404)
+        .status(403)
         .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
@@ -820,6 +842,9 @@ app.delete(
       await connection.query("DELETE FROM lists WHERE list_id = ?", [listId]);
       res.status(200).json({ message: "Đã xóa list" });
       await connection.commit();
+      //Socket.io
+      const io = req.app.get("socketio");
+      io.to(boardId).emit("LIST_DELETED", { listId });
     } catch (err) {
       await connection.rollback();
       console.error(err);
@@ -832,7 +857,9 @@ app.delete(
 
 // Drop List (Kéo thả List)
 app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
   const { sourceBoardId, destBoardId, listId, index } = req.body;
+  const io = req.app.get("socketio");
 
   if (!sourceBoardId || !destBoardId || !listId) {
     return res.status(400).json({ message: "Thiếu thông tin cần thiết." });
@@ -844,13 +871,13 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
     !(await checkBoardMembership(userId, destBoardId))
   ) {
     return res
-      .status(404)
+      .status(403)
       .json({ message: "Board không tồn tại hoặc không có quyền." });
   }
 
   // Kiểm tra tồn tại list trong source board
   const [listRows] = await pool.query(
-    "SELECT card_id FROM cards WHERE list_id = ? AND board_id = ?",
+    "SELECT list_id FROM lists WHERE list_id = ? AND board_id = ?",
     [listId, sourceBoardId]
   );
   if (listRows.length === 0) {
@@ -863,15 +890,15 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
   try {
     connection.beginTransaction();
 
-    const sourceBoards = await connection.query(
+    const [sourceBoards] = await connection.query(
       "SELECT * FROM lists WHERE board_id = ?",
       [sourceBoardId]
     );
-    const destBoards = await connection.query(
+    const [destBoards] = await connection.query(
       "SELECT * FROM lists WHERE board_id = ?",
       [destBoardId]
     );
-    if (sourceBoards[0].length === 0 || destBoards[0].length === 0) {
+    if (sourceBoards.length === 0 || destBoards.length === 0) {
       return res
         .status(404)
         .json({ message: "Không tìm thấy Board nguồn hoặc đích." });
@@ -895,22 +922,22 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
       index >= 0 &&
       index <= destBoard.lists.length
     ) {
-      destBoard.lists.splice(index, 0, movedCard);
+      destBoard.lists.splice(index, 0, movedList);
     } else {
       destBoard.lists.push(movedList);
     }
 
     // Đánh số lại position cho các board trong destBoard trong database
-    destBoard.lists.forEach(async (list, orderIndex) => {
-      await connection.query(
+    destBoard.lists.forEach((list, orderIndex) => {
+      connection.query(
         "UPDATE lists SET position = ?, board_id = ? WHERE list_id = ?",
         [orderIndex, destBoardId, list.id]
       );
     });
 
     // Đánh số lại position cho các board trong sourceBoard trong database
-    sourceBoard.lists.forEach(async (list, orderIndex) => {
-      await connection.query(
+    sourceBoard.lists.forEach((list, orderIndex) => {
+      connection.query(
         "UPDATE lists SET position = ?, board_id = ? WHERE list_id = ?",
         [orderIndex, sourceBoardId, list.id]
       );
@@ -918,6 +945,28 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
 
     await connection.commit();
     res.status(200).json({ message: "Di chuyển list thành công" });
+    //Socket.io
+    const io = req.app.get("socketio");
+    if (io) {
+        const payload = {
+            movedList,
+            sourceBoardId,
+            destBoardId,
+            index
+        };
+
+        io.to(String(sourceBoardId)).emit("LIST_MOVED", payload);
+
+        if (String(destBoardId) !== String(sourceBoardId)) {
+            io.to(String(destBoardId)).emit("LIST_MOVED", payload);
+        }
+
+        io.to(String(sourceBoardId)).emit("board_updated", sourceBoard);
+
+        if (String(destBoardId) !== String(sourceBoardId)) {
+            io.to(String(destBoardId)).emit("board_updated", destBoard);
+        }
+    }
   } catch (err) {
     console.error(err);
     await connection.rollback();
@@ -957,7 +1006,7 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
     !(await checkBoardMembership(userId, destBoardId))
   ) {
     return res
-      .status(404)
+      .status(403)
       .json({ message: "Board không tồn tại hoặc không có quyền." });
   }
 
@@ -977,30 +1026,30 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
     // Trong thực tế, cần tính lại position dựa trên index.
 
     connection.beginTransaction();
-    const sourceBoards = await connection.query(
+    const [sourceBoards] = await connection.query(
       "SELECT * FROM lists WHERE board_id = ?",
       [sourceBoardId]
     );
-    const destBoards = await connection.query(
+    const [destBoards] = await connection.query(
       "SELECT * FROM lists WHERE board_id = ?",
       [destBoardId]
     );
-    if (sourceBoards[0].length === 0 || destBoards[0].length === 0) {
+    if (sourceBoards.length === 0 || destBoards.length === 0) {
       return res
         .status(404)
         .json({ message: "Không tìm thấy Board nguồn hoặc đích." });
     }
 
-    const sourceLists = await connection.query(
+    const [sourceLists] = await connection.query(
       "SELECT * FROM lists WHERE list_id = ?",
       [sourceListId]
     );
-    const destLists = await connection.query(
+    const [destLists] = await connection.query(
       "SELECT * FROM lists WHERE list_id = ?",
       [destListId]
     );
 
-    if (sourceLists[0].length === 0 || destLists[0].length === 0) {
+    if (sourceLists.length === 0 || destLists.length === 0) {
       return res
         .status(404)
         .json({ message: "Không tìm thấy List nguồn hoặc đích." });
@@ -1029,16 +1078,16 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
     }
 
     // Đánh số lại position cho các card trong destList trong database
-    destList.cards.forEach(async (card, orderIndex) => {
-      await connection.query(
+    destList.cards.forEach((card, orderIndex) => {
+      connection.query(
         "UPDATE cards SET position = ?, list_id = ? WHERE card_id = ?",
         [orderIndex, destListId, card.id]
       );
     });
 
     // Đánh số lại position cho các card trong sourceList trong database
-    sourceList.cards.forEach(async (card, orderIndex) => {
-      await connection.query(
+    sourceList.cards.forEach((card, orderIndex) => {
+      connection.query(
         "UPDATE cards SET position = ?, list_id = ? WHERE card_id = ?",
         [orderIndex, sourceListId, card.id]
       );
@@ -1049,6 +1098,14 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
     console.log(
       `Đã chuyển Card "${movedCard.title}" từ List "${sourceList.title}" sang List "${destList.title}" tại vị trí "${index}"`
     );
+
+    //Socket.io
+    const io = req.app.get("socketio");
+    io.to(String(sourceBoardId)).emit("board_updated", getBoardById(sourceBoardId));
+    if (String(destBoardId) !== String(sourceBoardId)) {
+        io.to(String(destBoardId)).emit("board_updated", getBoardById(destBoardId));
+    }
+
   } catch (err) {
     connection.rollback();
     console.error(err);
@@ -1059,10 +1116,7 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
 });
 
 // Create Card
-app.post(
-  "/api/boards/:boardId/lists/:listId/cards",
-  authMiddleware,
-  async (req, res) => {
+app.post("/api/boards/:boardId/lists/:listId/cards", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { boardId, listId } = req.params;
     const { title, description, labels, dueDate, members } = req.body;
@@ -1073,7 +1127,7 @@ app.post(
 
     if (!(await checkBoardMembership(userId, boardId))) {
       return res
-        .status(404)
+        .status(403)
         .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
@@ -1127,8 +1181,61 @@ app.post(
     } finally {
       connection.release();
     }
+});
+
+// Card activity
+const sendActivity = ({ actorId, cardId, boardId, message, type }) => {
+  const activity = {
+      id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      type,
+      message,
+      createdAt: new Date(),
+      sender: actorId,
+      target: {
+          boardId: boardId,
+          cardId: cardId,
+      },
+  };
+
+  try {
+    pool.query(`INSERT INTO card_activities (activity_id, actor_id, card_id, board_id, message, type) VALUE (?, ?, ?, ?, ?, ?)`
+      , [activity.id, actorId, cardId, boardId, message, type]
+    );
+    
+    // emit realtime cho tất cả user đang mở board
+    io.to(boardId).emit("activity_created", activity);
+  } catch (e) {
+    console.log(e);
   }
-);
+
+};
+
+app.get("/api/cards/:cardId/activities", authMiddleware, async (req, res) => {
+  const { cardId } = req.params;
+
+  const [users] = await pool.query(`SELECT * FROM users`);
+  //Check activity trong database
+  const [rawActivities] = await pool.query(`SELECT * FROM card_activities WHERE card_id = ?`, [cardId]);
+  const activities = rawActivities.map(activity => {
+    const actor = users.find(user => user.user_id == activity.actor_id);
+    return {
+      id: activity.activity_id,
+      type: activity.type,
+      message: activity.message,
+      createdAt: activity.created_at,
+      sender: {
+          id: activity.actor_id,
+          name: actor.username | "",
+          avatar: actor.avatar_url | "",
+      },
+      target: {
+          boardId: activity.board_id,
+          cardId: activity.card_id,
+      },
+    }
+  });
+  res.json(activities);
+});
 
 // Update Card
 app.put(
@@ -1143,7 +1250,7 @@ app.put(
     // Kiểm tra quyền sở hữu trong board_members
     if (!(await checkBoardMembership(userId, boardId))) {
       return res
-        .status(404)
+        .status(403)
         .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
@@ -1198,6 +1305,15 @@ app.put(
         // Gửi thông báo cho thành viên mới
         for (const newUserId of addedMembers) {
           if (newUserId !== userId) {
+            // ACTIVITY – gửi cho toàn board
+            sendActivity({
+                actorId: userId,
+                cardId: cardId,
+                boardId: boardId,
+                type: "assigned",
+                message: `added ${newUserId || "a member"} to this card`,
+            });
+
             // dùng userId thay vì actorId
             sendNotification({
               userId: newUserId,
@@ -1221,7 +1337,7 @@ app.put(
       });
 
       // Lấy card cũ để so sánh
-      const oldCards = await connection.query(
+      const [oldCards] = await connection.query(
         "SELECT title, description, due_date, state FROM cards WHERE card_id = ?",
         cardId
       );
@@ -1229,9 +1345,29 @@ app.put(
 
       // Cập nhật thông tin card
       const newTitle = title !== undefined ? title : oldCard.title;
+      if (title != undefined && title != oldCard.title) {
+        sendActivity({
+          actorId: userId,
+          cardId: cardId,
+          boardId: boardId,
+          type: "update",
+          message: `đã đổi tên thẻ từ "${oldCard.title}" thành "${title}"`,
+        });
+      }
       const newDescription =
         description !== undefined ? description : oldCard.description;
       const newDueDate = dueDate !== undefined ? convertDateFtoB(dueDate) : oldCard.due_date;
+      if (dueDate !== undefined && convertDateFtoB(dueDate) !== oldCard.due_date) {
+        sendActivity({
+          actorId: userId,
+          cardId: cardId,
+          boardId: boardId,
+          type: "due",
+          message: dueDate !== undefined
+              ? `đã đặt hạn chót ${dueDate}`
+              : `đã xoá hạn chót`,
+        });
+      }
       const newState = state !== undefined ? state : oldCard.state;
       // Cập nhật bảng cards
       await connection.query(
@@ -1255,17 +1391,14 @@ app.put(
 );
 
 // Delete Card
-app.delete(
-  "/api/boards/:boardId/lists/:listId/cards/:cardId",
-  authMiddleware,
-  async (req, res) => {
+app.delete("/api/boards/:boardId/lists/:listId/cards/:cardId", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { boardId, listId, cardId } = req.params;
 
     // Kiểm tra quyền sở hữu trong board_members
     if (!(await checkBoardMembership(userId, boardId))) {
       return res
-        .status(404)
+        .status(403)
         .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
@@ -1310,6 +1443,7 @@ app.get("api/notifications", authMiddleware, async (req, res) => {
                 n.is_read as isRead,
                 n.created_at as createdAt,
                 n.card_id as cardId,
+                n.board_id as boardId,
                 u.username as actorName,
                 u.avatar_url as actorAvatar
             FROM notifications n
@@ -1414,7 +1548,7 @@ app.get("/api/boards/:boardId/events", authMiddleware, async (req, res) => {
      // Kiểm tra quyền sở hữu trong board_members
     if (!(await checkBoardMembership(userId, boardID))) {
         return res
-            .status(404)
+            .status(403)
             .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
@@ -1422,7 +1556,7 @@ app.get("/api/boards/:boardId/events", authMiddleware, async (req, res) => {
     const connection = await pool.getConnection();
     try {
         connection.beginTransaction();
-        const events = await connection.query("SELECT * FROM calendar_events WHERE board_id = ?", [boardId]);
+        const [events] = await connection.query("SELECT * FROM calendar_events WHERE board_id = ?", [boardId]);
         res.status(201).json(events);
         connection.commit;
 
@@ -1444,7 +1578,7 @@ app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
     const { title, start_time, end_time, description } = req.body;
 
     // Tìm event trong "bảng" calendarEvents
-    const eventIndex = pool.query("SELECT * FROM calendar_events WHERE event_id = ?", [eventId]);
+    const [eventIndex] = pool.query("SELECT * FROM calendar_events WHERE event_id = ?", [eventId]);
     if (eventIndex.length === 0) {
         return res.status(404).json({ message: "Sự kiện không tồn tại." });
     }
@@ -1454,7 +1588,7 @@ app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
     // Kiểm tra quyền sở hữu trong board_members
     if (!(await checkBoardMembership(userId, event.board_id))) {
         return res
-            .status(404)
+            .status(403)
             .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
@@ -1496,7 +1630,7 @@ app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
     const eventId = Number(req.params.eventId);
 
     // Tìm event trong "bảng" calendarEvents
-    const eventIndex = pool.query("SELECT * FROM calendar_events WHERE event_id = ?", [eventId]);
+    const [eventIndex] = pool.query("SELECT * FROM calendar_events WHERE event_id = ?", [eventId]);
     if (eventIndex.length === 0) {
         return res.status(404).json({ message: "Sự kiện không tồn tại." });
     }
@@ -1506,7 +1640,7 @@ app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
     // Kiểm tra quyền sở hữu trong board_members
     if (!(await checkBoardMembership(userId, event.board_id))) {
         return res
-            .status(404)
+            .status(403)
             .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
@@ -1529,6 +1663,650 @@ app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
         connection.release();
     }
     
+});
+
+// Add Member
+app.post("/api/boards/add-member", authMiddleware, async (req, res) => {
+  const currentUserId = req.user.id;
+  const currentUserEmail = req.user.email;
+
+  const { boardId, memberEmail, role } = req.body;
+
+  if (!boardId || !memberEmail) {
+    return res
+        .status(400)
+        .json({ message: "Vui lòng cung cấp Board ID và Email thành viên." });
+  }
+
+  const [members] = await pool.query(`SELECT * FROM users WHERE email = ?`, [memberEmail]);
+  if (members.length === 0) {
+    return res
+        .status(400)
+        .json({ message: "Thành viên không tồn tại." });
+  }
+  const member = members[0];
+
+  // Kiểm tra quyền sở hữu trong board_members
+  if (!(await checkBoardMembership(currentUserId, boardId))) {
+      return res
+          .status(403)
+          .json({ message: "Board không tồn tại hoặc không có quyền." });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    // Tìm người dùng muốn thêm (Member) trong database users
+    const [memberToAdds] = await connection.query(`SELECT * FROM users WHERE email = ?`, [memberEmail]);
+
+    if (memberToAdds.length === 0) {
+      return res
+          .status(404)
+          .json({ message: "Không tìm thấy người dùng với email này." });
+    }
+    const memberToAdd = memberToAdds[0];
+
+    // Không cho phép tự thêm chính mình
+    if (memberToAdd.user_id === currentUserId) {
+      return res
+          .status(400)
+          .json({ message: "Bạn không thể tự thêm chính mình vào board." });
+    }
+
+    // KIểm tra xem thành viên này có trong board chưa
+    const [checkMember] = await connection.query(`
+      SELECT * FROM board_members WHERE board_id = ? AND user_id = ?`, 
+      [boardId, memberToAdd.user_id]);
+    if (checkMember.length > 0) {
+      return res
+          .status(400)
+          .json({ message: `Thành viên ${memberToAdd.email} này đã có trong nhóm.` });
+    }
+
+    await connection.query(`INSERT INTO board_members (board_id, user_id) VALUES (?, ?)`, [boardId, memberToAdd.user_id]);
+    
+    const targetBoard = await getBoardById(boardId);
+
+    // Tạo thông báo (Notification)
+    const notiContent = {
+        id: `noti_${Date.now()}`,
+        type: "invite",
+        message: `${req.user.name} đã thêm bạn vào bảng "${targetBoard.name}"`,
+        sender: { name: req.user.name, avatar: req.user.avatar_url },
+        boardId: boardId,
+        createdAt: new Date(),
+        isRead: false,
+    };
+
+    sendNotification({
+      userId: memberToAdd.user_id,
+      actorId: currentUserId,
+      cardId: null,
+      boardId: boardId,
+      type: "invite",
+      message: `${req.user.name} đã thêm bạn vào bảng "${targetBoard.name}"`,
+    });
+    
+    // Socket.io
+    // Gửi Socket Real-time (Để client bên kia tự cập nhật UI)
+    io.to(`user_${memberToAdd.user_id}`).emit("notification_received", notiContent);
+
+    // Bắn sự kiện "Bạn vừa được thêm vào board" để client tự fetch lại list board
+    io.to(`user_${memberToAdd.user_id}`).emit("board_joined", targetBoard);
+
+    io.to(targetBoard.board_id).emit("board_updated", targetBoard);
+
+    await connection.commit();
+    res.status(200).json({// Trả kết quả theo định dạng nào đó chưa fix được
+        message: "Thêm thành viên thành công!",
+        member: {
+          id: memberToAdd.user_id,
+          name: memberToAdd.name,
+          email: memberToAdd.email,
+          avatar_url: memberToAdd.avatar_url,
+          role: role, // Role mặc định
+          addedAt: new Date(),
+        },
+        board: targetBoard,
+    });
+
+  } catch (e) {
+    await connection.rollback();
+    console.log(e);
+    res.status(500).json({
+        message: "Lỗi server khi thêm thành viên.",
+        error: e.message,
+    });
+  } finally {
+    connection.release(); 
+  }
+
+});
+
+// --- HÀM TIỆN ÍCH CHO CHECKLISTS ---
+
+async function getChecklistsByCardId(cardId) {
+    const [checklists] = await pool.query('SELECT * FROM checklists WHERE card_id = ?', [cardId]);
+    for (let cl of checklists) {
+        const [items] = await pool.query('SELECT * FROM checklist_items WHERE checklist_id = ?', [cl.checklist_id]);
+        cl.items = items;
+        // Tính progress
+        const total = items.length;
+        const completed = items.filter(i => i.is_completed).length;
+        cl.progress = total === 0 ? 0 : Math.round((completed / total) * 100);
+    }
+    return checklists;
+}
+
+async function checkCardMembership(userId, cardId) {
+    // Tìm board chứa card
+    const [rows] = await pool.query(`
+        SELECT bm.board_id FROM board_members bm
+        JOIN lists l ON bm.board_id = l.board_id
+        JOIN cards c ON l.list_id = c.list_id
+        WHERE bm.user_id = ? AND c.card_id = ?
+    `, [userId, cardId]);
+    return rows.length > 0;
+}
+
+async function updateCardStatus(cardId, isDone) {
+    const state = isDone ? 'Done' : 'Inprogress';
+    await pool.query('UPDATE cards SET state = ?, updated_at = NOW() WHERE card_id = ?', [state, cardId]);
+}
+
+// CARD STATUS & CHECKLIST API
+
+// Card status
+app.put("/api/cards/:cardId/status", authMiddleware, async (req, res) => {
+    const userId = Number(req.user.id);
+    const { cardId } = req.params;
+
+    // Kiểm tra quyền sở hữu trong board_members
+    if (!(await checkCardMembership(userId, cardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập card này." });
+    }
+
+    // Lấy trạng thái hiện tại của card
+    const [cardRows] = await pool.query('SELECT state FROM cards WHERE card_id = ?', [cardId]);
+    if (cardRows.length === 0) {
+        return res.status(404).json({ message: "Card không tồn tại." });
+    }
+
+    const currentState = cardRows[0].state;
+    const isDone = currentState === 'Done' ? false : true;
+
+    // Cập nhật trạng thái
+    await updateCardStatus(cardId, isDone);
+
+    // Lấy card sau khi cập nhật
+    const [updatedCardRows] = await pool.query('SELECT * FROM cards WHERE card_id = ?', [cardId]);
+    const updatedCard = updatedCardRows[0];
+
+    // Socket: Báo cho mọi người biết card này đã đổi trạng thái
+    io.emit("CARD_UPDATED", { cardId, card: updatedCard });
+
+    res.status(200).json(updatedCard);
+});
+
+// Lấy checklist
+app.get("/api/cards/:cardId/checklists", authMiddleware, async (req, res) => {
+    const { cardId } = req.params;
+    const userId = req.user.id;
+
+    // Kiểm tra quyền truy cập card
+    if (!(await checkCardMembership(userId, cardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập card này." });
+    }
+
+    try {
+        const checklists = await getChecklistsByCardId(cardId);
+        res.status(200).json(checklists);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Lỗi server." });
+    }
+});
+
+// Cập nhật checklist
+app.post("/api/cards/:cardId/checklists", authMiddleware, async (req, res) => {
+    const { cardId } = req.params;
+    const { title } = req.body;
+    const userId = req.user.id;
+
+    if (!title) return res.status(400).json({ message: "Tiêu đề không được để trống" });
+
+    // Kiểm tra quyền truy cập card
+    if (!(await checkCardMembership(userId, cardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập card này." });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        const [result] = await connection.query('INSERT INTO checklists (card_id, title) VALUES (?, ?)', [cardId, title]);
+        const newChecklist = { checklist_id: result.insertId, card_id: cardId, title };
+
+        // Socket: Báo cập nhật
+        io.emit("CHECKLIST_UPDATED", { cardId });
+
+        res.status(201).json(newChecklist);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Lỗi server." });
+    } finally {
+        connection.release();
+    }
+});
+
+// Xóa checklist
+app.delete("/api/checklists/:checklistId", authMiddleware, async (req, res) => {
+    const checklistId = Number(req.params.checklistId);
+    const userId = req.user.id;
+
+    // Tìm checklist để lấy card_id
+    const [checklistRows] = await pool.query('SELECT card_id FROM checklists WHERE checklist_id = ?', [checklistId]);
+    if (checklistRows.length === 0) return res.status(404).json({ message: "Checklist không tồn tại" });
+
+    const cardId = checklistRows[0].card_id;
+
+    // Kiểm tra quyền truy cập card
+    if (!(await checkCardMembership(userId, cardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập card này." });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        // Xóa items trước
+        await connection.query('DELETE FROM checklist_items WHERE checklist_id = ?', [checklistId]);
+        // Xóa checklist
+        await connection.query('DELETE FROM checklists WHERE checklist_id = ?', [checklistId]);
+
+        io.emit("CHECKLIST_UPDATED", { cardId });
+
+        res.status(200).json({ message: "Đã xóa checklist thành công" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Lỗi server." });
+    } finally {
+        connection.release();
+    }
+});
+
+// Thêm item vào checklist
+app.post("/api/checklists/:checklistId/items", authMiddleware, async (req, res) => {
+    const checklistId = Number(req.params.checklistId);
+    const { description } = req.body;
+    const userId = req.user.id;
+
+    if (!description) return res.status(400).json({ message: "Nội dung không được để trống" });
+
+    // Tìm checklist để lấy card_id
+    const [checklistRows] = await pool.query('SELECT card_id FROM checklists WHERE checklist_id = ?', [checklistId]);
+    if (checklistRows.length === 0) return res.status(404).json({ message: "Checklist không tồn tại." });
+
+    const cardId = checklistRows[0].card_id;
+
+    // Kiểm tra quyền truy cập card
+    if (!(await checkCardMembership(userId, cardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập card này." });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        const [result] = await connection.query('INSERT INTO checklist_items (checklist_id, description, is_completed) VALUES (?, ?, false)', [checklistId, description]);
+        const newItem = { item_id: result.insertId, checklist_id: checklistId, description, is_completed: false };
+
+        // Socket update real-time
+        io.emit("CHECKLIST_UPDATED", { cardId });
+
+        res.status(201).json(newItem);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Lỗi server." });
+    } finally {
+        connection.release();
+    }
+});
+
+// Toggle item của checklist
+app.put("/api/checklist-items/:itemId/toggle", authMiddleware, async (req, res) => {
+    const itemId = Number(req.params.itemId);
+    const userId = req.user.id;
+
+    // Tìm item để lấy checklist_id và card_id
+    const [itemRows] = await pool.query(`
+        SELECT ci.*, c.card_id FROM checklist_items ci
+        JOIN checklists cl ON ci.checklist_id = cl.checklist_id
+        JOIN cards c ON cl.card_id = c.card_id
+        WHERE ci.item_id = ?
+    `, [itemId]);
+    if (itemRows.length === 0) return res.status(404).json({ message: "Item không tồn tại." });
+
+    const cardId = itemRows[0].card_id;
+
+    // Kiểm tra quyền truy cập card
+    if (!(await checkCardMembership(userId, cardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập card này." });
+    }
+
+    const currentCompleted = itemRows[0].is_completed;
+    const newCompleted = !currentCompleted;
+
+    await pool.query('UPDATE checklist_items SET is_completed = ? WHERE item_id = ?', [newCompleted, itemId]);
+
+    const updatedItem = { ...itemRows[0], is_completed: newCompleted };
+
+    // Socket update
+    io.emit("CHECKLIST_UPDATED", { cardId });
+
+    res.status(200).json(updatedItem);
+});
+
+// Xóa item
+app.delete("/api/checklist-items/:itemId", authMiddleware, async (req, res) => {
+    const itemId = Number(req.params.itemId);
+    const userId = req.user.id;
+
+    // Tìm item để lấy card_id
+    const [itemRows] = await pool.query(`
+        SELECT c.card_id FROM checklist_items ci
+        JOIN checklists cl ON ci.checklist_id = cl.checklist_id
+        JOIN cards c ON cl.card_id = c.card_id
+        WHERE ci.item_id = ?
+    `, [itemId]);
+    if (itemRows.length === 0) return res.status(404).json({ message: "Item không tồn tại." });
+
+    const cardId = itemRows[0].card_id;
+
+    // Kiểm tra quyền truy cập card
+    if (!(await checkCardMembership(userId, cardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập card này." });
+    }
+
+    await pool.query('DELETE FROM checklist_items WHERE item_id = ?', [itemId]);
+
+    // Socket update
+    io.emit("CHECKLIST_UPDATED", { cardId });
+
+    res.status(200).json({ message: "Đã xóa item" });
+});
+
+// Chỉnh sửa item trong checklist
+app.put("/api/checklist-items/:itemId", authMiddleware, async (req, res) => {
+    const itemId = Number(req.params.itemId);
+    const { description } = req.body;
+    const userId = req.user.id;
+
+    // Tìm item để lấy card_id
+    const [itemRows] = await pool.query(`
+        SELECT c.card_id FROM checklist_items ci
+        JOIN checklists cl ON ci.checklist_id = cl.checklist_id
+        JOIN cards c ON cl.card_id = c.card_id
+        WHERE ci.item_id = ?
+    `, [itemId]);
+    if (itemRows.length === 0) return res.status(404).json({ message: "Item không tồn tại." });
+
+    const cardId = itemRows[0].card_id;
+
+    // Kiểm tra quyền truy cập card
+    if (!(await checkCardMembership(userId, cardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập card này." });
+    }
+
+    await pool.query('UPDATE checklist_items SET description = ? WHERE item_id = ?', [description, itemId]);
+
+    const updatedItem = { item_id: itemId, description };
+
+    // Socket update
+    io.emit("CHECKLIST_UPDATED", { cardId });
+
+    res.status(200).json(updatedItem);
+});
+
+// GLOBAL INBOX APIS
+
+// Hàm đảm bảo user có inbox cá nhân
+async function ensureInbox(userId) {
+    const inboxBoardId = `inbox_${userId}`;
+    const inboxListId = `inbox_${userId}`;
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        // Kiểm tra board inbox có tồn tại không
+        const [boardRows] = await pool.query("SELECT board_id FROM boards WHERE board_id = ?", [inboxBoardId]);
+        if (boardRows.length === 0) {
+            // Tạo board inbox
+            await connection.query(
+                "INSERT INTO boards (board_id, user_id, title, description, color, visibility) VALUES (?, ?, ?, 'Danh sách thẻ inbox cá nhân', '#f0f0f0', 'Private')",
+                [inboxBoardId, userId, "Inbox"]
+            );
+
+            // Thêm user vào board_members (owner)
+            await connection.query("INSERT INTO board_members (board_id, user_id) VALUES (?, ?)", [inboxBoardId, userId]);
+        }
+
+        // Kiểm tra list "inbox" có tồn tại không
+        const [listRows] = await connection.query("SELECT list_id FROM lists WHERE board_id = ? AND list_id = ?", [inboxBoardId, inboxListId]);
+        if (listRows.length === 0) {
+            // Tạo list inbox
+            await connection.query("INSERT INTO lists (list_id, board_id, title, position) VALUES (?, ?, ?, 0)", [inboxListId, inboxBoardId, `Inbox`]);
+        }
+
+        //console.log(`Inbox đảm bảo cho user ${userId}`);
+        connection.commit();
+    } catch (err) {
+        connection.rollback();
+        console.error("Lỗi tạo inbox:", err);
+    } finally {
+        connection.release();
+    }
+}
+
+app.get("/api/inbox", authMiddleware, async (req, res) => {
+    const userId = req.user.id;
+    const inboxBoardId = `inbox_${userId}`;
+    const inboxListId = `inbox_${userId}`;
+
+    // Đảm bảo user có inbox
+    await ensureInbox(userId);
+
+    // Kiểm tra quyền truy cập board inbox
+    if (!(await checkBoardMembership(userId, inboxBoardId))) {
+        return res.status(403).json({ message: "Không có quyền truy cập Inbox." });
+    }
+
+    try {
+        const inboxList = await getListsById(inboxListId);
+        //console.log(inboxList.cards);
+        res.status(200).json(inboxList.cards);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Lỗi server." });
+    }
+});
+
+// Tạo thẻ mới vào Inbox
+app.post("/api/inbox/cards", authMiddleware, async (req, res) => {
+    const userId = Number(req.user.id);
+    const { title, description } = req.body;
+
+    // Đảm bảo user có inbox
+    await ensureInbox(userId);
+    const listId = `inbox_${userId}`;
+
+    if (!title) return res.status(400).json({ message: "Tiêu đề thẻ là bắt buộc" });
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Tính toán vị trí (position) để card nằm cuối list
+      const [rows] = await connection.query(
+        "SELECT MAX(position) as maxPos FROM cards WHERE list_id = ?",
+        [listId]
+      );
+      const newPosition = (rows[0].maxPos || 0) + 1024;
+
+      // Tạo object card mới
+      const newCard = {
+        card_id: `card_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
+        list_id: listId,
+        title: title || "Inbox",
+        description: description || "",
+        position: newPosition,
+        state: "Inprogress",
+        labels: [],
+        due_date: null,
+        members: [],
+      };
+
+      // Insert vào bảng cards
+      await connection.query(
+        "INSERT INTO cards (card_id, list_id, title, description, position, due_date) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+          newCard.card_id,
+          newCard.list_id,
+          newCard.title,
+          newCard.description,
+          newCard.position,
+          newCard.due_date,
+        ]
+      );
+
+      res.status(201).json(newCard);
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      console.error(err);
+      res
+        .status(500)
+        .json({ message: "Lỗi server khi tạo card", error: err.message });
+    } finally {
+      connection.release();
+    }
+});
+
+// Cập nhật thẻ Inbox (Sửa tên, mô tả)
+app.put("/api/inbox/cards/:cardId", authMiddleware, async (req, res) => {
+    const userId = Number(req.user.id);
+    const { cardId } = req.params;
+    const { title, description, labels, dueDate, state } = req.body;
+
+    // Đảm bảo user có inbox
+    await ensureInbox(userId);
+    const listId = `inbox_${userId}`;  
+
+    // Kiểm tra tồn tại card
+    const check = await pool.query(
+      "SELECT card_id FROM cards WHERE card_id = ? AND list_id = ?",
+      [cardId, listId]
+    );
+    if (check[0].length === 0) {
+      return res.status(404).json({ message: "Card không tồn tại." });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Xóa label cũ liên kết với card
+      await connection.query("DELETE FROM labels WHERE card_id = ?", cardId);
+      // Thêm label mới liên kết với card
+      labels.forEach(async (label) => {
+        await connection.query(
+          "INSERT INTO labels (card_id, name, color) VALUES (?, ?, ?)",
+          [cardId, label.name, label.color]
+        );
+      });
+
+      // Lấy card cũ để so sánh
+      const [oldCards] = await connection.query(
+        "SELECT title, description, due_date, state FROM cards WHERE card_id = ?",
+        cardId
+      );
+      const oldCard = oldCards[0];
+
+      // Cập nhật thông tin card
+      const newTitle = title !== undefined ? title : oldCard.title;
+      if (title != undefined && title != oldCard.title) {
+        sendActivity({
+          actorId: userId,
+          cardId: cardId,
+          boardId: boardId,
+          type: "update",
+          message: `đã đổi tên thẻ từ "${oldCard.title}" thành "${title}"`,
+        });
+      }
+      const newDescription =
+        description !== undefined ? description : oldCard.description;
+      const newDueDate = dueDate !== undefined ? convertDateFtoB(dueDate) : oldCard.due_date;
+      if (dueDate !== undefined && convertDateFtoB(dueDate) !== oldCard.due_date) {
+        sendActivity({
+          actorId: userId,
+          cardId: cardId,
+          boardId: boardId,
+          type: "due",
+          message: dueDate !== undefined
+              ? `đã đặt hạn chót ${dueDate}`
+              : `đã xoá hạn chót`,
+        });
+      }
+      const newState = state !== undefined ? state : oldCard.state;
+      // Cập nhật bảng cards
+      await connection.query(
+        "UPDATE cards SET title = ?, description = ?, due_date = ?, state = ? WHERE card_id = ?",
+        [newTitle, newDescription, newDueDate, newState, cardId]
+      );
+      await connection.commit();
+
+      const updatedCard = await getCardById(cardId);
+      res.json(updatedCard);
+    } catch (err) {
+      await connection.rollback();
+      console.error(err);
+      res
+        .status(500)
+        .json({ message: "Lỗi cập nhật card", error: err.message });
+    } finally {
+      connection.release();
+    }
+});
+
+// Xóa thẻ Inbox
+app.delete("/api/inbox/cards/:cardId", authMiddleware, async (req, res) => {
+    const userId = req.user.id;
+    const cardId = req.params;
+
+    // Đảm bảo user có inbox
+    await ensureInbox(userId);
+    const listId = `inbox_${userId}`;
+
+    // Kiểm tra tồn tại card
+    const check = await pool.query(
+      "SELECT card_id FROM cards WHERE card_id = ? AND list_id = ?",
+      [cardId, listId]
+    );
+    if (check[0].length === 0) {
+      return res.status(404).json({ message: "Card không tồn tại." });
+    }
+
+    try {
+      const [result] = await pool.query("DELETE FROM cards WHERE card_id = ?", [
+        cardId,
+      ]);
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Card không tồn tại để xóa" });
+      }
+
+      console.log(`Đã xóa card với ID: ${cardId}`);
+      res.status(204).send(); // 204 No Content
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Lỗi xóa card", error: err.message });
+    }
 });
 
 // Frontend Socket.io

@@ -6,7 +6,7 @@ USE work_manager;
 
 CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(255) NOT NULL UNIQUE,
+    username VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(255),    
@@ -20,7 +20,7 @@ CREATE TABLE users (
 
 
 CREATE TABLE boards (
-    board_id INT AUTO_INCREMENT PRIMARY KEY,
+    board_id VARCHAR(255) PRIMARY KEY,
     user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -38,7 +38,7 @@ CREATE TABLE boards (
 
 
 CREATE TABLE board_members (
-    board_id INT NOT NULL,
+    board_id VARCHAR(255) NOT NULL,
     user_id INT NOT NULL,
     add_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -54,7 +54,7 @@ CREATE TABLE board_members (
 
 CREATE TABLE lists (
     list_id VARCHAR(255) PRIMARY KEY,
-    board_id INT NOT NULL,
+    board_id VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     position INT NOT NULL DEFAULT 0,
 
@@ -72,7 +72,7 @@ CREATE TABLE cards (
     description TEXT,
     position INT NOT NULL DEFAULT 0,
     due_date DATETIME,
-    state VARCHAR(10) DEFAULT "Inprogress", -- Inprogress/Done/Archived
+    state enum("Inprogress","Done","Archived") DEFAULT "Inprogress",
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -130,7 +130,7 @@ CREATE TABLE card_attachments (
 CREATE TABLE labels (
     label_id INT AUTO_INCREMENT PRIMARY KEY,
     card_id VARCHAR(255) NOT NULL,
-    name VARCHAR(255) NOT NULL,          
+    name VARCHAR(255),          
     color VARCHAR(7) NOT NULL,           -- Hex color code (e.g., "#FF5733")
 
     FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE
@@ -144,7 +144,8 @@ CREATE TABLE notifications (
     notification_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,           -- Người nhận thông báo
     actor_id INT NOT NULL,          -- Người tạo ra hành động
-    card_id VARCHAR(255) NOT NULL,  -- Thẻ liên quan đến thông báo
+    card_id VARCHAR(255),  -- Thẻ liên quan đến thông báo
+    board_id VARCHAR(255), -- Board liên quan đến thông báo
     type VARCHAR(50) NOT NULL,      -- Loại thông báo: 'assigned', 'comment', 'due_date'
     message TEXT,
     is_read BOOLEAN DEFAULT FALSE,  -- false = chưa đọc, true = đã đọc
@@ -156,16 +157,12 @@ CREATE TABLE notifications (
 );
 
 -- ADD (Dữ liệu mẫu để test)
--- INSERT INTO notifications (user_id, actor_id, card_id, type, message)
+-- INSERT INTO notifications (user_id, actor_id, card_id, board_id, type, message)
 -- VALUES (1, 2, 1, 'assigned', 'Nguyễn Văn A đã thêm bạn vào thẻ "Thiết kế giao diện"');
-
--- ADD
--- INSERT INTO card_labels (card_id, label_id)
--- VALUES ( 1, 1);
 
 CREATE TABLE calendar_events (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
-    board_id INT NOT NULL,
+    board_id VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     start_time DATETIME NOT NULL,
     end_time DATETIME NOT NULL,
@@ -192,10 +189,26 @@ CREATE TABLE checklist_items (
     item_id INT AUTO_INCREMENT PRIMARY KEY,
     checklist_id INT NOT NULL,
     description VARCHAR(255) NOT NULL,
-    progress INT NOT NULL DEFAULT 0,
+    is_completed BOOLEAN DEFAULT false,
 
     FOREIGN KEY (checklist_id) REFERENCES checklists(checklist_id) ON DELETE CASCADE
 );
 
--- INSERT INTO checklist_items (checklist_id, description, progress)
--- VALUES (1, "Sample Item", 0);
+-- INSERT INTO checklist_items (checklist_id, description, is_finished)
+-- VALUES (1, "Sample Item", false);
+
+CREATE TABLE card_activities (
+    activity_id VARCHAR(255) PRIMARY KEY,
+    actor_id INT NOT NULL,
+    card_id VARCHAR(255),
+    board_id VARCHAR(255),
+    message TEXT,
+    type VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (actor_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE
+);
+
+-- INSERT INTO card_activities (activity_id, actor_id, card_id, board_id, message, type)
+-- VALUE ("act_1", 1, 1, 1, "Change", "Change");
