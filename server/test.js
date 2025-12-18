@@ -1426,6 +1426,99 @@ app.delete(
     }
   }
 );
+//
+
+// API CALENDAR / EVENTS
+app.get("/api/events", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const [rows] = await pool.query(
+      "SELECT * FROM events WHERE user_id = ? ORDER BY date, start",
+      [userId]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Lỗi GET /api/events:", err);
+    res.status(500).json({ message: "Lỗi lấy lịch" });
+  }
+});
+//tạo sk mới
+app.post("/api/events", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const { name, date, start, end } = req.body;
+
+  if (!name || !date || !start || !end) {
+    return res.status(400).json({ message: "Thiếu dữ liệu lịch" });
+  }
+
+  try {
+    const [result] = await pool.query(
+      "INSERT INTO events (user_id, name, date, start, end) VALUES (?, ?, ?, ?, ?)",
+      [userId, name, date, start, end]
+    );
+
+    res.status(201).json({
+      id: result.insertId,
+      user_id: userId,
+      name,
+      date,
+      start,
+      end,
+    });
+  } catch (err) {
+    console.error("Lỗi POST /api/events:", err);
+    res.status(500).json({ message: "Lỗi tạo lịch" });
+  }
+});
+//cập nhật sk
+app.put("/api/events/:id", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+  const { name, date, start, end } = req.body;
+
+  try {
+    const [result] = await pool.query(
+      `
+      UPDATE events 
+      SET name = ?, date = ?, start = ?, end = ?
+      WHERE id = ? AND user_id = ?
+      `,
+      [name, date, start, end, id, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Không tìm thấy lịch" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Lỗi PUT /api/events/:id:", err);
+    res.status(500).json({ message: "Lỗi cập nhật lịch" });
+  }
+});
+//xóa sk
+app.delete("/api/events/:id", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  try {
+    const [result] = await pool.query(
+      "DELETE FROM events WHERE id = ? AND user_id = ?",
+      [id, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Không tìm thấy lịch" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Lỗi DELETE /api/events/:id:", err);
+    res.status(500).json({ message: "Lỗi xoá lịch" });
+  }
+});
 
 // API get notifications
 app.get("api/notifications", authMiddleware, async (req, res) => {
