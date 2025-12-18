@@ -44,6 +44,10 @@ const RegisterPage = () => {
       const data = await res.json();
 
       if (res.ok) {
+        if (data.user) {
+             sessionStorage.setItem("user", JSON.stringify(data.user));
+        }
+
         sessionStorage.setItem("user", JSON.stringify({ username, email, password }));
         setToast({ message: "Đăng ký thành công!", type: "success" });
         setTimeout(() => {

@@ -400,11 +400,37 @@ app.post("/register", async (req, res) => {
             createdAt: new Date(),
         };
 
+        const inboxBoard = {
+            id: `inbox_${newUser.id}`, // ID dạng string đặc biệt
+            userId: newUser.id,
+            name: "Inbox",
+            description: "Khay đựng công việc cá nhân, truy cập nhanh từ mọi nơi.",
+            color: "#5e6c84", // Màu xám trung tính đặc trưng của Inbox
+            visibility: "Private", // Inbox luôn là Private
+            members: [], // Không có thành viên khác
+            events: [],
+            lists: [
+                {
+                    // Tạo sẵn 1 list duy nhất để chứa card
+                    id: `list_inbox_main_${newUser.id}`,
+                    title: "Inbox Items",
+                    cards: []
+                }
+            ],
+        };
+
         // Save to database
+        const templateBoards = JSON.parse(JSON.stringify(DEFAULT_BOARDS_TEMPLATE)).map((board, index) => {
+            return {
+                ...board,
+                userId: newUser.id,
+                id: Date.now() + index, // Tạo ID mới để không bị trùng với board của user khác
+                members: [] // Reset thành viên (nếu board mẫu có sẵn member cũ)
+            };
+        });
+
         users.push(newUser);
-        userBoards[newUser.id] = JSON.parse(
-            JSON.stringify(DEFAULT_BOARDS_TEMPLATE)
-        ).filter((b) => b.userId === newUser.id);
+        userBoards[newUser.id] = [inboxBoard, ...templateBoards];
 
         console.log("Users database sau khi đăng ký:", users);
         console.log("UserBoards database sau khi đăng ký:", userBoards);
@@ -418,6 +444,7 @@ app.post("/register", async (req, res) => {
                 email: newUser.email,
                 role: newUser.role,
                 avatar_url: newUser.avatar_url,
+                inboxBoard
             },
         });
     } catch (error) {
@@ -545,6 +572,8 @@ app.get("/api/boards", authMiddleware, (req, res) => {
     let result = [...ownedBoards, ...sharedBoards];
 
     // MAP DỮ LIỆU TỪ "BẢNG" EVENTS VÀO BOARD (Tương tự SQL JOIN)
+    result = result.filter(b => !String(b.id).startsWith("inbox_"));
+
     result = result.map(board => {
         // Tìm các event có board_id trùng khớp
         const realTimeEvents = calendarEvents.filter(e => e.board_id === board.id);

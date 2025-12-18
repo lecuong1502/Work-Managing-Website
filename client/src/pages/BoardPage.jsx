@@ -57,6 +57,13 @@ const BoardPage = () => {
 
   const isCalendarMode = location.pathname.includes("/calendar");
 
+  const getCurrentUser = () => {
+    const userStr = sessionStorage.getItem("user");
+    return userStr ? JSON.parse(userStr) : null;
+  };
+  const currentUser = getCurrentUser();
+  const currentUserId = currentUser?.id;
+
   const updateBoardToStorage = (updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
 
@@ -75,14 +82,24 @@ const BoardPage = () => {
 
   // Fetch Global Inbox
   const fetchInbox = async () => {
+    if (!currentUserId) return;
+
     try {
       const token = sessionStorage.getItem("token");
-      const res = await fetch("http://localhost:3000/api/inbox", {
+      const inboxBoardId = `inbox_${currentUserId}`;
+
+      // Gọi API lấy Board chi tiết với ID là inbox_USERID
+      const res = await fetch(`http://localhost:3000/api/boards/${inboxBoardId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.ok) {
-        const data = await res.json();
-        setInboxCards(data);
+        const inboxBoard = await res.json();
+        // Inbox Board chỉ có 1 list, lấy cards từ list đầu tiên
+        const cards = inboxBoard.lists?.[0]?.cards || [];
+        setInboxCards(cards);
+      } else {
+        console.warn("Chưa tìm thấy Inbox Board hoặc lỗi tải Inbox");
       }
     } catch (err) {
       console.error("Lỗi tải inbox:", err);
@@ -98,6 +115,9 @@ const BoardPage = () => {
   const handleAddInboxCard = async (cardTitle) => {
     if (!cardTitle.trim()) return;
 
+    const inboxBoardId = `inbox_${currentUserId}`;
+    const inboxListId = `list_inbox_main_${currentUserId}`;
+
     const tempId = `temp_${Date.now()}`;
     const optimisticCard = {
         id: tempId,
@@ -112,18 +132,22 @@ const BoardPage = () => {
 
     try {
       const token = sessionStorage.getItem("token");
-      const res = await fetch("http://localhost:3000/api/inbox/cards", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title: cardTitle }),
-      });
+      // Gọi API tạo card chuẩn vào List cụ thể của Inbox Board
+      const res = await fetch(
+        `http://localhost:3000/api/boards/${inboxBoardId}/lists/${inboxListId}/cards`, 
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title: cardTitle }),
+        }
+      );
 
       if (res.ok) {
         const newCard = await res.json();
-        // Cập nhật UI Inbox ngay lập tức
+        // Cập nhật lại card thật
         setInboxCards((prev) => 
             prev.map(c => c.id === tempId ? newCard : c)
         );
@@ -133,6 +157,7 @@ const BoardPage = () => {
       }
     } catch (err) {
       console.error("Lỗi thêm thẻ vào inbox:", err);
+      setInboxCards((prev) => prev.filter(c => c.id !== tempId));
     }
   };
 
