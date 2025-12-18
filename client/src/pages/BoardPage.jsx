@@ -31,7 +31,11 @@ const BoardPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [addingCard, setAddingCard] = useState({});
   const [addingList, setAddingList] = useState(false);
-  const [selectedCard, setSelectedCard] = useState(null);
+
+  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [selectedListId, setSelectedListId] = useState(null);
+
+
   const [newListTitle, setNewListTitle] = useState("");
   const [renamingList, setRenamingList] = useState(null);
   const [newListName, setNewListName] = useState("");
@@ -360,39 +364,72 @@ const BoardPage = () => {
     }
   };
 
+
+  ///Cập nhật card
+
+  const selectedCard = board?.lists
+    ?.flatMap(l => l.cards)
+    ?.find(c => c.id === selectedCardId) || null;
+
+  const selectedList = board?.lists
+    ?.find(l => l.id === selectedListId) || null;
+
+
   const handleUpdateCard = async (updatedCard, listId) => {
-    setBoard((prevBoard) => {
-      const newLists = prevBoard.lists.map((list) =>
-        list.id === listId
+    // Optimistic UI
+    setBoard((prev) => {
+      const lists = prev.lists.map((l) =>
+        l.id === listId
           ? {
-            ...list,
-            cards: list.cards.map((c) =>
+            ...l,
+            cards: l.cards.map((c) =>
               c.id === updatedCard.id ? updatedCard : c
             ),
           }
-          : list
+          : l
       );
-
-      const updatedBoard = { ...prevBoard, lists: newLists };
-      updateBoardToStorage(updatedBoard);
-      return updatedBoard;
+      return { ...prev, lists };
     });
-    try {
-      await fetch(
-        `http://localhost:3000/api/boards/${board.id}/lists/${listId}/cards/${updatedCard.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(updatedCard),
-        }
-      );
-    } catch (err) {
-      console.error("Update card failed:", err);
-    }
+
+    // Gửi request lên server
+    await fetch(
+      `http://localhost:3000/api/boards/${board.id}/lists/${listId}/cards/${updatedCard.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(updatedCard),
+      }
+    );
   };
+
+
+  ///đông bộ card khi có sự kiện từ server
+  useEffect(() => {
+    const handler = ({ listId, card }) => {
+      setBoard((prev) => {
+        const lists = prev.lists.map((l) =>
+          l.id === listId
+            ? {
+              ...l,
+              cards: l.cards.map((c) =>
+                c.id === card.id ? card : c
+              ),
+            }
+            : l
+        );
+        return { ...prev, lists };
+      });
+    };
+
+    socket.on("CARD_UPDATED", handler);
+
+    return () => socket.off("CARD_UPDATED", handler);
+  }, []);
+
+
 
   const handleAddMember = async () => {
     if (!email) {
@@ -709,8 +746,10 @@ const BoardPage = () => {
                           handleRenameList={handleRenameList}
                           setAddingCard={setAddingCard}
                           addingCard={addingCard}
-                          selectedCard={selectedCard}
-                          setSelectedCard={setSelectedCard}
+                          selectedCardId={selectedCardId}
+                          setSelectedCardId={setSelectedCardId}
+                          selectedListId={selectedListId}
+                          setSelectedListId={setSelectedListId}
                           handleAddCard={handleAddCard}
                           newCardTitle={newCardTitle}
                           setNewCardTitle={setNewCardTitle}
@@ -742,19 +781,21 @@ const BoardPage = () => {
                     )}
                   </div>
 
-                  {selectedCard && (
+                  {selectedCard && selectedList && (
                     <CardModal
                       board={board}
-                      card={selectedCard}
-                      list={board.lists.find(
-                        (l) => l.id === selectedCard.listId
-                      )}
-                      boardId={selectedCard.boardId}
-                      listId={selectedCard.listId}
+                      card={selectedCard}   // ✅ LUÔN MỚI
+                      list={selectedList}
+                      boardId={board.id}
+                      listId={selectedListId}
                       onUpdate={handleUpdateCard}
-                      onClose={() => setSelectedCard(null)}
+                      onClose={() => {
+                        setSelectedCardId(null);
+                        setSelectedListId(null);
+                      }}
                     />
                   )}
+
                 </>
               )}
             </div>

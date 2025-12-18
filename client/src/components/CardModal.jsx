@@ -37,9 +37,16 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
 
     const boardMembers = board.members || [];
 
+    const [activities, setActivities] = useState([]);
+
+    useEffect(() => {
+        setEditedTitle(card.title || "");
+        setEditedDesciption(card.description || "");
+        setSelectedLabels(card.labels || []);
+        setDate(card.dueDate ? new Date(card.dueDate) : null);
+    }, [card]);
 
 
-    const [activities, setActivities] = useState([])
 
     useEffect(() => {
         if (!card?.id) return;
@@ -117,6 +124,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
             : [...selectedLabels, label];
 
         setSelectedLabels(updated);
+        onUpdate({ ...card, labels: updated, description: editedDesciption, dueDate: formatDate(date) }, listId);
     };
 
     const formatDate = (d) => d ? d.toLocaleDateString() : null;
@@ -151,21 +159,11 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
     };
 
     const handleClose = async () => {
-        const updatedCard = { ...card, labels: selectedLabels, description: editedDesciption, dueDate: formatDate(date) };
-        onUpdate(updatedCard, listId);
         onClose();
 
     };
 
     const handleOverlayClose = async () => {
-        const updatedCard = {
-            ...card,
-            title: editedTitle,
-            labels: selectedLabels,
-            description: editedDesciption,
-            dueDate: formatDate(date)
-        };
-        onUpdate(updatedCard, listId);
         onClose();
     };
     //changtitle
@@ -283,8 +281,6 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         };
     }, [card.id]);
 
-
-
     const merged = [
         ...comments.map(c => ({ ...c, type: "comment" })),
         ...activities.map(a => ({ ...a, type: "activity" })),
@@ -292,7 +288,6 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         (a, b) =>
             new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
     );
-
 
 
     return (
@@ -485,7 +480,6 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                     </div>
                 </div>
             )}
-
 
             {showLabelPopup && (
                 <div className="label-popup" onClick={(e) => e.stopPropagation()}>
