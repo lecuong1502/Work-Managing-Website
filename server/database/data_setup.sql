@@ -4,11 +4,11 @@ INSERT INTO users (username, email, password_hash, avatar_url, role) VALUES
 -- admin password Cuong@1234
 -- INSERT INTO users (username, email, password_hash, avatar_url, role)
 
-INSERT INTO boards (user_id, title, description, color, visibility)
+INSERT INTO boards (board_id, user_id, title, description, color, visibility)
 VALUES
-(1, 'Công việc nhóm', 'Các công việc cần hoàn thành theo nhóm.', 'linear-gradient(135deg, #667eea, #764ba2)', 'Workspace'),
-(1, 'Dự án React', 'Làm project web quản lý công việc bằng React.', 'linear-gradient(135deg, #fddb92, #d1fdff)', 'Workspace'),
-(2, 'Việc cá nhân', 'Danh sách việc riêng trong tuần.', '#722ed1', 'Workspace');
+(1, 1, 'Công việc nhóm', 'Các công việc cần hoàn thành theo nhóm.', 'linear-gradient(135deg, #667eea, #764ba2)', 'Workspace'),
+(2, 1, 'Dự án React', 'Làm project web quản lý công việc bằng React.', 'linear-gradient(135deg, #fddb92, #d1fdff)', 'Workspace'),
+(3, 2, 'Việc cá nhân', 'Danh sách việc riêng trong tuần.', '#722ed1', 'Workspace');
 
 INSERT INTO board_members (board_id, user_id)
 VALUES
