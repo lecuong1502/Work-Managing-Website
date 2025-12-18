@@ -130,7 +130,7 @@ CREATE TABLE card_attachments (
 CREATE TABLE labels (
     label_id INT AUTO_INCREMENT PRIMARY KEY,
     card_id VARCHAR(255) NOT NULL,
-    name VARCHAR(255) NOT NULL,          
+    name VARCHAR(255),          
     color VARCHAR(7) NOT NULL,           -- Hex color code (e.g., "#FF5733")
 
     FOREIGN KEY (card_id) REFERENCES cards(card_id) ON DELETE CASCADE
