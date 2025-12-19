@@ -21,6 +21,8 @@ const Dashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
+  const [inboxBoard, setInboxBoard] = useState(null);
+
   const token = sessionStorage.getItem("token");
   console.log("Token bên dashb", token);
 
@@ -53,7 +55,6 @@ const Dashboard = () => {
       return;
     }
 
-    // Chưa chạy BackEnd thì dùng "Board.json"
     fetch("http://localhost:3000/api/boards", {
       method: "GET",
       headers: {
@@ -73,6 +74,7 @@ const Dashboard = () => {
           });
 
           const merged = Array.from(map.values());
+          sessionStorage.setItem("inboxBoard", JSON.stringify(merged.find(b => b.id === `inbox_${userId}`)));
           sessionStorage.setItem("boards", JSON.stringify(merged));
           return merged;
         });
@@ -135,7 +137,7 @@ const Dashboard = () => {
   };
 
   const filteredBoards = boards.filter((b) =>
-    b.name.toLowerCase().includes(searchTerm.toLowerCase())
+    b.name.toLowerCase().includes(searchTerm.toLowerCase()) && b.id !== `inbox_${userId}`   //Ko hiện board inbox
   );
   // dùng template -> tạo board + list + cảd
   const handleUseTemplate = async (template) => {

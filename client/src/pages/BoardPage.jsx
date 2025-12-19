@@ -27,7 +27,9 @@ const BoardPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [toast, setToast] = useState(null);
+
   const [board, setBoard] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [addingCard, setAddingCard] = useState({});
   const [addingList, setAddingList] = useState(false);
@@ -35,14 +37,14 @@ const BoardPage = () => {
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [selectedListId, setSelectedListId] = useState(null);
 
-
   const [newListTitle, setNewListTitle] = useState("");
   const [renamingList, setRenamingList] = useState(null);
   const [newListName, setNewListName] = useState("");
   const [newCardTitle, setNewCardTitle] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [inboxCards, setInboxCards] = useState([]);
+  // const [inboxCards, setInboxCards] = useState([]);
+  const [inboxBoard, setInboxBoard] = useState(sessionStorage.getItem("inboxBoard") ? JSON.parse(sessionStorage.getItem("inboxBoard")) : null);
 
   const [showVisibilityMenu, setShowVisibilityMenu] = useState(false);
 
@@ -92,53 +94,68 @@ const BoardPage = () => {
       const token = sessionStorage.getItem("token");
       const inboxBoardId = `inbox_${currentUserId}`;
 
-      // Gọi API lấy Board chi tiết với ID là inbox_USERID
-      const res = await fetch(`http://localhost:3000/api/boards/${inboxBoardId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `http://localhost:3000/api/boards/${inboxBoardId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-      if (res.ok) {
-        const inboxBoard = await res.json();
-        // Inbox Board chỉ có 1 list, lấy cards từ list đầu tiên
-        const cards = inboxBoard.lists?.[0]?.cards || [];
-        setInboxCards(cards);
-      } else {
-        console.warn("Chưa tìm thấy Inbox Board hoặc lỗi tải Inbox");
+      if (!res.ok) {
+        console.warn("Không tìm thấy Inbox Board");
+        return;
       }
+
+      const data = await res.json();
+      setInboxBoard(data);
+      sessionStorage.setItem("inboxBoard", JSON.stringify(data));
+
     } catch (err) {
       console.error("Lỗi tải inbox:", err);
     }
   };
 
-  // Gọi fetchInbox khi mount
+
   useEffect(() => {
-    fetchInbox();
-  }, []);
+    if (openPanel.inbox) fetchInbox();
+  }, [openPanel.inbox, currentUserId]);
+
+
+
+  // // Gọi fetchInbox khi mount
+  // useEffect(() => {
+  //   fetchInbox();
+  // }, []);
 
   // Add Card to Inbox
-  const handleAddInboxCard = async (cardTitle) => {
-    if (!cardTitle.trim()) return;
-
-    const inboxBoardId = `inbox_${currentUserId}`;
-    const inboxListId = `list_inbox_main_${currentUserId}`;
+  const handleAddInboxCard = async (listId, cardTitle) => {
+    if (!cardTitle.trim() || !inboxBoard) return;
 
     const tempId = `temp_${Date.now()}`;
+
     const optimisticCard = {
-        id: tempId,
-        title: cardTitle,
-        state: "Inbox",
-        isGlobalInbox: true
+      id: tempId,
+      title: cardTitle,
+      state: "Inbox",
+      isGlobalInbox: true,
     };
 
-    setInboxCards((prev) => [optimisticCard, ...prev]);
+    //Optimistic update – CẬP NHẬT TRỰC TIẾP inboxBoard
+    setInboxBoard(prev => ({
+      ...prev,
+      lists: prev.lists.map(list =>
+        list.id === listId
+          ? { ...list, cards: [optimisticCard, ...list.cards] }
+          : list
+      ),
+    }));
+
     setNewCardTitle("");
-    setAddingCard((prev) => ({ ...prev, inbox: false }));
+    setAddingCard(prev => ({ ...prev, inbox: false }));
 
     try {
       const token = sessionStorage.getItem("token");
-      // Gọi API tạo card chuẩn vào List cụ thể của Inbox Board
+
       const res = await fetch(
-        `http://localhost:3000/api/boards/${inboxBoardId}/lists/${inboxListId}/cards`, 
+        `http://localhost:3000/api/boards/${inboxBoard.id}/lists/${listId}/cards`,
         {
           method: "POST",
           headers: {
@@ -149,19 +166,39 @@ const BoardPage = () => {
         }
       );
 
-      if (res.ok) {
-        const newCard = await res.json();
-        // Cập nhật lại card thật
-        setInboxCards((prev) => 
-            prev.map(c => c.id === tempId ? newCard : c)
-        );
-      } else {
-        setInboxCards((prev) => prev.filter(c => c.id !== tempId));
-        alert("Lỗi kết nối: Không thể thêm thẻ vào Inbox");
-      }
+      if (!res.ok) throw new Error("Create card failed");
+
+      const newCard = await res.json();
+
+      //Replace temp card bằng card thật
+      setInboxBoard(prev => ({
+        ...prev,
+        lists: prev.lists.map(list =>
+          list.id === listId
+            ? {
+              ...list,
+              cards: list.cards.map(c =>
+                c.id === tempId ? newCard : c
+              ),
+            }
+            : list
+        ),
+      }));
     } catch (err) {
       console.error("Lỗi thêm thẻ vào inbox:", err);
-      setInboxCards((prev) => prev.filter(c => c.id !== tempId));
+
+      //Rollback optimistic
+      setInboxBoard(prev => ({
+        ...prev,
+        lists: prev.lists.map(list =>
+          list.id === listId
+            ? {
+              ...list,
+              cards: list.cards.filter(c => c.id !== tempId),
+            }
+            : list
+        ),
+      }));
     }
   };
 
@@ -588,20 +625,18 @@ const BoardPage = () => {
                 {openPanel.inbox && (
                   <div className="side-panel-content">
                     <InboxPanel
-                      inboxCards={inboxCards}
-                      setInboxCards={setInboxCards}
-                      board={board}
-                      setBoard={setBoard}
+                      inboxBoard={inboxBoard}
+                      setInboxBoard={setInboxBoard}
                       addingCard={addingCard}
                       setAddingCard={setAddingCard}
                       newCardTitle={newCardTitle}
                       setNewCardTitle={setNewCardTitle}
-                      handleAddCard={handleAddCard}
                       onAddInboxCard={handleAddInboxCard}
                       selectedCardId={selectedCardId}
                       setSelectedCardId={setSelectedCardId}
                       selectedListId={selectedListId}
                       setSelectedListId={setSelectedListId}
+                      destBoardId={board.id}
                     />
                   </div>
                 )}

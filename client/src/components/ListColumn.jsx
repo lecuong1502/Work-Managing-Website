@@ -136,18 +136,18 @@ const ListColumn = ({
     drop(item, monitor) {
       if (!monitor.isOver({ shallow: true })) return;
 
-      const { cardId, fromListId, boardId, cardData } = item;
+      const { cardId, fromListId, fromBoardId, cardData } = item;
 
       const isDifferentList = fromListId !== list.id;
-      const isDifferentBoard = boardId && String(boardId) !== String(board.id);
+      const isDifferentBoard = fromBoardId && String(fromBoardId) !== String(board.id);
 
       if (isDifferentList || isDifferentBoard) {
         // Truyền boardId (source) vào hàm moveCard
-        moveCard(cardId, fromListId, list.id, list.cards.length, boardId, cardData);
+        moveCard(cardId, fromListId, list.id, list.cards.length, fromBoardId, cardData);
         
         // Cập nhật lại item để DND hiểu vị trí mới
         item.fromListId = list.id;
-        item.boardId = board.id; // Cập nhật lại thành board hiện tại
+        item.fromBoardId = board.id; // Cập nhật lại thành board hiện tại
       }
     },
   });

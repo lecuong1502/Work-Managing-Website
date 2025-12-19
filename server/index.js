@@ -424,7 +424,7 @@ app.post("/register", async (req, res) => {
             return {
                 ...board,
                 userId: newUser.id,
-                id: Date.now() + index, // Tạo ID mới để không bị trùng với board của user khác
+                id: (Date.now() + index).toString(), // Tạo ID mới để không bị trùng với board của user khác
                 members: [] // Reset thành viên (nếu board mẫu có sẵn member cũ)
             };
         });
@@ -572,7 +572,7 @@ app.get("/api/boards", authMiddleware, (req, res) => {
     let result = [...ownedBoards, ...sharedBoards];
 
     // MAP DỮ LIỆU TỪ "BẢNG" EVENTS VÀO BOARD (Tương tự SQL JOIN)
-    result = result.filter(b => !String(b.id).startsWith("inbox_"));
+    // result = result.filter(b => !String(b.id).startsWith("inbox_"));
 
     result = result.map(board => {
         // Tìm các event có board_id trùng khớp
@@ -1124,46 +1124,6 @@ app.put("/api/cards/move", authMiddleware, (req, res) => {
 
     const io = req.app.get("socketio") || io; // Đảm bảo lấy được socket io
 
-    // DI CHUYỂN TỪ INBOX VÀO BOARD
-    if (sourceBoardId === "inbox-global") {
-        const inbox = ensureInbox(userId);
-        const cardIndex = inbox.findIndex(c => String(c.id) === String(cardId));
-        
-        if (cardIndex === -1) return res.status(404).json({ message: "Card không tìm thấy trong Inbox" });
-
-        // Cắt thẻ khỏi Inbox
-        const [movedCard] = inbox.splice(cardIndex, 1);
-
-        // Tìm Board đích
-        const allBoards = Object.values(userBoards).flat();
-        const destBoard = allBoards.find(b => String(b.id) === String(destBoardId));
-
-        if (!destBoard) return res.status(404).json({ message: "Board đích không tồn tại" });
-        
-        // Check quyền Board đích
-        if (!checkEditPermission(destBoard, userId)) {
-            inbox.splice(cardIndex, 0, movedCard); 
-            return res.status(403).json({ message: "Không có quyền thêm vào Board này" });
-        }
-
-        const destList = destBoard.lists.find(l => l.id === destListId);
-        if (!destList) return res.status(404).json({ message: "List đích không tồn tại" });
-
-        // Chèn vào List đích
-        delete movedCard.isGlobalInbox;
-        movedCard.state = "To Do"; // Reset state mặc định khi vào board
-        
-        if (typeof index === "number" && index >= 0) {
-            destList.cards.splice(index, 0, movedCard);
-        } else {
-            destList.cards.push(movedCard);
-        }
-
-        // Socket update
-        io.to(String(destBoardId)).emit("board_updated", destBoard);
-        
-        return res.status(200).json({ message: "Đã chuyển từ Inbox vào Board", movedCard });
-    }
 
     // 1. Kiểm tra dữ liệu đầu vào
     if (!sourceBoardId || !destBoardId || !sourceListId || !destListId || !cardId) {
