@@ -1124,7 +1124,6 @@ app.put("/api/cards/move", authMiddleware, (req, res) => {
 
     const io = req.app.get("socketio") || io; // Đảm bảo lấy được socket io
 
-
     // 1. Kiểm tra dữ liệu đầu vào
     if (!sourceBoardId || !destBoardId || !sourceListId || !destListId || !cardId) {
         return res.status(400).json({ message: "Thiếu thông tin ID để di chuyển thẻ." });

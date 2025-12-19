@@ -26,7 +26,7 @@ const CardItem = ({
         item: {
             cardId: card.id,
             fromListId: listId,
-            fromBoardId: boardId,
+            boardId: boardId,
             originalIndex: index,
             cardData: card 
         },

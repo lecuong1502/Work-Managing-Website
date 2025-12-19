@@ -44,7 +44,29 @@ const BoardPage = () => {
   const [loading, setLoading] = useState(false);
 
   // const [inboxCards, setInboxCards] = useState([]);
-  const [inboxBoard, setInboxBoard] = useState(sessionStorage.getItem("inboxBoard") ? JSON.parse(sessionStorage.getItem("inboxBoard")) : null);
+  const [boards, setBoards] = useState(JSON.parse(sessionStorage.getItem("boards")) || []);
+  const [inboxBoard, setInboxBoard] = useState(null);
+
+
+  const updateBoardState = (boardId, updatedBoardData) => {
+    // 1. Cập nhật state Boards tổng quát
+    setBoards(prev => {
+      const newBoards = prev.map(b => b.id === boardId ? updatedBoardData : b);
+      sessionStorage.setItem("boards", JSON.stringify(newBoards));
+      return newBoards;
+    });
+
+    // 2. Nếu board đang được cập nhật là Inbox, cập nhật luôn state inboxBoard
+    if (String(boardId).startsWith("inbox_")) {
+      setInboxBoard(updatedBoardData);
+      sessionStorage.setItem("inboxBoard", JSON.stringify(updatedBoardData));
+    }
+
+    // 3. Nếu board đang được cập nhật là Board hiện tại (đang mở)
+    if (board && board.id === boardId) {
+      setBoard(updatedBoardData);
+    }
+  };
 
   const [showVisibilityMenu, setShowVisibilityMenu] = useState(false);
 
@@ -62,13 +84,17 @@ const BoardPage = () => {
   const openCount = Object.values(openPanel).filter(Boolean).length;
 
   const isCalendarMode = location.pathname.includes("/calendar");
+  console.log(sessionStorage.getItem("user"))
 
-  const getCurrentUser = () => {
-    const userStr = sessionStorage.getItem("user");
-    return userStr ? JSON.parse(userStr) : null;
-  };
-  const currentUser = getCurrentUser();
-  const currentUserId = currentUser?.id;
+  // const getCurrentUser = () => {
+  //   const userStr = sessionStorage.getItem("user");
+  //   return userStr ? JSON.parse(userStr) : null;
+  // };
+  // const currentUser = getCurrentUser();
+  const currentUserId = sessionStorage.getItem("userId");
+
+
+  console.log("Current User ID:", currentUserId);
 
   const updateBoardToStorage = (updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
@@ -84,34 +110,34 @@ const BoardPage = () => {
     }
 
     sessionStorage.setItem("boards", JSON.stringify(boards));
+    socket.emit("board_updated", updatedBoard);
   };
 
   // Fetch Global Inbox
   const fetchInbox = async () => {
-    if (!currentUserId) return;
+  if (!currentUserId) {
+    console.error("Không tìm thấy Current User ID");
+    return;
+  }
+  const token = sessionStorage.getItem("token");
+  const inboxBoardId = `inbox_${currentUserId}`;
 
-    try {
-      const token = sessionStorage.getItem("token");
-      const inboxBoardId = `inbox_${currentUserId}`;
-
-      const res = await fetch(
-        `http://localhost:3000/api/boards/${inboxBoardId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (!res.ok) {
-        console.warn("Không tìm thấy Inbox Board");
-        return;
-      }
-
+  try {
+    const res = await fetch(`http://localhost:3000/api/boards/${inboxBoardId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
       const data = await res.json();
+      console.log("Inbox Data:", data); // Kiểm tra xem data có lists không
       setInboxBoard(data);
-      sessionStorage.setItem("inboxBoard", JSON.stringify(data));
-
-    } catch (err) {
-      console.error("Lỗi tải inbox:", err);
+      updateBoardState(inboxBoardId, data);
+    } else {
+      console.error("Lỗi API Inbox:", res.status);
     }
-  };
+  } catch (err) {
+    console.error("Lỗi kết nối Inbox:", err);
+  }
+};
 
 
   useEffect(() => {
@@ -260,29 +286,41 @@ const BoardPage = () => {
 
   // Socket.io
   useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
+    if (!socket.connected) socket.connect();
 
     socket.emit("join-board", boardId);
 
+    // Khi có bất kỳ ai cập nhật toàn bộ board
     socket.on("board_updated", (updatedBoardData) => {
-      if (updatedBoardData.id === Number(boardId)) {
+      if (String(updatedBoardData.id) === String(boardId)) {
         setBoard(updatedBoardData);
         updateBoardToStorage(updatedBoardData);
-        fetchInbox();
       }
     });
 
-    socket.on("notification_received", (noti) => {
-      setToast({ message: noti.message, type: "info" });
+    // Khi có người di chuyển thẻ hoặc list (Realtime DND)
+    socket.on("board_moved", (updatedBoardData) => {
+      setBoard(updatedBoardData);
+    });
+
+    // Khi có người sửa chi tiết 1 card cụ thể
+    socket.on("CARD_UPDATED", ({ listId, card }) => {
+      setBoard((prev) => {
+        if (!prev) return prev;
+        const newLists = prev.lists.map((l) =>
+          l.id === listId
+            ? { ...l, cards: l.cards.map((c) => (c.id === card.id ? card : c)) }
+            : l
+        );
+        return { ...prev, lists: newLists };
+      });
     });
 
     return () => {
       socket.emit("leave-board", boardId);
       socket.off("board_updated");
-      socket.off("board_member_added");
-      socket.off("notification_received");
+      socket.off("board_moved");
+      socket.off("CARD_UPDATED");
     };
   }, [boardId]);
 
@@ -367,6 +405,7 @@ const BoardPage = () => {
 
       setBoard(updatedBoard);
       updateBoardToStorage(updatedBoard);
+      socket.emit("board_updated", updatedBoard);
       setRenamingList(null);
       setNewListName("");
     } catch {
@@ -416,6 +455,7 @@ const BoardPage = () => {
 
       setBoard(newBoard);
       updateBoardToStorage(newBoard);
+      socket.emit("board_updated", newBoard);
 
       setNewCardTitle("");
       setAddingCard((prev) => ({ ...prev, [listId]: false }));
@@ -526,6 +566,7 @@ const BoardPage = () => {
         if (data.board) {
           setBoard(data.board);
           updateBoardToStorage(data.board);
+          socket.emit("board_updated", data.board);
         } else {
           setBoard((prev) => ({
             ...prev,
@@ -626,7 +667,7 @@ const BoardPage = () => {
                   <div className="side-panel-content">
                     <InboxPanel
                       inboxBoard={inboxBoard}
-                      setInboxBoard={setInboxBoard}
+                      setInboxBoard={(updated) => updateBoardState(inboxBoard.id, updated)}
                       addingCard={addingCard}
                       setAddingCard={setAddingCard}
                       newCardTitle={newCardTitle}
