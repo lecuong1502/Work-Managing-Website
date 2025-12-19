@@ -187,7 +187,18 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
         onUpdate({ ...card, labels: updated, description: editedDesciption, dueDate: formatDate(date) }, listId);
     };
 
-    const formatDate = (d) => d ? d.toLocaleDateString() : null;
+    const formatDate = (d) => {
+        if (!d) return null;
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const displayDate = (d) => {
+        if (!d) return null;
+        return d.toLocaleDateString('vi-VN');
+    };
 
     const handleSaveDate = () => {
         const updatedCard = {
@@ -516,7 +527,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
                                 )}
 
 
-                                {date && <p><strong>Due:</strong> {formatDate(date)}</p>}
+                                {date && <p><strong>Due:</strong> {displayDate(date)}</p>}
 
                                 {!editDescription ? (
                                     <div className="modal-description">

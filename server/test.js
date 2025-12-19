@@ -316,19 +316,17 @@ async function getCardById(cardId) {
   }
 }
 
-function convertDateFtoB(dateDDMMYYYY) {
-    if (dateDDMMYYYY == null) return null;
-    const parts = dateDDMMYYYY.split('/');
-    const dateFormatted = `${parts[1]}/${parts[0]}/${parts[2]}`;
-    const dateYYYYMMDD = new Date(dateFormatted);
-    return dateYYYYMMDD;
+import dayjs from 'dayjs';
+// MySQL -> React
+const convertDateBtoF = (date) => {
+  //console.log("B - F", date);
+  return date ? dayjs(date).format('MM-DD-YYYY') : "";
 }
 
-function convertDateBtoF(dateYYYYMMDD) {
-    if (dateYYYYMMDD == null) return null;
-    const datetimeFromMySQL = new Date(dateYYYYMMDD);
-    const dateDDMMYYYY = datetimeFromMySQL.toLocaleDateString('vi-VN');
-    return dateDDMMYYYY;
+// React -> MySQL
+const convertDateFtoB = (date) => {
+  //console.log("F - B",date);
+  return date ? dayjs(date).format('YYYY-MM-DD') : null;
 }
 
 // --- ROUTE (API ENDPOINTS) ---
