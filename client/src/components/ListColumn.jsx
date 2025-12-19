@@ -145,8 +145,6 @@ const ListColumn = ({
   const [, cardDrop] = useDrop({
     accept: "card",
     drop(item, monitor) {
-      if (!monitor.isOver({ shallow: true })) return;
-
       const { cardId, fromListId, boardId, cardData } = item;
 
       const isDifferentList = fromListId !== list.id;

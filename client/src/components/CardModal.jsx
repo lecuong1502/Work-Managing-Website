@@ -7,8 +7,9 @@ import socket from "../socket";
 import ActivityItem from "./ActivityItem";
 import CommentItem from "./CommentItem";
 import { CheckIcon } from "@heroicons/react/24/solid";
+import { useMemo } from "react";
 
-const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) => {
+const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, currentUser }) => {
     if (!card || !board) return null;
 
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -42,6 +43,8 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
 
     const [activities, setActivities] = useState([]);
 
+    const [isSendingComment, setIsSendingComment] = useState(false);
+
     useEffect(() => {
         setEditedTitle(card.title || "");
         setEditedDesciption(card.description || "");
@@ -74,8 +77,62 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         fetchActivities();
     }, [card.id]);
 
+    // Comment API
+    const handleSendComment = async () => {
+        if (!input.trim()) return;
+        setIsSendingComment(true);
 
-    //them member vao card
+        try {
+            const res = await fetch(`http://localhost:3000/api/cards/${card.id}/comments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({
+                    content: input,
+                    boardId: boardId,
+                    listId: listId
+                }),
+            });
+
+            if (res.ok) {
+                setInput("");
+            }
+        } catch (error) {
+            console.error("Lỗi gửi comment:", error);
+        } finally {
+            setIsSendingComment(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!card?.id) return;
+
+        const handler = (activity) => {
+            if (activity.target?.cardId === card.id.toString()) {
+                setActivities(prev => {
+                    if (prev.some(a => a.id === activity.id)) return prev;
+                    return [activity, ...prev];
+                });
+            }
+        };
+
+        socket.on("activity_created", handler);
+
+        return () => {
+            socket.off("activity_created", handler);
+        };
+    }, [card.id]);
+
+    // Sort activities theo thoi gian moi nhat
+    const sortedActivities = useMemo(() => {
+        return [...activities].sort(
+            (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
+    }, [activities]);
+
+    // Them member vao card
     const handleAddMember = (member) => {
         const currentMembers = card.members || [];
         if (currentMembers.includes(member.id)) return;
@@ -541,16 +598,41 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                     <div className="modal-right">
                         <h3 className="activity-title">Comments and activity</h3>
 
-                        <input
+                        {/* <input
                             className="comment-input"
                             placeholder="Write a comment..."
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                        />
+                        /> */}
+
+                        <div className="comment-input-section">
+                            <div className="user-avatar-small">
+                                {/* Hiển thị Avatar user đang login */}
+                                {currentUser?.name?.charAt(0).toUpperCase() || "Y"}
+                            </div>
+                            <div className="input-wrapper">
+                                <input
+                                    className="comment-input"
+                                    placeholder="Write a comment..."
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
+                                    disabled={isSendingComment}
+                                />
+                                <button 
+                                    className="save-comment-btn" 
+                                    onClick={handleSendComment}
+                                    disabled={!input.trim() || isSendingComment}
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        </div>
 
                         <div className="activity-list">
-                            {merged.map(item => {
+                            {sortedActivities.length === 0 && <p style={{color:'#888', fontStyle:'italic', fontSize:'13px'}}>No activities yet.</p>}
+                            {sortedActivities.map(item => {
                                 if (item.type === "comment") {
                                     return <CommentItem key={item.id} comment={item} />;
                                 }
