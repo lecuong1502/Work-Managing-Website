@@ -1994,6 +1994,8 @@ app.put("/api/checklist-items/:itemId/toggle", authMiddleware, (req, res) => {
         io.emit("CHECKLIST_UPDATED", { cardId: checklist.card_id });
     }
 
+    console.log("item ID:",itemId)
+
     res.status(200).json(item);
 });
 

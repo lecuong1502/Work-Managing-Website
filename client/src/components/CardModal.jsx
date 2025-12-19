@@ -9,7 +9,7 @@ import CommentItem from "./CommentItem";
 import { CheckIcon } from "@heroicons/react/24/solid";
 
 const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) => {
-    if (!card) return null;
+    if (!card || !board) return null;
 
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [date, setDate] = useState(card?.dueDate ? new Date(card.dueDate) : null);
@@ -209,7 +209,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         fetchChecklists();
     }, [card.id]);
 
-    
+
 
     useEffect(() => {
         const handler = ({ cardId }) => {
@@ -242,9 +242,9 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                 const newChecklist = await res.json();
                 // Format lại data cho khớp với cấu trúc hiển thị (items rỗng)
                 const formattedChecklist = { ...newChecklist, items: [], progress: 0 };
-                
+
                 setChecklists([...checklists, formattedChecklist]);
-                
+
                 // Reset và đóng popup
                 setNewChecklistTitle("Checklist");
                 setShowChecklistPopup(false);
@@ -262,7 +262,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
 
             const updatedItems = cl.items.map(item => {
                 // Lưu ý: Kiểm tra kỹ API trả về 'item_id' hay 'id'
-                const id = item.item_id || item.id; 
+                const id = item.item_id || item.id;
                 if (id === itemId) return { ...item, is_completed: !item.is_completed };
                 return item;
             });
@@ -290,7 +290,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         if (!text || !text.trim()) return;
 
         try {
-            await fetch(
+            const res = await fetch(
                 `http://localhost:3000/api/checklists/${checklistId}/items`,
                 {
                     method: "POST",
@@ -410,22 +410,22 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                                                 <h3 style={{ marginBottom: "10px" }}>Add checklist</h3>
                                                 <div style={{ padding: "0 10px 10px 10px" }}>
                                                     <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", color: "#5e6c84", marginBottom: "5px" }}>Title</label>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         value={newChecklistTitle}
                                                         onChange={(e) => setNewChecklistTitle(e.target.value)}
                                                         autoFocus
                                                         style={{ width: "100%", padding: "8px", marginBottom: "10px", borderRadius: "3px", border: "2px solid #dfe1e6" }}
                                                         onKeyDown={(e) => e.key === "Enter" && handleAddChecklist()}
                                                     />
-                                                    <button 
+                                                    <button
                                                         onClick={handleAddChecklist}
                                                         style={{ backgroundColor: "#0079bf", color: "white", width: "100%", padding: "8px", border: "none", borderRadius: "3px", cursor: "pointer" }}
                                                     >
                                                         Add
                                                     </button>
                                                 </div>
-                                                <button onClick={() => setShowChecklistPopup(false)} style={{marginTop: "5px"}}>Close</button>
+                                                <button onClick={() => setShowChecklistPopup(false)} style={{ marginTop: "5px" }}>Close</button>
                                             </div>
                                         )}
                                     </div>
@@ -494,16 +494,21 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                                         </div>
 
 
-                                        {cl.items.map((item) => (
-                                            <div key={item.item_id} className="checklist-item">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.is_completed}
-                                                    onChange={() => toggleItem(item.item_id)}
-                                                />
-                                                <span>{item.description}</span>
-                                            </div>
-                                        ))}
+                                        {Array.isArray(cl.items) && cl.items.map((item, index) => {
+                                            console.log("Check item data", item);
+                                            return (
+                                                <div key={item.item_id || index} className="checklist-item">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!item.is_completed}
+                                                        onChange={() => toggleItem(item.item_id, cl.checklist_id)}
+                                                    />
+                                                    <span className={item.is_completed ? "done" : ""}>
+                                                        {item.description}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
 
                                         <div className="checklist-add-item">
                                             <input
