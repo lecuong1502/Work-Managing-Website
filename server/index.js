@@ -674,21 +674,17 @@ app.post("/api/boards", authMiddleware, (req, res) => {
     return res.status(400).json({ message: "Tên board là bắt buộc" });
   }
 
+  if (!userBoards[userId]) {
+    userBoards[userId] = [];
+  }
+
   const boardsOfThisUser = userBoards[userId];
 
-  if (!boardsOfThisUser) {
-    return res
-      .status(404)
-      .json({ message: "Không tìm thấy dữ liệu board cho user này" });
-  }
-  ///fix
-  const numericBoardIds = boardsOfThisUser
-    .map((b) => Number(b.id))
-    .filter((id) => !isNaN(id));
+  // const newBoardId = boardsOfThisUser.length
+  //     ? Math.max(...boardsOfThisUser.map((b) => b.id)) + 1
+  //     : 1;
 
-  const newBoardId = numericBoardIds.length
-    ? Math.max(...numericBoardIds) + 1
-    : 1;
+  const newBoardId = Date.now().toString();
 
   const newBoard = {
     id: newBoardId,
@@ -701,10 +697,8 @@ app.post("/api/boards", authMiddleware, (req, res) => {
   };
 
   boardsOfThisUser.push(newBoard);
-  console.log(
-    `UserBoards của user ${userId} sau khi thêm:`,
-    userBoards[userId]
-  );
+
+  console.log(`Đã tạo board mới cho user ${userId}:`, newBoard);
 
   res.status(201).json(newBoard);
 });
@@ -1031,7 +1025,6 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
   const { sourceBoardId, destBoardId, listId, index } = req.body;
 
   const io = req.app.get("socketio");
-
   // 1. Validate input
   if (!sourceBoardId || !destBoardId || !listId) {
     return res.status(400).json({
@@ -1319,6 +1312,11 @@ app.post(
 const cardActivities = {};
 
 const sendActivity = ({ actor, card, boardId, message, type }) => {
+  console.log("SEND ACTIVITY:", {
+    type,
+    cardId: card.id,
+    message,
+  });
   const activity = {
     id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     type,
@@ -1348,6 +1346,43 @@ const sendActivity = ({ actor, card, boardId, message, type }) => {
 app.get("/api/cards/:cardId/activities", authMiddleware, (req, res) => {
   const { cardId } = req.params;
   res.json(cardActivities[cardId] || []);
+});
+
+// API: Post new comments into cards
+app.post("/api/cards/:cardId/comments", authMiddleware, (req, res) => {
+  const userId = Number(req.user.id);
+  const { cardId } = req.params;
+  const { content, boardId, listId } = req.body;
+
+  // Tìm board
+  const allBoards = Object.values(userBoards).flat();
+  const board = allBoards.find((b) => String(b.id) === String(boardId));
+  if (!board) return res.status(404).json({ message: "Board not found" });
+
+  // Tìm list và cards
+  const list = board.lists.find((l) => String(l.id) === String(listId));
+  if (!list) return res.status(404).json({ message: "List not found" });
+
+  const card = list.cards.find((c) => String(c.id) === String(cardId));
+  if (!card) return res.status(404).json({ message: "Card not found" });
+
+  // Tạo object actor (người thực hiện)
+  const actor = {
+    id: userId,
+    name: req.user.name || "User",
+    avatar_url: req.user.avatar || "",
+  };
+
+  // GỌI HÀM sendActivity ĐỂ LƯU VÀ BẮN SOCKET
+  sendActivity({
+    actor: actor,
+    card: card,
+    boardId: boardId,
+    message: content,
+    type: "comment",
+  });
+
+  res.status(201).json({ message: "Comment added" });
 });
 
 // Edit cards (Đã tích hợp Socket Notification)

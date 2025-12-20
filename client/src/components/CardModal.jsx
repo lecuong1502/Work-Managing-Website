@@ -7,8 +7,9 @@ import socket from "../socket";
 import ActivityItem from "./ActivityItem";
 import CommentItem from "./CommentItem";
 import { CheckIcon } from "@heroicons/react/24/solid";
+import { useMemo } from "react";
 
-const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) => {
+const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, currentUser }) => {
     if (!card || !board) return null;
 
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -42,6 +43,8 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
 
     const [activities, setActivities] = useState([]);
 
+    const [isSendingComment, setIsSendingComment] = useState(false);
+
     useEffect(() => {
         setEditedTitle(card.title || "");
         setEditedDesciption(card.description || "");
@@ -65,6 +68,8 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                     }
                 );
                 const data = await res.json();
+                // console.log("ACTIVITY ITEM:", data);
+
                 setActivities(data);
             } catch (err) {
                 console.error("Load activities failed", err);
@@ -74,8 +79,63 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         fetchActivities();
     }, [card.id]);
 
+    // Comment API
+    const handleSendComment = async () => {
+        if (!input.trim()) return;
+        setIsSendingComment(true);
 
-    //them member vao card
+
+        try {
+            const res = await fetch(`http://localhost:3000/api/cards/${card.id}/comments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({
+                    content: input,
+                    boardId: boardId,
+                    listId: listId
+                }),
+            });
+
+            if (res.ok) {
+                setInput("");
+            }
+        } catch (error) {
+            console.error("Lỗi gửi comment:", error);
+        } finally {
+            setIsSendingComment(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!card?.id) return;
+
+        const handler = (activity) => {
+            if (activity.target?.cardId === card.id.toString()) {
+                setActivities(prev => {
+                    if (prev.some(a => a.id === activity.id)) return prev;
+                    return [activity, ...prev];
+                });
+            }
+        };
+
+        socket.on("activity_created", handler);
+
+        return () => {
+            socket.off("activity_created", handler);
+        };
+    }, [card.id]);
+
+    // Sort activities theo thoi gian moi nhat
+    const sortedActivities = useMemo(() => {
+        return [...activities].sort(
+            (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        );
+    }, [activities]);
+
+    // Them member vao card
     const handleAddMember = (member) => {
         const currentMembers = card.members || [];
         if (currentMembers.includes(member.id)) return;
@@ -85,28 +145,11 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                 ...card,
                 members: [...currentMembers, member.id],
             },
-            listId
+            listId,
+            boardId
         );
 
         setShowMemberPopup(false);
-    };
-
-    const handleSend = () => {
-        if (!input.trim()) return;
-
-        const newComment = {
-            id: `cmt_${Date.now()}`,
-            text: input,
-            createdAt: new Date(),
-            user: {
-                id: "me",
-                name: "You",
-                avatar: null,
-            },
-        };
-
-        setComments(prev => [...prev, newComment]);
-        setInput("");
     };
 
 
@@ -127,10 +170,21 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
             : [...selectedLabels, label];
 
         setSelectedLabels(updated);
-        onUpdate({ ...card, labels: updated, description: editedDesciption, dueDate: formatDate(date) }, listId);
+        onUpdate({ ...card, labels: updated, description: editedDesciption, dueDate: formatDate(date) }, listId, boardId);
     };
 
-    const formatDate = (d) => d ? d.toLocaleDateString() : null;
+    const formatDate = (d) => {
+        if (!d) return null;
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const displayDate = (d) => {
+        if (!d) return null;
+        return d.toLocaleDateString('vi-VN');
+    };
 
     const handleSaveDate = () => {
         const updatedCard = {
@@ -139,7 +193,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        onUpdate(updatedCard, listId);
+        onUpdate(updatedCard, listId, boardId);
         setShowDatePicker(false);
     };
 
@@ -150,14 +204,14 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        onUpdate(updatedCard, listId);
+        onUpdate(updatedCard, listId, boardId);
         setEditDescription(false);
     }
 
 
     const handleClear = () => {
         setDate(null);
-        onUpdate({ ...card, labels: selectedLabels, dueDate: null }, listId);
+        onUpdate({ ...card, labels: selectedLabels, dueDate: null }, listId, boardId);
         setShowDatePicker(false);
     };
 
@@ -181,7 +235,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        onUpdate(updatedCard, listId);
+        onUpdate(updatedCard, listId, boardId);
     };
     //checklist
     const fetchChecklists = async () => {
@@ -348,6 +402,23 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
             new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
     );
 
+    const getInitials = (name) => {
+        if (!name) return "Y"; // Giá trị mặc định nếu không có tên
+
+        const parts = name.trim().split(" ");
+
+        if (parts.length === 1) {
+            // Nếu tên chỉ có 1 chữ (ví dụ: Goku) -> Lấy chữ cái đầu
+            return parts[0].charAt(0).toUpperCase();
+        } else {
+            // Nếu tên có nhiều chữ (ví dụ: Nguyễn Mạnh Cường) 
+            // -> Lấy chữ cái đầu của từ đầu tiên và từ cuối cùng (NC)
+            const firstInitial = parts[0].charAt(0);
+            const lastInitial = parts[parts.length - 1].charAt(0);
+            return (firstInitial + lastInitial).toUpperCase();
+        }
+    };
+
 
     return (
         <div className="modal-overlay" onClick={handleOverlayClose}>
@@ -459,7 +530,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                                 )}
 
 
-                                {date && <p><strong>Due:</strong> {formatDate(date)}</p>}
+                                {date && <p><strong>Due:</strong> {displayDate(date)}</p>}
 
                                 {!editDescription ? (
                                     <div className="modal-description">
@@ -495,7 +566,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
 
 
                                         {Array.isArray(cl.items) && cl.items.map((item, index) => {
-                                            console.log("Check item data", item);
+                                            // console.log("Check item data", item);
                                             return (
                                                 <div key={item.item_id || index} className="checklist-item">
                                                     <input
@@ -541,16 +612,33 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                     <div className="modal-right">
                         <h3 className="activity-title">Comments and activity</h3>
 
-                        <input
-                            className="comment-input"
-                            placeholder="Write a comment..."
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                        />
+                        <div className="comment-input-section">
+                            <div className="user-avatar-small">
+                                {/* Hiển thị Avatar user đang login */}
+                                {getInitials(currentUser?.username || "You")}
+                            </div>
+                            <div className="input-wrapper">
+                                <input
+                                    className="comment-input"
+                                    placeholder="Write a comment..."
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
+                                    disabled={isSendingComment}
+                                />
+                                <button
+                                    className="save-comment-btn"
+                                    onClick={handleSendComment}
+                                    disabled={!input.trim() || isSendingComment}
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        </div>
 
                         <div className="activity-list">
-                            {merged.map(item => {
+                            {sortedActivities.length === 0 && <p style={{ color: '#888', fontStyle: 'italic', fontSize: '13px' }}>No activities yet.</p>}
+                            {sortedActivities.map(item => {
                                 if (item.type === "comment") {
                                     return <CommentItem key={item.id} comment={item} />;
                                 }

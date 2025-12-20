@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   useParams,
   useNavigate,
@@ -36,6 +36,8 @@ const BoardPage = () => {
 
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [selectedListId, setSelectedListId] = useState(null);
+  const [selectedBoardId, setSelectedBoardId] = useState(null);
+
 
   const [newListTitle, setNewListTitle] = useState("");
   const [renamingList, setRenamingList] = useState(null);
@@ -46,6 +48,11 @@ const BoardPage = () => {
   // const [inboxCards, setInboxCards] = useState([]);
   const [boards, setBoards] = useState(JSON.parse(sessionStorage.getItem("boards")) || []);
   const [inboxBoard, setInboxBoard] = useState(null);
+
+  const currentUser = useMemo(() => {
+    const userData = sessionStorage.getItem("user");
+    return userData ? JSON.parse(userData) : null;
+  }, []);
 
 
   const updateBoardState = (boardId, updatedBoardData) => {
@@ -84,27 +91,20 @@ const BoardPage = () => {
   const openCount = Object.values(openPanel).filter(Boolean).length;
 
   const isCalendarMode = location.pathname.includes("/calendar");
-  console.log(sessionStorage.getItem("user"))
 
-  // const getCurrentUser = () => {
-  //   const userStr = sessionStorage.getItem("user");
-  //   return userStr ? JSON.parse(userStr) : null;
-  // };
-  // const currentUser = getCurrentUser();
   const currentUserId = sessionStorage.getItem("userId");
 
 
-  console.log("Current User ID:", currentUserId);
+  // console.log("Current User ID:", currentUserId);
 
-  const updateBoardToStorage = (updatedBoard) => {
+  const updateBoardToStorage = (boardId, updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
 
     if (!Array.isArray(boards)) {
       boards = boards?.boards || [];
     }
 
-    const index = boards.findIndex((b) => b.id === updatedBoard.id);
-
+    const index = boards.findIndex(b => b?.id === boardId);
     if (index !== -1) {
       boards[index] = updatedBoard;
     }
@@ -113,43 +113,38 @@ const BoardPage = () => {
     socket.emit("board_updated", updatedBoard);
   };
 
+
+
   // Fetch Global Inbox
   const fetchInbox = async () => {
-  if (!currentUserId) {
-    console.error("Không tìm thấy Current User ID");
-    return;
-  }
-  const token = sessionStorage.getItem("token");
-  const inboxBoardId = `inbox_${currentUserId}`;
-
-  try {
-    const res = await fetch(`http://localhost:3000/api/boards/${inboxBoardId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      console.log("Inbox Data:", data); // Kiểm tra xem data có lists không
-      setInboxBoard(data);
-      updateBoardState(inboxBoardId, data);
-    } else {
-      console.error("Lỗi API Inbox:", res.status);
+    if (!currentUserId) {
+      console.error("Không tìm thấy Current User ID");
+      return;
     }
-  } catch (err) {
-    console.error("Lỗi kết nối Inbox:", err);
-  }
-};
+    const token = sessionStorage.getItem("token");
+    const inboxBoardId = `inbox_${currentUserId}`;
+
+    try {
+      const res = await fetch(`http://localhost:3000/api/boards/${inboxBoardId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Inbox Data:", data); // Kiểm tra xem data có lists không
+        setInboxBoard(data);
+        updateBoardState(inboxBoardId, data);
+      } else {
+        console.error("Lỗi API Inbox:", res.status);
+      }
+    } catch (err) {
+      console.error("Lỗi kết nối Inbox:", err);
+    }
+  };
 
 
   useEffect(() => {
-    if (openPanel.inbox) fetchInbox();
+    fetchInbox();
   }, [openPanel.inbox, currentUserId]);
-
-
-
-  // // Gọi fetchInbox khi mount
-  // useEffect(() => {
-  //   fetchInbox();
-  // }, []);
 
   // Add Card to Inbox
   const handleAddInboxCard = async (listId, cardTitle) => {
@@ -469,33 +464,65 @@ const BoardPage = () => {
 
   ///Cập nhật card
 
-  const selectedCard = board?.lists
-    ?.flatMap(l => l.cards)
-    ?.find(c => c.id === selectedCardId) || null;
 
-  const selectedList = board?.lists
-    ?.find(l => l.id === selectedListId) || null;
+  const activeBoard = useMemo(() => {
+    if (!selectedBoardId) return null;
 
 
-  const handleUpdateCard = async (updatedCard, listId) => {
-    // Optimistic UI
-    setBoard((prev) => {
-      const lists = prev.lists.map((l) =>
+    if (String(selectedBoardId).startsWith("inbox_")) {
+      return inboxBoard;
+    }
+
+    return board;
+  }, [selectedBoardId, board, inboxBoard]);
+
+  const selectedCard = useMemo(() => {
+    return activeBoard?.lists
+      ?.flatMap(l => l.cards)
+      ?.find(c => c.id === selectedCardId);
+  }, [activeBoard, selectedCardId]);
+
+  const selectedList = useMemo(() => {
+    return activeBoard?.lists?.find(l => l.id === selectedListId);
+  }, [activeBoard, selectedListId]);
+
+  const updateCardInBoard = (prevBoard, updatedCard, listId) => {
+    return {
+      ...prevBoard,
+      lists: prevBoard.lists.map(l =>
         l.id === listId
           ? {
             ...l,
-            cards: l.cards.map((c) =>
+            cards: l.cards.map(c =>
               c.id === updatedCard.id ? updatedCard : c
             ),
           }
           : l
-      );
-      return { ...prev, lists };
-    });
+      ),
+    };
+  };
 
-    // Gửi request lên server
+
+
+
+  const handleUpdateCard = async (updatedCard, listId, boardId) => {
+    // 1. Optimistic UI
+    if (boardId === inboxBoard.id) {
+      setInboxBoard(prev => updateCardInBoard(prev, updatedCard, listId));
+    } else {
+      setBoard(prev => updateCardInBoard(prev, updatedCard, listId));
+    }
+
+    // 2. Persist
+    updateBoardToStorage(boardId,
+      boardId === inboxBoard.id
+        ? updateCardInBoard(inboxBoard, updatedCard, listId)
+        : updateCardInBoard(board, updatedCard, listId)
+    );
+
+    // 3. API
     await fetch(
-      `http://localhost:3000/api/boards/${board.id}/lists/${listId}/cards/${updatedCard.id}`,
+      `http://localhost:3000/api/boards/${boardId}/lists/${listId}/cards/${updatedCard.id}`,
       {
         method: "PUT",
         headers: {
@@ -643,6 +670,19 @@ const BoardPage = () => {
   };
 
 
+  const handleMoveCardOutOfInbox = (cardId, inboxListId) => {
+    setInboxBoard(prev => ({
+      ...prev,
+      lists: prev.lists.map(l =>
+        l.id === inboxListId
+          ? { ...l, cards: l.cards.filter(c => c.id !== cardId) }
+          : l
+      )
+    }));
+  };
+
+
+
 
   if (!board) return <Loading />;
 
@@ -665,7 +705,7 @@ const BoardPage = () => {
               <div className="side-panel inbox-panel">
                 {openPanel.inbox && (
                   <div className="side-panel-content">
-                    <InboxPanel
+                    {inboxBoard && inboxBoard.lists ? (<InboxPanel
                       inboxBoard={inboxBoard}
                       setInboxBoard={(updated) => updateBoardState(inboxBoard.id, updated)}
                       addingCard={addingCard}
@@ -677,8 +717,13 @@ const BoardPage = () => {
                       setSelectedCardId={setSelectedCardId}
                       selectedListId={selectedListId}
                       setSelectedListId={setSelectedListId}
+                      selectedBoardId={selectedBoardId}
+                      setSelectedBoardId={setSelectedBoardId}
                       destBoardId={board.id}
-                    />
+                    />) : (
+                      <Loading />
+                    )}
+
                   </div>
                 )}
               </div>
@@ -853,10 +898,14 @@ const BoardPage = () => {
                           setSelectedCardId={setSelectedCardId}
                           selectedListId={selectedListId}
                           setSelectedListId={setSelectedListId}
+                          selectedBoardId={selectedBoardId}
+                          setSelectedBoardId={setSelectedBoardId}
                           handleAddCard={handleAddCard}
                           newCardTitle={newCardTitle}
                           setNewCardTitle={setNewCardTitle}
                           onUpdateCard={handleUpdateCard}
+                          onMoveCardOutOfInbox={handleMoveCardOutOfInbox}
+                          inboxBoardId={inboxBoard?.id}
                         />
                       ))}
 
@@ -886,12 +935,13 @@ const BoardPage = () => {
 
                   {selectedCard && selectedList && (
                     <CardModal
-                      board={board}
-                      card={selectedCard}   // ✅ LUÔN MỚI
+                      board={activeBoard}
+                      card={selectedCard}
                       list={selectedList}
-                      boardId={board.id}
+                      boardId={activeBoard.id}
                       listId={selectedListId}
                       onUpdate={handleUpdateCard}
+                      currentUser={currentUser}
                       onClose={() => {
                         setSelectedCardId(null);
                         setSelectedListId(null);

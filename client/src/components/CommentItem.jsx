@@ -2,16 +2,20 @@
 import React from "react";
 
 const CommentItem = ({ comment }) => {
+    const sender = comment.sender || { name: "Unknown" };
+
+    const avatarLetter = sender.name ? sender.name.charAt(0).toUpperCase() : "?";
+
     return (
         <div className="activity-item comment-item">
             <div className="avatar">
-                {comment.user.name[0]}
+                {avatarLetter}
             </div>
 
             <div className="activity-content">
                 <div className="activity-header">
                     <span className="activity-user">
-                        {comment.user.name}
+                        {sender.name}
                     </span>
                     <span className="activity-time">
                         {new Date(comment.createdAt).toLocaleString()}
@@ -19,7 +23,7 @@ const CommentItem = ({ comment }) => {
                 </div>
 
                 <div className="activity-text">
-                    {comment.text}
+                    {comment.message}
                 </div>
             </div>
         </div>
