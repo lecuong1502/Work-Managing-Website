@@ -28,7 +28,7 @@ const CardItem = ({
             fromListId: listId,
             boardId: boardId,
             originalIndex: index,
-            cardData: card 
+            cardData: card
         },
         collect: (monitor) => ({
             isDragging: !!monitor.isDragging(),
@@ -37,27 +37,37 @@ const CardItem = ({
 
     const [, drop] = useDrop({
         accept: "card",
-        hover: (item) => {
+        hover: (item, monitor) => {
             if (!ref.current) return;
 
             const dragIndex = item.originalIndex;
             const hoverIndex = index;
 
-            if (item.fromBoardId !== boardId) return;
-            if (dragIndex === hoverIndex && item.fromListId === listId) return;
+            // LẤY ĐÚNG TÊN BIẾN: Trong useDrag bạn để là 'boardId'
+            const sourceBoardId = item.boardId;
 
+            // Kiểm tra nếu cùng 1 card thì không làm gì
+            if (item.cardId === card.id) return;
+
+            // Nếu di chuyển nội bộ trong cùng 1 list và cùng index thì không làm gì
+            if (item.fromListId === listId && dragIndex === hoverIndex && sourceBoardId === boardId) {
+                return;
+            }
+
+            // Thực hiện di chuyển
             onMoveCard(
                 item.cardId,
                 item.fromListId,
                 listId,
                 hoverIndex,
-                item.fromBoardId,
+                sourceBoardId,
                 item.cardData
             );
 
+            // QUAN TRỌNG: Cập nhật lại item để tránh loop hover liên tục
             item.originalIndex = hoverIndex;
             item.fromListId = listId;
-            item.fromBoardId = boardId;
+            item.boardId = boardId; // Cập nhật board hiện tại để biến nó thành di chuyển nội bộ sau khi đã vào board
         },
     });
 

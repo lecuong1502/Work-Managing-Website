@@ -142,7 +142,8 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
                 ...card,
                 members: [...currentMembers, member.id],
             },
-            listId
+            listId,
+            boardId
         );
 
         setShowMemberPopup(false);
@@ -184,7 +185,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
             : [...selectedLabels, label];
 
         setSelectedLabels(updated);
-        onUpdate({ ...card, labels: updated, description: editedDesciption, dueDate: formatDate(date) }, listId);
+        onUpdate({ ...card, labels: updated, description: editedDesciption, dueDate: formatDate(date) }, listId, boardId);
     };
 
     const formatDate = (d) => {
@@ -207,7 +208,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        onUpdate(updatedCard, listId);
+        onUpdate(updatedCard, listId, boardId);
         setShowDatePicker(false);
     };
 
@@ -218,14 +219,14 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        onUpdate(updatedCard, listId);
+        onUpdate(updatedCard, listId, boardId);
         setEditDescription(false);
     }
 
 
     const handleClear = () => {
         setDate(null);
-        onUpdate({ ...card, labels: selectedLabels, dueDate: null }, listId);
+        onUpdate({ ...card, labels: selectedLabels, dueDate: null }, listId, boardId);
         setShowDatePicker(false);
     };
 
@@ -249,7 +250,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
             description: editedDesciption,
             dueDate: formatDate(date)
         };
-        onUpdate(updatedCard, listId);
+        onUpdate(updatedCard, listId, boardId);
     };
     //checklist
     const fetchChecklists = async () => {

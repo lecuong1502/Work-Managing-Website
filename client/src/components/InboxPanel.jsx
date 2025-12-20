@@ -15,6 +15,7 @@ const InboxPanel = ({
   setSelectedCardId,
   selectedListId,
   setSelectedListId,
+  setSelectedBoardId,
   onAddInboxCard,
   currentBoardId,      // <-- Board hiện tại của người dùng (hoặc board parent muốn kéo vào)
   currentListId,
@@ -27,72 +28,95 @@ const InboxPanel = ({
   if (!inboxListId) return null;
 
 
-  const moveCard = (cardId, fromListId, toListId, toIndex, destBoardId = inboxBoard.id) => {
-    const fromList = inboxBoard.lists.find(l => l.id === fromListId);
-    if (!fromList) return;
+  const moveCard = (cardId, fromListId, toListId, toIndex, sourceBoardId, cardData) => {
+    // 1. Xác định hướng di chuyển
+    const isEnteringInbox = sourceBoardId && String(sourceBoardId) !== String(inboxBoard.id);
+    const isInternalInbox = String(sourceBoardId) === String(inboxBoard.id) && String(toListId).startsWith("list_inbox");
+    const isLeavingInbox = String(sourceBoardId) === String(inboxBoard.id) && !String(toListId).startsWith("list_inbox");
 
-    const movedCard = fromList.cards.find(c => c.id === cardId);
-    if (!movedCard) return;
+    // 2. CẬP NHẬT UI
+    setInboxBoard((prevInbox) => {
+      const newLists = prevInbox.lists.map(l => ({ ...l, cards: [...l.cards] }));
 
-    const newLists = inboxBoard.lists.map(list => {
-      if (list.id === fromListId) {
-        return { ...list, cards: list.cards.filter(c => c.id !== cardId) };
+      // TRƯỜNG HỢP A: Card rời khỏi Inbox (Kéo sang Board Main)
+      if (isLeavingInbox) {
+        const sourceList = newLists.find(l => l.id === fromListId);
+        if (sourceList) {
+          sourceList.cards = sourceList.cards.filter(c => c.id !== cardId);
+        }
       }
-      return list;
+
+      // TRƯỜNG HỢP B: Card đi vào hoặc di chuyển nội bộ Inbox
+      else {
+        const destList = newLists.find(l => l.id === toListId);
+        if (!destList) return prevInbox;
+
+        let cardToAdd = null;
+
+        if (isEnteringInbox) {
+          cardToAdd = cardData;
+        } else {
+          const sourceList = newLists.find(l => l.id === fromListId);
+          if (sourceList) {
+            cardToAdd = sourceList.cards.find(c => c.id === cardId);
+            sourceList.cards = sourceList.cards.filter(c => c.id !== cardId);
+          }
+        }
+
+        if (cardToAdd) {
+          const normalizedCard = { ...cardToAdd, state: "Inbox", isGlobalInbox: true };
+          const finalIndex = toIndex !== undefined ? toIndex : destList.cards.length;
+          if (!destList.cards.find(c => c.id === cardId)) {
+            destList.cards.splice(finalIndex, 0, normalizedCard);
+          }
+        }
+      }
+
+      return { ...prevInbox, lists: newLists };
     });
 
-    const toList = newLists.find(l => l.id === toListId);
-    if (!toList) return;
-
-    if (toIndex === undefined) toIndex = toList.cards.length;
-    toList.cards.splice(toIndex, 0, movedCard);
-
-    const updated = { ...inboxBoard, lists: newLists };
-    setInboxBoard(updated); // Cập nhật giao diện ngay
-
-    fetch("http://localhost:3000/api/cards/move", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${sessionStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({
-        sourceBoardId: inboxBoard.id,
-        sourceListId: fromListId,
-        destBoardId,       // <-- sử dụng param destBoardId
-        destListId: toListId,
-        cardId,
-        index: toIndex,
-      }),
-    })
-      .then(res => res.json())
-      .then(data => console.log("Backend inbox:", data.message))
-      .catch(err => console.error("Lỗi move inbox:", err));
+    // 3. GỌI API (Chỉ gọi nếu đích đến là Inbox, 
+    // nếu kéo sang Main thì hàm moveCard của ListColumn sẽ lo phần API của nó)
+    if (!isLeavingInbox) {
+      fetch("http://localhost:3000/api/cards/move", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          sourceBoardId: sourceBoardId,
+          sourceListId: fromListId,
+          destBoardId: inboxBoard.id,
+          destListId: toListId,
+          cardId,
+          index: toIndex || 0,
+        }),
+      })
+        .then(res => res.json())
+        .catch(err => console.error("Lỗi đồng bộ Inbox:", err));
+    }
   };
-
 
   const socketRef = useRef(null);
 
   const [, drop] = useDrop({
-  accept: "card",
-  drop: (item, monitor) => {
-    if (!monitor.isOver({ shallow: true })) return;
+    accept: "card",
+    drop: (item, monitor) => {
+      // shallow: true để đảm bảo không kích hoạt drop lên nhiều tầng
+      if (!monitor.isOver({ shallow: true })) return;
 
-    if (item.fromBoardId === inboxBoard.id) {
-      console.log("Card already in Inbox board");
-      return;
-    }
-
-    // Khi kéo vào InboxPanel, giả sử kéo vào "board hiện tại" (currentBoardId + currentListId)
-    moveCard(
-      item.cardId,
-      item.fromListId,
-      currentListId || inboxListId,
-      undefined,
-      currentBoardId || inboxBoard.id  // <-- Board đích thực sự
-    );
-  },
-});
+      // Gọi moveCard với thông tin từ card đang kéo
+      moveCard(
+        item.cardId,
+        item.fromListId,
+        inboxListId,      // List ID của Inbox
+        undefined,        // Thêm vào cuối list
+        item.boardId,     // Board nguồn (Board Main)
+        item.cardData     // Dữ liệu card
+      );
+    },
+  });
 
 
   const handleSubmit = () => {
@@ -117,6 +141,7 @@ const InboxPanel = ({
           onClick={() => {
             setSelectedCardId(card.id);
             setSelectedListId(inboxListId);
+            setSelectedBoardId(inboxBoard.id);
           }}
 
         />

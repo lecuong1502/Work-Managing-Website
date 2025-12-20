@@ -22,24 +22,37 @@ const ListColumn = ({
   setSelectedCardId,
   selectedListId,
   setSelectedListId,
+  selectedBoardId,
+  setSelectedBoardId,
   handleAddCard,
   newCardTitle,
   setNewCardTitle,
   onUpdateCard,
+  onMoveCardOutOfInbox,
+  inboxBoardId,
 }) => {
   const moveCard = (cardId, fromListId, toListId, toIndex, sourceBoardId, cardData) => {
-    console.group(">>> [DEBUG MOVE_CARD]");
-    console.log("1. Card ID:", cardId);
-    console.log("2. From List ID (Nguồn):", fromListId);
-    console.log("3. To List ID (Đích):", toListId);
-    console.log("4. Source Board ID (Nguồn):", sourceBoardId);
-    console.log("5. Dest Board ID (Đích):", board.id);
-    console.log("6. Card Data:", cardData);
-    console.groupEnd();
+    // console.group(">>> [DEBUG MOVE_CARD]");
+    // console.log("1. Card ID:", cardId);
+    // console.log("2. From List ID (Nguồn):", fromListId);
+    // console.log("3. To List ID (Đích):", toListId);
+    // console.log("4. Source Board ID (Nguồn):", sourceBoardId);
+    // console.log("5. Dest Board ID (Đích):", board.id);
+    // console.log("6. Card Data:", cardData);
+    // console.groupEnd();
 
     if (!fromListId || !toListId || !sourceBoardId) {
       console.error("!!! LỖI NGHIÊM TRỌNG: Một trong các ID bị undefined. Backend sẽ tèo!");
     }
+
+    if (
+      String(sourceBoardId) === String(inboxBoardId) &&
+      String(board.id) !== String(inboxBoardId)
+    ) {
+      onMoveCardOutOfInbox(cardId, fromListId);
+    }
+
+
     // Check xem có phải di chuyển nội bộ trong board này không
     const isInternalMove = !sourceBoardId || String(sourceBoardId) === String(board.id);
 
@@ -64,9 +77,7 @@ const ListColumn = ({
       // B. Thêm thẻ vào list đích (Áp dụng cho cả Nội bộ và Inbox)
       const destList = newLists.find(l => l.id === toListId);
       if (destList) {
-        // Lấy dữ liệu thẻ:
-        // - Nếu nội bộ: Lấy từ list cũ
-        // - Nếu từ Inbox: Lấy từ cardData được truyền vào
+
         let cardToAdd = null;
 
         if (isInternalMove) {
@@ -216,9 +227,11 @@ const ListColumn = ({
               boardId={board.id}
               index={idx}
               onMoveCard={moveCard}
-              onClick={() =>
-                setSelectedCardId(card.id) & setSelectedListId(list.id)
-              }
+              onClick={() => {
+                  setSelectedCardId(card.id),
+                  setSelectedListId(list.id),
+                  setSelectedBoardId(board.id);
+              }}
               onToggleState={handleToggleCardState}
               onArchive={handleArchiveCard}
             />
