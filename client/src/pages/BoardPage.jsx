@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   useParams,
   useNavigate,
@@ -48,6 +48,11 @@ const BoardPage = () => {
   // const [inboxCards, setInboxCards] = useState([]);
   const [boards, setBoards] = useState(JSON.parse(sessionStorage.getItem("boards")) || []);
   const [inboxBoard, setInboxBoard] = useState(null);
+
+  const currentUser = useMemo(() => {
+    const userData = sessionStorage.getItem("user");
+    return userData ? JSON.parse(userData) : null;
+  }, []);
 
 
   const updateBoardState = (boardId, updatedBoardData) => {
@@ -138,15 +143,8 @@ const BoardPage = () => {
 
 
   useEffect(() => {
-    if (openPanel.inbox) fetchInbox();
+    fetchInbox();
   }, [openPanel.inbox, currentUserId]);
-
-
-
-  // // Gọi fetchInbox khi mount
-  // useEffect(() => {
-  //   fetchInbox();
-  // }, []);
 
   // Add Card to Inbox
   const handleAddInboxCard = async (listId, cardTitle) => {
@@ -466,18 +464,27 @@ const BoardPage = () => {
 
   ///Cập nhật card
 
-  const activeBoard =
-    selectedBoardId === inboxBoard?.id
-      ? inboxBoard
-      : board;
+
+  const activeBoard = useMemo(() => {
+    if (!selectedBoardId) return null;
 
 
-  const selectedCard = activeBoard?.lists
-    ?.flatMap(l => l.cards)
-    ?.find(c => c.id === selectedCardId);
+    if (String(selectedBoardId).startsWith("inbox_")) {
+      return inboxBoard;
+    }
 
-  const selectedList = activeBoard?.lists
-    ?.find(l => l.id === selectedListId);
+    return board;
+  }, [selectedBoardId, board, inboxBoard]);
+
+  const selectedCard = useMemo(() => {
+    return activeBoard?.lists
+      ?.flatMap(l => l.cards)
+      ?.find(c => c.id === selectedCardId);
+  }, [activeBoard, selectedCardId]);
+
+  const selectedList = useMemo(() => {
+    return activeBoard?.lists?.find(l => l.id === selectedListId);
+  }, [activeBoard, selectedListId]);
 
   const updateCardInBoard = (prevBoard, updatedCard, listId) => {
     return {
@@ -526,8 +533,6 @@ const BoardPage = () => {
       }
     );
   };
-
-
 
 
   ///đông bộ card khi có sự kiện từ server
@@ -714,7 +719,6 @@ const BoardPage = () => {
                       setSelectedListId={setSelectedListId}
                       selectedBoardId={selectedBoardId}
                       setSelectedBoardId={setSelectedBoardId}
-
                       destBoardId={board.id}
                     />) : (
                       <Loading />
@@ -937,6 +941,7 @@ const BoardPage = () => {
                       boardId={activeBoard.id}
                       listId={selectedListId}
                       onUpdate={handleUpdateCard}
+                      currentUser={currentUser}
                       onClose={() => {
                         setSelectedCardId(null);
                         setSelectedListId(null);

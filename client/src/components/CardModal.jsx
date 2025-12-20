@@ -68,6 +68,8 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
                     }
                 );
                 const data = await res.json();
+                // console.log("ACTIVITY ITEM:", data);
+
                 setActivities(data);
             } catch (err) {
                 console.error("Load activities failed", err);
@@ -81,6 +83,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
     const handleSendComment = async () => {
         if (!input.trim()) return;
         setIsSendingComment(true);
+
 
         try {
             const res = await fetch(`http://localhost:3000/api/cards/${card.id}/comments`, {
@@ -147,24 +150,6 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
         );
 
         setShowMemberPopup(false);
-    };
-
-    const handleSend = () => {
-        if (!input.trim()) return;
-
-        const newComment = {
-            id: `cmt_${Date.now()}`,
-            text: input,
-            createdAt: new Date(),
-            user: {
-                id: "me",
-                name: "You",
-                avatar: null,
-            },
-        };
-
-        setComments(prev => [...prev, newComment]);
-        setInput("");
     };
 
 
@@ -417,6 +402,23 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
             new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
     );
 
+    const getInitials = (name) => {
+        if (!name) return "Y"; // Giá trị mặc định nếu không có tên
+
+        const parts = name.trim().split(" ");
+
+        if (parts.length === 1) {
+            // Nếu tên chỉ có 1 chữ (ví dụ: Goku) -> Lấy chữ cái đầu
+            return parts[0].charAt(0).toUpperCase();
+        } else {
+            // Nếu tên có nhiều chữ (ví dụ: Nguyễn Mạnh Cường) 
+            // -> Lấy chữ cái đầu của từ đầu tiên và từ cuối cùng (NC)
+            const firstInitial = parts[0].charAt(0);
+            const lastInitial = parts[parts.length - 1].charAt(0);
+            return (firstInitial + lastInitial).toUpperCase();
+        }
+    };
+
 
     return (
         <div className="modal-overlay" onClick={handleOverlayClose}>
@@ -564,7 +566,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
 
 
                                         {Array.isArray(cl.items) && cl.items.map((item, index) => {
-                                            console.log("Check item data", item);
+                                            // console.log("Check item data", item);
                                             return (
                                                 <div key={item.item_id || index} className="checklist-item">
                                                     <input
@@ -610,18 +612,10 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
                     <div className="modal-right">
                         <h3 className="activity-title">Comments and activity</h3>
 
-                        {/* <input
-                            className="comment-input"
-                            placeholder="Write a comment..."
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                        /> */}
-
                         <div className="comment-input-section">
                             <div className="user-avatar-small">
                                 {/* Hiển thị Avatar user đang login */}
-                                {currentUser?.name?.charAt(0).toUpperCase() || "Y"}
+                                {getInitials(currentUser?.username || "You")}
                             </div>
                             <div className="input-wrapper">
                                 <input
@@ -632,8 +626,8 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
                                     onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
                                     disabled={isSendingComment}
                                 />
-                                <button 
-                                    className="save-comment-btn" 
+                                <button
+                                    className="save-comment-btn"
                                     onClick={handleSendComment}
                                     disabled={!input.trim() || isSendingComment}
                                 >
@@ -643,7 +637,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
                         </div>
 
                         <div className="activity-list">
-                            {sortedActivities.length === 0 && <p style={{color:'#888', fontStyle:'italic', fontSize:'13px'}}>No activities yet.</p>}
+                            {sortedActivities.length === 0 && <p style={{ color: '#888', fontStyle: 'italic', fontSize: '13px' }}>No activities yet.</p>}
                             {sortedActivities.map(item => {
                                 if (item.type === "comment") {
                                     return <CommentItem key={item.id} comment={item} />;

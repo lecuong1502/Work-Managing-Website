@@ -689,7 +689,7 @@ app.post("/api/boards", authMiddleware, (req, res) => {
     };
 
     boardsOfThisUser.push(newBoard);
-    
+
     console.log(`Đã tạo board mới cho user ${userId}:`, newBoard);
 
     res.status(201).json(newBoard);
@@ -1039,7 +1039,7 @@ app.put("/api/boards/lists/move", authMiddleware, (req, res) => {
     }
 
     if (!checkEditPermission(destBoard, userId)) {
-         return res.status(403).json({ message: "Bạn không có quyền sửa đổi board đích." });
+        return res.status(403).json({ message: "Bạn không có quyền sửa đổi board đích." });
     }
 
     if (!Array.isArray(sourceBoard.lists) || !Array.isArray(destBoard.lists)) {
@@ -1263,6 +1263,11 @@ app.post(
 const cardActivities = {};
 
 const sendActivity = ({ actor, card, boardId, message, type }) => {
+    console.log("SEND ACTIVITY:", {
+        type,
+        cardId: card.id,
+        message,
+    });
     const activity = {
         id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         type,
@@ -1317,7 +1322,7 @@ app.post("/api/cards/:cardId/comments", authMiddleware, (req, res) => {
     const actor = {
         id: userId,
         name: req.user.name || "User",
-        avatar_url: req.user.avatar || "", 
+        avatar_url: req.user.avatar || "",
     };
 
     // GỌI HÀM sendActivity ĐỂ LƯU VÀ BẮN SOCKET
@@ -1990,7 +1995,7 @@ app.put("/api/checklist-items/:itemId/toggle", authMiddleware, (req, res) => {
         io.emit("CHECKLIST_UPDATED", { cardId: checklist.card_id });
     }
 
-    console.log("item ID:",itemId)
+    console.log("item ID:", itemId)
 
     res.status(200).json(item);
 });

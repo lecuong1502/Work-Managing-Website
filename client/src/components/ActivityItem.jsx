@@ -18,7 +18,7 @@ const ActivityItem = ({ activity }) => {
                     <span className="activity-user">
                         {actor.name || "Unknown"}
                     </span>
-                    <span className="activity-time">just now</span>
+                    <span className="activity-time">{new Date(activity.createdAt).toLocaleString()}</span>
                 </div>
 
                 <div className="activity-text">

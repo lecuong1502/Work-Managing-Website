@@ -80,12 +80,15 @@ const ListColumn = ({
 
         let cardToAdd = null;
 
+        // Nội bộ board
         if (isInternalMove) {
           const originalSourceList = prevBoard.lists.find(l => l.id === fromListId);
           cardToAdd = originalSourceList?.cards.find(c => c.id === cardId);
-        } else {
-          // QUAN TRỌNG: Đây là thẻ từ Inbox
-          cardToAdd = cardData;
+        }
+
+        // TỪ INBOX SANG BOARD
+        else {
+          cardToAdd = cardData; // cardData
         }
 
         if (cardToAdd) {
