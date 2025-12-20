@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import "../styles/Calendar.css";
 
+// ======================
+// CONSTANTS
+// ======================
 const TIMES = Array.from({ length: 48 }, (_, i) => {
   const hour = Math.floor(i / 2);
   const min = i % 2 === 0 ? 0 : 30;
@@ -16,25 +19,29 @@ const toMinutes = (t) => {
   return h * 60 + m;
 };
 
-function getWeekStart(date = new Date()) {
+const getWeekStart = (date = new Date()) => {
   const d = new Date(date);
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   return d;
-}
+};
 
+// ======================
+// COMPONENT
+// ======================
 export default function CalendarPage() {
   const token = sessionStorage.getItem("token");
 
   const [events, setEvents] = useState([]);
   const [currDate, setCurrDate] = useState(new Date());
-
   const [drag, setDrag] = useState(null);
   const [dragEnd, setDragEnd] = useState(null);
-
   const [editBox, setEditBox] = useState(null);
 
+  // ======================
+  // FETCH EVENTS
+  // ======================
   useEffect(() => {
     if (!token) return;
 
@@ -43,14 +50,25 @@ export default function CalendarPage() {
         Authorization: `Bearer ${token}`,
       },
     })
-      .then((res) => {
-        if (!res.ok) throw new Error("Fetch calendar failed");
-        return res.json();
+      .then((res) => res.json())
+      .then((data) => {
+        const mapped = Array.isArray(data)
+          ? data.map((e) => ({
+              id: e.event_id,
+              name: e.title,
+              date: e.start_time.split("T")[0],
+              start: e.start_time.slice(11, 16),
+              end: e.end_time.slice(11, 16),
+            }))
+          : [];
+        setEvents(mapped);
       })
-      .then((data) => setEvents(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Lỗi lấy lịch:", err));
   }, [token]);
 
+  // ======================
+  // DATE HELPERS
+  // ======================
   const weekStart = getWeekStart(currDate);
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
@@ -59,25 +77,16 @@ export default function CalendarPage() {
   });
 
   const nextWeek = () =>
-    setCurrDate(
-      new Date(
-        currDate.getFullYear(),
-        currDate.getMonth(),
-        currDate.getDate() + 7
-      )
-    );
+    setCurrDate(new Date(currDate.setDate(currDate.getDate() + 7)));
 
   const prevWeek = () =>
-    setCurrDate(
-      new Date(
-        currDate.getFullYear(),
-        currDate.getMonth(),
-        currDate.getDate() - 7
-      )
-    );
+    setCurrDate(new Date(currDate.setDate(currDate.getDate() - 7)));
 
   const goToday = () => setCurrDate(new Date());
 
+  // ======================
+  // CREATE EVENT (DRAG)
+  // ======================
   const startCreate = (dIdx, idx) => {
     setDrag({ dIdx, idx });
     setDragEnd({ dIdx, idx });
@@ -101,11 +110,7 @@ export default function CalendarPage() {
     const endMin = endIdx % 2 === 0 ? 0 : 30;
 
     const title = prompt("Tên sự kiện:");
-    if (!title) {
-      setDrag(null);
-      setDragEnd(null);
-      return;
-    }
+    if (!title) return;
 
     const date = days[dayIndex].toISOString().split("T")[0];
 
@@ -116,30 +121,39 @@ export default function CalendarPage() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        name: title,
-        date,
-        start: `${pad(startHour)}:${pad(startMin)}`,
-        end: `${pad(endHour)}:${pad(endMin)}`,
+        title,
+        start_time: `${date}T${pad(startHour)}:${pad(startMin)}:00.000Z`,
+        end_time: `${date}T${pad(endHour)}:${pad(endMin)}:00.000Z`,
       }),
     })
       .then((res) => res.json())
-      .then((newEvent) => {
-        setEvents((prev) => [...prev, newEvent]);
-      })
-      .catch((err) => console.error("Lỗi tạo lịch:", err));
+      .then((e) => {
+        setEvents((prev) => [
+          ...prev,
+          {
+            id: e.event_id,
+            name: e.title,
+            date: e.start_time.split("T")[0],
+            start: e.start_time.slice(11, 16),
+            end: e.end_time.slice(11, 16),
+          },
+        ]);
+      });
 
     setDrag(null);
     setDragEnd(null);
   };
 
-  const isDragCell = (dIdx, idx) => {
-    if (!drag || !dragEnd || drag.dIdx !== dIdx) return false;
-    return (
-      idx >= Math.min(drag.idx, dragEnd.idx) &&
-      idx <= Math.max(drag.idx, dragEnd.idx)
-    );
-  };
+  const isDragCell = (dIdx, idx) =>
+    drag &&
+    dragEnd &&
+    drag.dIdx === dIdx &&
+    idx >= Math.min(drag.idx, dragEnd.idx) &&
+    idx <= Math.max(drag.idx, dragEnd.idx);
 
+  // ======================
+  // EDIT / DELETE
+  // ======================
   const saveEdit = () => {
     fetch(`http://localhost:3000/api/events/${editBox.id}`, {
       method: "PUT",
@@ -147,11 +161,13 @@ export default function CalendarPage() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(editBox),
+      body: JSON.stringify({
+        title: editBox.name,
+        start_time: `${editBox.date}T${editBox.start}:00.000Z`,
+        end_time: `${editBox.date}T${editBox.end}:00.000Z`,
+      }),
     }).then(() => {
-      setEvents((prev) =>
-        prev.map((ev) => (ev.id === editBox.id ? editBox : ev))
-      );
+      setEvents((prev) => prev.map((e) => (e.id === editBox.id ? editBox : e)));
       setEditBox(null);
     });
   };
@@ -163,11 +179,14 @@ export default function CalendarPage() {
         Authorization: `Bearer ${token}`,
       },
     }).then(() => {
-      setEvents((prev) => prev.filter((ev) => ev.id !== editBox.id));
+      setEvents((prev) => prev.filter((e) => e.id !== editBox.id));
       setEditBox(null);
     });
   };
 
+  // ======================
+  // RENDER
+  // ======================
   return (
     <div className="wcal">
       <div className="wcal-header">
@@ -214,21 +233,21 @@ export default function CalendarPage() {
                 ))}
 
                 {events
-                  .filter((ev) => ev.date === d.toISOString().split("T")[0])
-                  .map((ev) => {
-                    const top = toMinutes(ev.start);
-                    const height = toMinutes(ev.end) - top;
+                  .filter((e) => e.date === d.toISOString().split("T")[0])
+                  .map((e) => {
+                    const top = toMinutes(e.start);
+                    const height = toMinutes(e.end) - top;
 
                     return (
                       <div
-                        key={ev.id}
+                        key={e.id}
                         className="wcal-event"
-                        style={{ top: `${top}px`, height: `${height}px` }}
-                        onClick={() => setEditBox(ev)}
+                        style={{ top, height }}
+                        onClick={() => setEditBox(e)}
                       >
-                        <b>{ev.name}</b>
+                        <b>{e.name}</b>
                         <div>
-                          {ev.start} – {ev.end}
+                          {e.start} – {e.end}
                         </div>
                       </div>
                     );

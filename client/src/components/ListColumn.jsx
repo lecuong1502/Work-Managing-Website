@@ -18,15 +18,28 @@ const ListColumn = ({
   handleRenameList,
   addingCard,
   setAddingCard,
-  selectedCard,
-  setSelectedCard,
+  selectedCardId,
+  setSelectedCardId,
+  selectedListId,
+  setSelectedListId,
   handleAddCard,
   newCardTitle,
   setNewCardTitle,
   onUpdateCard,
 }) => {
   const moveCard = (cardId, fromListId, toListId, toIndex, sourceBoardId, cardData) => {
-    
+    console.group(">>> [DEBUG MOVE_CARD]");
+    console.log("1. Card ID:", cardId);
+    console.log("2. From List ID (Nguồn):", fromListId);
+    console.log("3. To List ID (Đích):", toListId);
+    console.log("4. Source Board ID (Nguồn):", sourceBoardId);
+    console.log("5. Dest Board ID (Đích):", board.id);
+    console.log("6. Card Data:", cardData);
+    console.groupEnd();
+
+    if (!fromListId || !toListId || !sourceBoardId) {
+      console.error("!!! LỖI NGHIÊM TRỌNG: Một trong các ID bị undefined. Backend sẽ tèo!");
+    }
     // Check xem có phải di chuyển nội bộ trong board này không
     const isInternalMove = !sourceBoardId || String(sourceBoardId) === String(board.id);
 
@@ -34,52 +47,52 @@ const ListColumn = ({
 
     // --- 1. CẬP NHẬT GIAO DIỆN NGAY LẬP TỨC (OPTIMISTIC UI) ---
     setBoard((prevBoard) => {
-        // Clone deep để không ảnh hưởng state cũ
-        const newLists = prevBoard.lists.map(l => ({
-            ...l, 
-            cards: [...l.cards] 
-        }));
+      // Clone deep để không ảnh hưởng state cũ
+      const newLists = prevBoard.lists.map(l => ({
+        ...l,
+        cards: [...l.cards]
+      }));
 
-        // A. Nếu là nội bộ: Xóa thẻ ở list cũ
+      // A. Nếu là nội bộ: Xóa thẻ ở list cũ
+      if (isInternalMove) {
+        const sourceList = newLists.find(l => l.id === fromListId);
+        if (sourceList) {
+          sourceList.cards = sourceList.cards.filter(c => c.id !== cardId);
+        }
+      }
+
+      // B. Thêm thẻ vào list đích (Áp dụng cho cả Nội bộ và Inbox)
+      const destList = newLists.find(l => l.id === toListId);
+      if (destList) {
+        // Lấy dữ liệu thẻ:
+        // - Nếu nội bộ: Lấy từ list cũ
+        // - Nếu từ Inbox: Lấy từ cardData được truyền vào
+        let cardToAdd = null;
+
         if (isInternalMove) {
-            const sourceList = newLists.find(l => l.id === fromListId);
-            if (sourceList) {
-                sourceList.cards = sourceList.cards.filter(c => c.id !== cardId);
-            }
+          const originalSourceList = prevBoard.lists.find(l => l.id === fromListId);
+          cardToAdd = originalSourceList?.cards.find(c => c.id === cardId);
+        } else {
+          // QUAN TRỌNG: Đây là thẻ từ Inbox
+          cardToAdd = cardData;
         }
 
-        // B. Thêm thẻ vào list đích (Áp dụng cho cả Nội bộ và Inbox)
-        const destList = newLists.find(l => l.id === toListId);
-        if (destList) {
-            // Lấy dữ liệu thẻ:
-            // - Nếu nội bộ: Lấy từ list cũ
-            // - Nếu từ Inbox: Lấy từ cardData được truyền vào
-            let cardToAdd = null;
+        if (cardToAdd) {
+          // Reset trạng thái thẻ để nó hiện ra (Inbox state là "Inbox", vào board phải là "Inprogress")
+          const normalizedCard = {
+            ...cardToAdd,
+            state: "Inprogress", // Bắt buộc đổi state này để không bị filter ẩn đi
+            isGlobalInbox: false // Xóa cờ này đi
+          };
 
-            if (isInternalMove) {
-                const originalSourceList = prevBoard.lists.find(l => l.id === fromListId);
-                cardToAdd = originalSourceList?.cards.find(c => c.id === cardId);
-            } else {
-                // QUAN TRỌNG: Đây là thẻ từ Inbox
-                cardToAdd = cardData; 
-            }
-
-            if (cardToAdd) {
-                // Reset trạng thái thẻ để nó hiện ra (Inbox state là "Inbox", vào board phải là "Inprogress")
-                const normalizedCard = { 
-                    ...cardToAdd, 
-                    state: "Inprogress", // Bắt buộc đổi state này để không bị filter ẩn đi
-                    isGlobalInbox: false // Xóa cờ này đi
-                };
-
-                const finalIndex = toIndex !== undefined ? toIndex : destList.cards.length;
-                destList.cards.splice(finalIndex, 0, normalizedCard);
-            }
+          const finalIndex = toIndex !== undefined ? toIndex : destList.cards.length;
+          destList.cards.splice(finalIndex, 0, normalizedCard);
         }
+      }
 
-        const updatedBoard = { ...prevBoard, lists: newLists };
-        sessionStorage.setItem("boards", JSON.stringify(updatedBoard));
-        return updatedBoard;
+      const updatedBoard = { ...prevBoard, lists: newLists };
+      sessionStorage.setItem("boards", JSON.stringify(updatedBoard));
+      return updatedBoard;
     });
 
     // --- 2. GỌI API ---
@@ -109,31 +122,6 @@ const ListColumn = ({
 
   const listRef = React.useRef(null);
   const cardDropRef = React.useRef(null);
-
-
-  // const [, drop] = useDrop({
-  //   accept: ["card", "list"],
-  //   hover: (item, monitor) => {
-  //     if (!monitor.isOver({ shallow: true })) return;
-
-  //     // DRAG LIST
-  //     if (item.type === "list") {
-  //       if (item.listId === list.id) return;
-
-  //       moveList(item.index, index);
-  //       item.index = index;
-  //     }
-  //   },
-  //   drop: (item, monitor) => {
-  //     if (!monitor.isOver({ shallow: true })) return;
-
-  //     // DROP CARD
-  //     if (item.type === "card") {
-  //       const { cardId, fromListId } = item;
-  //       moveCard(cardId, fromListId, list.id, list.cards.length);
-  //     }
-  //   },
-  // });
 
   const [, listDrop] = useDrop({
     accept: "list",
@@ -167,7 +155,7 @@ const ListColumn = ({
       if (isDifferentList || isDifferentBoard) {
         // Truyền boardId (source) vào hàm moveCard
         moveCard(cardId, fromListId, list.id, list.cards.length, boardId, cardData);
-        
+
         // Cập nhật lại item để DND hiểu vị trí mới
         item.fromListId = list.id;
         item.boardId = board.id; // Cập nhật lại thành board hiện tại
@@ -231,7 +219,7 @@ const ListColumn = ({
               index={idx}
               onMoveCard={moveCard}
               onClick={() =>
-                setSelectedCard({ ...card, listId: list.id, boardId: board.id })
+                setSelectedCardId(card.id) & setSelectedListId(list.id)
               }
               onToggleState={handleToggleCardState}
               onArchive={handleArchiveCard}

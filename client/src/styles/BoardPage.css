@@ -11,7 +11,6 @@
   margin-bottom: 10px;
 }
 
-
 .board-page {
   flex: 1 1 auto;
   display: flex;
@@ -86,7 +85,6 @@
   width: 18px;
   height: 18px;
 }
-
 
 .lists-container {
   display: flex;
@@ -185,7 +183,6 @@
   background-color: #2563eb;
 }
 
-
 .add-list {
   background-color: rgba(255, 255, 255, 0.25);
   color: #918989;
@@ -235,7 +232,6 @@
   overflow-x: auto;
   max-height: 100%;
   flex: 1;
-
 }
 
 .side-panel {
@@ -380,8 +376,8 @@
   transition: background 0.2s;
 }
 
-.change-visibility-btn:hover{
-   background-color: rgba(255, 255, 255, 0.55);
+.change-visibility-btn:hover {
+  background-color: rgba(255, 255, 255, 0.55);
 }
 
 .visibility-menu {

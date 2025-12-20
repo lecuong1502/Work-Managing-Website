@@ -176,6 +176,7 @@ const initMockDatabase = () => {
         calendarEvents.push({
           ...event,
           board_id: board.id, // Quan trọng: Gán khóa ngoại board_id
+          user_id: board.userId,
         });
       });
     }
@@ -403,11 +404,39 @@ app.post("/register", async (req, res) => {
       createdAt: new Date(),
     };
 
+    const inboxBoard = {
+      id: `inbox_${newUser.id}`, // ID dạng string đặc biệt
+      userId: newUser.id,
+      name: "Inbox",
+      description: "Khay đựng công việc cá nhân, truy cập nhanh từ mọi nơi.",
+      color: "#5e6c84", // Màu xám trung tính đặc trưng của Inbox
+      visibility: "Private", // Inbox luôn là Private
+      members: [], // Không có thành viên khác
+      events: [],
+      lists: [
+        {
+          // Tạo sẵn 1 list duy nhất để chứa card
+          id: `list_inbox_main_${newUser.id}`,
+          title: "Inbox Items",
+          cards: [],
+        },
+      ],
+    };
+
     // Save to database
-    users.push(newUser);
-    userBoards[newUser.id] = JSON.parse(
+    const templateBoards = JSON.parse(
       JSON.stringify(DEFAULT_BOARDS_TEMPLATE)
-    ).filter((b) => b.userId === newUser.id);
+    ).map((board, index) => {
+      return {
+        ...board,
+        userId: newUser.id,
+        id: (Date.now() + index).toString(), // Tạo ID mới để không bị trùng với board của user khác
+        members: [], // Reset thành viên (nếu board mẫu có sẵn member cũ)
+      };
+    });
+
+    users.push(newUser);
+    userBoards[newUser.id] = [inboxBoard, ...templateBoards];
 
     console.log("Users database sau khi đăng ký:", users);
     console.log("UserBoards database sau khi đăng ký:", userBoards);
@@ -421,6 +450,7 @@ app.post("/register", async (req, res) => {
         email: newUser.email,
         role: newUser.role,
         avatar_url: newUser.avatar_url,
+        inboxBoard,
       },
     });
   } catch (error) {
@@ -548,6 +578,8 @@ app.get("/api/boards", authMiddleware, (req, res) => {
   let result = [...ownedBoards, ...sharedBoards];
 
   // MAP DỮ LIỆU TỪ "BẢNG" EVENTS VÀO BOARD (Tương tự SQL JOIN)
+  // result = result.filter(b => !String(b.id).startsWith("inbox_"));
+
   result = result.map((board) => {
     // Tìm các event có board_id trùng khớp
     const realTimeEvents = calendarEvents.filter(
@@ -649,9 +681,13 @@ app.post("/api/boards", authMiddleware, (req, res) => {
       .status(404)
       .json({ message: "Không tìm thấy dữ liệu board cho user này" });
   }
+  ///fix
+  const numericBoardIds = boardsOfThisUser
+    .map((b) => Number(b.id))
+    .filter((id) => !isNaN(id));
 
-  const newBoardId = boardsOfThisUser.length
-    ? Math.max(...boardsOfThisUser.map((b) => b.id)) + 1
+  const newBoardId = numericBoardIds.length
+    ? Math.max(...numericBoardIds) + 1
     : 1;
 
   const newBoard = {
@@ -815,11 +851,9 @@ app.post("/api/boards/:boardId/lists", authMiddleware, (req, res) => {
   }
 
   if (!checkEditPermission(board, userId)) {
-    return res
-      .status(403)
-      .json({
-        message: "Bạn không có quyền thêm list (Private Mode hoặc Read-only).",
-      });
+    return res.status(403).json({
+      message: "Bạn không có quyền thêm list (Private Mode hoặc Read-only).",
+    });
   }
 
   const newList = {
@@ -1116,58 +1150,6 @@ app.put("/api/cards/move", authMiddleware, (req, res) => {
 
   const io = req.app.get("socketio") || io; // Đảm bảo lấy được socket io
 
-  // DI CHUYỂN TỪ INBOX VÀO BOARD
-  if (sourceBoardId === "inbox-global") {
-    const inbox = ensureInbox(userId);
-    const cardIndex = inbox.findIndex((c) => String(c.id) === String(cardId));
-
-    if (cardIndex === -1)
-      return res
-        .status(404)
-        .json({ message: "Card không tìm thấy trong Inbox" });
-
-    // Cắt thẻ khỏi Inbox
-    const [movedCard] = inbox.splice(cardIndex, 1);
-
-    // Tìm Board đích
-    const allBoards = Object.values(userBoards).flat();
-    const destBoard = allBoards.find(
-      (b) => String(b.id) === String(destBoardId)
-    );
-
-    if (!destBoard)
-      return res.status(404).json({ message: "Board đích không tồn tại" });
-
-    // Check quyền Board đích
-    if (!checkEditPermission(destBoard, userId)) {
-      inbox.splice(cardIndex, 0, movedCard);
-      return res
-        .status(403)
-        .json({ message: "Không có quyền thêm vào Board này" });
-    }
-
-    const destList = destBoard.lists.find((l) => l.id === destListId);
-    if (!destList)
-      return res.status(404).json({ message: "List đích không tồn tại" });
-
-    // Chèn vào List đích
-    delete movedCard.isGlobalInbox;
-    movedCard.state = "To Do"; // Reset state mặc định khi vào board
-
-    if (typeof index === "number" && index >= 0) {
-      destList.cards.splice(index, 0, movedCard);
-    } else {
-      destList.cards.push(movedCard);
-    }
-
-    // Socket update
-    io.to(String(destBoardId)).emit("board_updated", destBoard);
-
-    return res
-      .status(200)
-      .json({ message: "Đã chuyển từ Inbox vào Board", movedCard });
-  }
-
   // 1. Kiểm tra dữ liệu đầu vào
   if (
     !sourceBoardId ||
@@ -1198,12 +1180,10 @@ app.put("/api/cards/move", authMiddleware, (req, res) => {
     !checkEditPermission(sourceBoard, userId) ||
     !checkEditPermission(destBoard, userId)
   ) {
-    return res
-      .status(403)
-      .json({
-        message:
-          "Bạn không có quyền di chuyển thẻ trong board này (Private Mode).",
-      });
+    return res.status(403).json({
+      message:
+        "Bạn không có quyền di chuyển thẻ trong board này (Private Mode).",
+    });
   }
 
   // 4. Tìm List nguồn và List đích
@@ -1451,8 +1431,30 @@ app.put(
       });
     }
 
-    if (description !== undefined) card.description = description;
-    if (labels !== undefined) card.labels = labels;
+    if (description !== undefined && description !== oldCard.description) {
+      card.description = description;
+
+      sendActivity({
+        actor: req.user,
+        card,
+        boardId,
+        type: "update",
+        message: `đã cập nhật mô tả thẻ`,
+      });
+    }
+
+    if (labels !== undefined) {
+      card.labels = labels;
+
+      sendActivity({
+        actor: req.user,
+        card,
+        boardId,
+        type: "label",
+        message: `đã cập nhật nhãn của thẻ`,
+      });
+    }
+
     if (dueDate !== undefined && dueDate !== oldCard.dueDate) {
       card.dueDate = dueDate;
 
@@ -1472,6 +1474,11 @@ app.put(
     // const io = req.app.get("io")
 
     io.to(boardId.toString()).emit("board_updated", board);
+
+    io.to(boardId.toString()).emit("CARD_UPDATED", {
+      listId,
+      card,
+    });
 
     res.json(card);
   }
@@ -1520,6 +1527,7 @@ app.delete(
     console.log(`Đã xóa card ${cardId}`);
 
     io.to(boardId.toString()).emit("board_updated", board);
+
     res.status(204).send();
   }
 );
@@ -1673,71 +1681,32 @@ app.post("/api/boards/add-member", authMiddleware, (req, res) => {
 // CALENDAR API ENDPOINTS
 // ==========================================
 
-// Lấy danh sách sự kiện của một board
-app.get("/api/boards/:boardId/events", authMiddleware, (req, res) => {
+// Lấy danh sách sự kiện của USER
+app.get("/api/events", authMiddleware, (req, res) => {
   const userId = Number(req.user.id);
-  const boardId = Number(req.params.boardId);
 
-  // Tìm board trong userBoards (để check quyền)
-  const allBoards = Object.values(userBoards).flat();
-  const board = allBoards.find((b) => b.id === boardId);
-
-  if (!board) {
-    return res.status(404).json({ message: "Board không tồn tại." });
-  }
-
-  // Check quyền (Owner hoặc Member mới xem được lịch)
-  const isOwner = board.userId === userId;
-  const isMember = board.members?.some((m) => m.id === userId);
-
-  if (!isOwner && !isMember) {
-    return res
-      .status(403)
-      .json({ message: "Bạn không có quyền xem lịch của board này." });
-  }
-
-  // Lọc sự kiện thuộc board_id này từ "bảng" calendarEvents
-  const events = calendarEvents.filter((e) => e.board_id === boardId);
+  // Lọc sự kiện theo user_id
+  const events = calendarEvents.filter((e) => e.user_id === userId);
 
   res.status(200).json(events);
 });
 
-// Tạo sự kiện mới
-app.post("/api/boards/:boardId/events", authMiddleware, (req, res) => {
+// Tạo sự kiện mới cho USER
+app.post("/api/events", authMiddleware, (req, res) => {
   const userId = Number(req.user.id);
-  const boardId = Number(req.params.boardId);
   const { title, start_time, end_time, description } = req.body;
 
   // Validate input
   if (!title || !start_time || !end_time) {
-    return res
-      .status(400)
-      .json({
-        message: "Thiếu thông tin bắt buộc (title, start_time, end_time).",
-      });
-  }
-
-  // Check quyền truy cập board
-  const allBoards = Object.values(userBoards).flat();
-  const board = allBoards.find((b) => b.id === boardId);
-
-  if (!board) {
-    return res.status(404).json({ message: "Board không tồn tại." });
-  }
-
-  const isOwner = board.userId === userId;
-  const isMember = board.members?.some((m) => m.id === userId);
-
-  if (!isOwner && !isMember) {
-    return res
-      .status(403)
-      .json({ message: "Bạn không có quyền thêm sự kiện vào board này." });
+    return res.status(400).json({
+      message: "Thiếu thông tin bắt buộc (title, start_time, end_time).",
+    });
   }
 
   // Tạo event mới
   const newEvent = {
     event_id: eventIdCounter++,
-    board_id: boardId,
+    user_id: userId,
     title: title,
     start_time: start_time,
     end_time: end_time,
@@ -1746,10 +1715,10 @@ app.post("/api/boards/:boardId/events", authMiddleware, (req, res) => {
 
   calendarEvents.push(newEvent);
 
-  // Socket.io
-  io.emit("SERVER_EVENT_CREATED", newEvent);
+  // Socket.io – realtime cho chính user đó
+  io.to(`user_${userId}`).emit("USER_EVENT_CREATED", newEvent);
 
-  console.log("New Event Created:", newEvent);
+  console.log("New User Event Created:", newEvent);
   res.status(201).json(newEvent);
 });
 
@@ -1761,27 +1730,20 @@ app.put("/api/events/:eventId", authMiddleware, (req, res) => {
 
   // Tìm event trong "bảng" calendarEvents
   const eventIndex = calendarEvents.findIndex((e) => e.event_id === eventId);
+
   if (eventIndex === -1) {
-    return res.status(404).json({ message: "Sự kiện không tồn tại." });
+    return res.status(404).json({
+      message: "Sự kiện không tồn tại.",
+    });
   }
 
   const event = calendarEvents[eventIndex];
 
-  // Check quyền
-  const allBoards = Object.values(userBoards).flat();
-  const board = allBoards.find((b) => b.id === event.board_id);
-
-  // Nếu board bị xóa mất thì event mồ côi -> lỗi logic
-  if (!board)
-    return res
-      .status(404)
-      .json({ message: "Board chứa sự kiện này không còn tồn tại." });
-
-  const isOwner = board.userId === userId;
-  const isMember = board.members?.some((m) => m.id === userId);
-
-  if (!isOwner && !isMember) {
-    return res.status(403).json({ message: "Không có quyền sửa sự kiện này." });
+  // Check quyền – CHỈ USER TẠO EVENT
+  if (event.user_id !== userId) {
+    return res.status(403).json({
+      message: "Không có quyền sửa sự kiện này.",
+    });
   }
 
   // Cập nhật
@@ -1795,9 +1757,9 @@ app.put("/api/events/:eventId", authMiddleware, (req, res) => {
 
   calendarEvents[eventIndex] = updatedEvent;
 
-  io.emit("SERVER_EVENT_UPDATED", updatedEvent);
+  io.to(`user_${userId}`).emit("USER_EVENT_UPDATED", updatedEvent);
 
-  console.log("Event Updated:", updatedEvent);
+  console.log("User Event Updated:", updatedEvent);
   res.status(200).json(updatedEvent);
 });
 
@@ -1807,35 +1769,34 @@ app.delete("/api/events/:eventId", authMiddleware, (req, res) => {
   const eventId = Number(req.params.eventId);
 
   const eventIndex = calendarEvents.findIndex((e) => e.event_id === eventId);
+
   if (eventIndex === -1) {
-    return res.status(404).json({ message: "Sự kiện không tồn tại." });
+    return res.status(404).json({
+      message: "Sự kiện không tồn tại.",
+    });
   }
 
   const event = calendarEvents[eventIndex];
 
-  // Check quyền
-  const allBoards = Object.values(userBoards).flat();
-  const board = allBoards.find((b) => b.id === event.board_id);
-
-  if (board) {
-    const isOwner = board.userId === userId;
-    const isMember = board.members?.some((m) => m.id === userId);
-    if (!isOwner && !isMember) {
-      return res
-        .status(403)
-        .json({ message: "Không có quyền xóa sự kiện này." });
-    }
+  // Check quyền – CHỈ USER TẠO EVENT
+  if (event.user_id !== userId) {
+    return res.status(403).json({
+      message: "Không có quyền xóa sự kiện này.",
+    });
   }
 
   // Xóa
   calendarEvents.splice(eventIndex, 1);
 
-  io.emit("SERVER_EVENT_DELETED", { event_id: eventId });
+  io.to(`user_${userId}`).emit("USER_EVENT_DELETED", {
+    event_id: eventId,
+  });
 
-  console.log(`Event ID ${eventId} đã bị xóa.`);
-  res.status(200).json({ message: "Đã xóa sự kiện thành công." });
+  console.log(`User Event ID ${eventId} đã bị xóa.`);
+  res.status(200).json({
+    message: "Đã xóa sự kiện thành công.",
+  });
 });
-
 // ==========================================
 // CARD STATUS & CHECKLIST API
 // ==========================================
@@ -2025,6 +1986,8 @@ app.put("/api/checklist-items/:itemId/toggle", authMiddleware, (req, res) => {
   if (checklist) {
     io.emit("CHECKLIST_UPDATED", { cardId: checklist.card_id });
   }
+
+  console.log("item ID:", itemId);
 
   res.status(200).json(item);
 });

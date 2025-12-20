@@ -5,27 +5,36 @@ import { io } from "socket.io-client";
 import "../styles/InboxPanel.css";
 
 const InboxPanel = ({
-  inboxCards,
-  board,
-  setBoard,
+  inboxBoard,
+  setInboxBoard,
   addingCard,
   setAddingCard,
   newCardTitle,
   setNewCardTitle,
-  handleAddCard,
-  selectedCard,
-  setSelectedCard,
-  onAddInboxCard
+  selectedCardId,
+  setSelectedCardId,
+  selectedListId,
+  setSelectedListId,
+  onAddInboxCard,
+  currentBoardId,      // <-- Board hiện tại của người dùng (hoặc board parent muốn kéo vào)
+  currentListId,
 }) => {
+  const inboxListId = inboxBoard?.lists?.[0]?.id;
+  const inboxList = inboxBoard?.lists?.[0];
+  const inboxCards = inboxList?.cards || [];
 
-  const moveCard = (cardId, fromListId, toListId, toIndex) => {
-    const fromList = board.lists.find(l => l.id === fromListId);
+
+  if (!inboxListId) return null;
+
+
+  const moveCard = (cardId, fromListId, toListId, toIndex, destBoardId = inboxBoard.id) => {
+    const fromList = inboxBoard.lists.find(l => l.id === fromListId);
     if (!fromList) return;
 
     const movedCard = fromList.cards.find(c => c.id === cardId);
     if (!movedCard) return;
 
-    const newLists = board.lists.map(list => {
+    const newLists = inboxBoard.lists.map(list => {
       if (list.id === fromListId) {
         return { ...list, cards: list.cards.filter(c => c.id !== cardId) };
       }
@@ -38,9 +47,8 @@ const InboxPanel = ({
     if (toIndex === undefined) toIndex = toList.cards.length;
     toList.cards.splice(toIndex, 0, movedCard);
 
-    const updated = { ...board, lists: newLists };
-    setBoard(updated);
-    sessionStorage.setItem("boards", JSON.stringify(updated));
+    const updated = { ...inboxBoard, lists: newLists };
+    setInboxBoard(updated); // Cập nhật giao diện ngay
 
     fetch("http://localhost:3000/api/cards/move", {
       method: "PUT",
@@ -49,99 +57,47 @@ const InboxPanel = ({
         "Authorization": `Bearer ${sessionStorage.getItem("token")}`,
       },
       body: JSON.stringify({
-        sourceBoardId: board.id,
+        sourceBoardId: inboxBoard.id,
         sourceListId: fromListId,
-        destBoardId: board.id,
+        destBoardId,       // <-- sử dụng param destBoardId
         destListId: toListId,
         cardId,
         index: toIndex,
       }),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("Backend inbox:", data.message);
-        // Optionally emit local socket event (server will broadcast to other clients)
-        if (socketRef.current) {
-          socketRef.current.emit('client_card_moved', {
-            sourceBoardId: board.id,
-            sourceListId: fromListId,
-            destBoardId: board.id,
-            destListId: toListId,
-            cardId,
-            index: toIndex,
-          });
-        }
-      })
-      .catch((err) => console.error("Lỗi move inbox:", err));
+      .then(res => res.json())
+      .then(data => console.log("Backend inbox:", data.message))
+      .catch(err => console.error("Lỗi move inbox:", err));
   };
+
 
   const socketRef = useRef(null);
 
-  // useEffect(() => {
-  //   const token = sessionStorage.getItem("token");
-  //   try {
-  //     const s = io("http://localhost:3000", { auth: { token } });
-  //     s.on('connect', () => console.log('InboxPanel socket connected', s.id));
-  //     s.on('connect_error', (err) => {
-  //       console.error('InboxPanel socket connect_error:', err);
-  //       // Show more details when available
-  //       if (err && err.data) console.error('connect_error data:', err.data);
-  //     });
-  //     s.on('reconnect_failed', () => console.warn('InboxPanel socket reconnect_failed'));
-  //     socketRef.current = s;
-
-  //     // join the board room so this client receives board-scoped updates
-  //     if (board && board.id) {
-  //       s.emit("join-board", board.id);
-  //     }
-
-  //     // When a card is moved elsewhere, refresh the board so UI updates immediately
-  //     s.on('CARD_MOVED', (payload) => {
-  //       console.log('[socket] CARD_MOVED received in InboxPanel:', payload);
-  //       try {
-  //         // Only refresh if the event is relevant to current board
-  //         if (board && (String(payload.sourceBoardId) === String(board.id) || String(payload.destBoardId) === String(board.id))) {
-  //           const token = sessionStorage.getItem('token');
-  //           fetch(`http://localhost:3000/api/boards/${board.id}`, {
-  //             headers: {
-  //               'Content-Type': 'application/json',
-  //               'Authorization': `Bearer ${token}`
-  //             }
-  //           })
-  //             .then(res => res.json())
-  //             .then(data => {
-  //               // Replace entire board state with fresh server data
-  //               if (data && data.id) {
-  //                 setBoard(data);
-  //                 sessionStorage.setItem('boards', JSON.stringify(data));
-  //               }
-  //             })
-  //             .catch(err => console.error('Failed to refresh board after CARD_MOVED:', err));
-  //         }
-  //       } catch (e) {
-  //         console.error('Error handling CARD_MOVED in InboxPanel:', e);
-  //       }
-  //     });
-
-  //     return () => {
-  //       if (socketRef.current) socketRef.current.disconnect();
-  //     };
-  //   } catch (e) {
-  //     console.error('Socket init error', e);
-  //   }
-  // }, [board]);
-
   const [, drop] = useDrop({
-    accept: "card",
-    drop: (item, monitor) => {
-      if (!monitor.isOver({ shallow: true })) return;
-      moveCard(item.cardId, item.fromListId, "inbox");
-    },
-  });
+  accept: "card",
+  drop: (item, monitor) => {
+    if (!monitor.isOver({ shallow: true })) return;
+
+    if (item.fromBoardId === inboxBoard.id) {
+      console.log("Card already in Inbox board");
+      return;
+    }
+
+    // Khi kéo vào InboxPanel, giả sử kéo vào "board hiện tại" (currentBoardId + currentListId)
+    moveCard(
+      item.cardId,
+      item.fromListId,
+      currentListId || inboxListId,
+      undefined,
+      currentBoardId || inboxBoard.id  // <-- Board đích thực sự
+    );
+  },
+});
+
 
   const handleSubmit = () => {
-      if (!newCardTitle.trim()) return;
-      onAddInboxCard(newCardTitle); 
+    if (!newCardTitle.trim()) return;
+    onAddInboxCard(inboxListId, newCardTitle);
   };
 
   return (
@@ -155,11 +111,14 @@ const InboxPanel = ({
           key={card.id}
           card={card}
           index={idx}
-          boardId="inbox-global"
-          listId="inbox-list"
-          
+          boardId={inboxBoard.id}
+          listId={inboxListId}
           onMoveCard={moveCard}
-          onClick={() => setSelectedCard({ ...card, listId:"inbox-list" })}
+          onClick={() => {
+            setSelectedCardId(card.id);
+            setSelectedListId(inboxListId);
+          }}
+
         />
       ))}
 
@@ -172,7 +131,7 @@ const InboxPanel = ({
             placeholder="Card title..."
             autoFocus
             onKeyDown={(e) => {
-                if (e.key === "Enter") handleSubmit();
+              if (e.key === "Enter") handleSubmit();
             }}
           />
 
@@ -185,7 +144,7 @@ const InboxPanel = ({
             Cancel
           </button>
 
-          <button onClick={handleSubmit}>
+          <button onClick={() => handleSubmit()}>
             Add
           </button>
         </div>

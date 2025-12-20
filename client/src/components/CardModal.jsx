@@ -9,7 +9,7 @@ import CommentItem from "./CommentItem";
 import { CheckIcon } from "@heroicons/react/24/solid";
 
 const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) => {
-    if (!card) return null;
+    if (!card || !board) return null;
 
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [date, setDate] = useState(card?.dueDate ? new Date(card.dueDate) : null);
@@ -37,9 +37,19 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
 
     const boardMembers = board.members || [];
 
+    const [showChecklistPopup, setShowChecklistPopup] = useState(false);
+    const [newChecklistTitle, setNewChecklistTitle] = useState("Checklist");
+
+    const [activities, setActivities] = useState([]);
+
+    useEffect(() => {
+        setEditedTitle(card.title || "");
+        setEditedDesciption(card.description || "");
+        setSelectedLabels(card.labels || []);
+        setDate(card.dueDate ? new Date(card.dueDate) : null);
+    }, [card]);
 
 
-    const [activities, setActivities] = useState([])
 
     useEffect(() => {
         if (!card?.id) return;
@@ -117,6 +127,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
             : [...selectedLabels, label];
 
         setSelectedLabels(updated);
+        onUpdate({ ...card, labels: updated, description: editedDesciption, dueDate: formatDate(date) }, listId);
     };
 
     const formatDate = (d) => d ? d.toLocaleDateString() : null;
@@ -151,21 +162,11 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
     };
 
     const handleClose = async () => {
-        const updatedCard = { ...card, labels: selectedLabels, description: editedDesciption, dueDate: formatDate(date) };
-        onUpdate(updatedCard, listId);
         onClose();
 
     };
 
     const handleOverlayClose = async () => {
-        const updatedCard = {
-            ...card,
-            title: editedTitle,
-            labels: selectedLabels,
-            description: editedDesciption,
-            dueDate: formatDate(date)
-        };
-        onUpdate(updatedCard, listId);
         onClose();
     };
     //changtitle
@@ -223,20 +224,64 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
             socket.off("CHECKLIST_UPDATED", handler);
         };
     }, [card.id]);
-    //toggle Item in Checklist
-    const toggleItem = async (itemId) => {
+
+    const handleAddChecklist = async () => {
+        if (!newChecklistTitle.trim()) return;
+
         try {
-            await fetch(
-                `http://localhost:3000/api/checklist-items/${itemId}/toggle`,
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-                    },
-                }
-            );
+            const res = await fetch(`http://localhost:3000/api/cards/${card.id}/checklists`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({ title: newChecklistTitle }),
+            });
+
+            if (res.ok) {
+                const newChecklist = await res.json();
+                // Format lại data cho khớp với cấu trúc hiển thị (items rỗng)
+                const formattedChecklist = { ...newChecklist, items: [], progress: 0 };
+
+                setChecklists([...checklists, formattedChecklist]);
+
+                // Reset và đóng popup
+                setNewChecklistTitle("Checklist");
+                setShowChecklistPopup(false);
+            }
+        } catch (err) {
+            console.error("Lỗi tạo checklist:", err);
+        }
+    };
+
+    //toggle Item in Checklist
+    const toggleItem = async (itemId, checklistId) => {
+        // Cập nhật giao diện NGAY LẬP TỨC
+        setChecklists(prev => prev.map(cl => {
+            if (cl.checklist_id !== checklistId) return cl;
+
+            const updatedItems = cl.items.map(item => {
+                // Lưu ý: Kiểm tra kỹ API trả về 'item_id' hay 'id'
+                const id = item.item_id || item.id;
+                if (id === itemId) return { ...item, is_completed: !item.is_completed };
+                return item;
+            });
+
+            const completed = updatedItems.filter(i => i.is_completed).length;
+            const progress = updatedItems.length === 0 ? 0 : Math.round((completed / updatedItems.length) * 100);
+
+            return { ...cl, items: updatedItems, progress };
+        }));
+
+        // Gọi API ngầm
+        try {
+            await fetch(`http://localhost:3000/api/checklist-items/${itemId}/toggle`, {
+                method: "PUT",
+                headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
+            });
         } catch (err) {
             console.error("Toggle checklist item failed:", err);
+            fetchChecklists(); // Rollback nếu lỗi
         }
     };
 
@@ -245,7 +290,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         if (!text || !text.trim()) return;
 
         try {
-            await fetch(
+            const res = await fetch(
                 `http://localhost:3000/api/checklists/${checklistId}/items`,
                 {
                     method: "POST",
@@ -256,6 +301,18 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                     body: JSON.stringify({ description: text.trim() }),
                 }
             );
+
+            const newItem = await res.json();
+
+            setChecklists(prev => prev.map(cl => {
+                if (cl.checklist_id === checklistId) {
+                    const newItems = [...cl.items, newItem];
+                    const completed = newItems.filter(i => i.is_completed).length;
+                    const progress = Math.round((completed / newItems.length) * 100);
+                    return { ...cl, items: newItems, progress };
+                }
+                return cl;
+            }));
 
             setNewItemText(prev => ({ ...prev, [checklistId]: "" }));
         } catch (err) {
@@ -283,8 +340,6 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         };
     }, [card.id]);
 
-
-
     const merged = [
         ...comments.map(c => ({ ...c, type: "comment" })),
         ...activities.map(a => ({ ...a, type: "activity" })),
@@ -292,7 +347,6 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
         (a, b) =>
             new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
     );
-
 
 
     return (
@@ -346,7 +400,35 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                                 <div className="feature">
                                     <button>+ Add</button>
                                     <button onClick={() => setShowLabelPopup(!showLabelPopup)}>Label</button>
-                                    <button><img src="/assets/check-circle.svg" /> Checklist</button>
+                                    <div style={{ position: "relative", display: "inline-block" }}>
+                                        <button onClick={() => setShowChecklistPopup(!showChecklistPopup)}>
+                                            <img src="/assets/check-circle.svg" alt="icon" /> Checklist
+                                        </button>
+
+                                        {showChecklistPopup && (
+                                            <div className="label-popup" style={{ top: "40px", left: "0", cursor: "default" }} onClick={(e) => e.stopPropagation()}>
+                                                <h3 style={{ marginBottom: "10px" }}>Add checklist</h3>
+                                                <div style={{ padding: "0 10px 10px 10px" }}>
+                                                    <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", color: "#5e6c84", marginBottom: "5px" }}>Title</label>
+                                                    <input
+                                                        type="text"
+                                                        value={newChecklistTitle}
+                                                        onChange={(e) => setNewChecklistTitle(e.target.value)}
+                                                        autoFocus
+                                                        style={{ width: "100%", padding: "8px", marginBottom: "10px", borderRadius: "3px", border: "2px solid #dfe1e6" }}
+                                                        onKeyDown={(e) => e.key === "Enter" && handleAddChecklist()}
+                                                    />
+                                                    <button
+                                                        onClick={handleAddChecklist}
+                                                        style={{ backgroundColor: "#0079bf", color: "white", width: "100%", padding: "8px", border: "none", borderRadius: "3px", cursor: "pointer" }}
+                                                    >
+                                                        Add
+                                                    </button>
+                                                </div>
+                                                <button onClick={() => setShowChecklistPopup(false)} style={{ marginTop: "5px" }}>Close</button>
+                                            </div>
+                                        )}
+                                    </div>
                                     <button><img src="/assets/paperclip.svg" /> Attachment</button>
                                     <button onClick={() => setShowDatePicker(!showDatePicker)}>Due Date</button>
                                     <button onClick={() => setShowMemberPopup(true)}>Members</button>
@@ -412,16 +494,21 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                                         </div>
 
 
-                                        {cl.items.map((item) => (
-                                            <div key={item.item_id} className="checklist-item">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.is_completed}
-                                                    onChange={() => toggleItem(item.item_id)}
-                                                />
-                                                <span>{item.description}</span>
-                                            </div>
-                                        ))}
+                                        {Array.isArray(cl.items) && cl.items.map((item, index) => {
+                                            console.log("Check item data", item);
+                                            return (
+                                                <div key={item.item_id || index} className="checklist-item">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!item.is_completed}
+                                                        onChange={() => toggleItem(item.item_id, cl.checklist_id)}
+                                                    />
+                                                    <span className={item.is_completed ? "done" : ""}>
+                                                        {item.description}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
 
                                         <div className="checklist-add-item">
                                             <input
@@ -485,7 +572,6 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose }) =>
                     </div>
                 </div>
             )}
-
 
             {showLabelPopup && (
                 <div className="label-popup" onClick={(e) => e.stopPropagation()}>

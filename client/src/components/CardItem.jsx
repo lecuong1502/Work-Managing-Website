@@ -27,8 +27,8 @@ const CardItem = ({
             cardId: card.id,
             fromListId: listId,
             boardId: boardId,
-            cardData: card,
-            originalIndex: index
+            originalIndex: index,
+            cardData: card 
         },
         collect: (monitor) => ({
             isDragging: !!monitor.isDragging(),
@@ -42,19 +42,26 @@ const CardItem = ({
 
             const dragIndex = item.originalIndex;
             const hoverIndex = index;
-            const fromList = item.fromListId;
-            const toList = listId;
 
-            if (item.boardId !== boardId) return;
+            if (item.fromBoardId !== boardId) return;
+            if (dragIndex === hoverIndex && item.fromListId === listId) return;
 
-            if (dragIndex === hoverIndex && fromList === toList) return;
-
-            onMoveCard(item.cardId, fromList, toList, hoverIndex);
+            onMoveCard(
+                item.cardId,
+                item.fromListId,
+                listId,
+                hoverIndex,
+                item.fromBoardId,
+                item.cardData
+            );
 
             item.originalIndex = hoverIndex;
-            item.fromListId = toList;
+            item.fromListId = listId;
+            item.fromBoardId = boardId;
         },
     });
+
+
 
     drag(drop(ref));
 

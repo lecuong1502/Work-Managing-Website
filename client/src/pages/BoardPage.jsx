@@ -27,18 +27,46 @@ const BoardPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [toast, setToast] = useState(null);
+
   const [board, setBoard] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [addingCard, setAddingCard] = useState({});
   const [addingList, setAddingList] = useState(false);
-  const [selectedCard, setSelectedCard] = useState(null);
+
+  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [selectedListId, setSelectedListId] = useState(null);
+
   const [newListTitle, setNewListTitle] = useState("");
   const [renamingList, setRenamingList] = useState(null);
   const [newListName, setNewListName] = useState("");
   const [newCardTitle, setNewCardTitle] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [inboxCards, setInboxCards] = useState([]);
+  // const [inboxCards, setInboxCards] = useState([]);
+  const [boards, setBoards] = useState(JSON.parse(sessionStorage.getItem("boards")) || []);
+  const [inboxBoard, setInboxBoard] = useState(null);
+
+
+  const updateBoardState = (boardId, updatedBoardData) => {
+    // 1. Cập nhật state Boards tổng quát
+    setBoards(prev => {
+      const newBoards = prev.map(b => b.id === boardId ? updatedBoardData : b);
+      sessionStorage.setItem("boards", JSON.stringify(newBoards));
+      return newBoards;
+    });
+
+    // 2. Nếu board đang được cập nhật là Inbox, cập nhật luôn state inboxBoard
+    if (String(boardId).startsWith("inbox_")) {
+      setInboxBoard(updatedBoardData);
+      sessionStorage.setItem("inboxBoard", JSON.stringify(updatedBoardData));
+    }
+
+    // 3. Nếu board đang được cập nhật là Board hiện tại (đang mở)
+    if (board && board.id === boardId) {
+      setBoard(updatedBoardData);
+    }
+  };
 
   const [showVisibilityMenu, setShowVisibilityMenu] = useState(false);
 
@@ -56,6 +84,17 @@ const BoardPage = () => {
   const openCount = Object.values(openPanel).filter(Boolean).length;
 
   const isCalendarMode = location.pathname.includes("/calendar");
+  console.log(sessionStorage.getItem("user"))
+
+  // const getCurrentUser = () => {
+  //   const userStr = sessionStorage.getItem("user");
+  //   return userStr ? JSON.parse(userStr) : null;
+  // };
+  // const currentUser = getCurrentUser();
+  const currentUserId = sessionStorage.getItem("userId");
+
+
+  console.log("Current User ID:", currentUserId);
 
   const updateBoardToStorage = (updatedBoard) => {
     let boards = JSON.parse(sessionStorage.getItem("boards"));
@@ -71,68 +110,121 @@ const BoardPage = () => {
     }
 
     sessionStorage.setItem("boards", JSON.stringify(boards));
+    socket.emit("board_updated", updatedBoard);
   };
 
   // Fetch Global Inbox
   const fetchInbox = async () => {
-    try {
-      const token = sessionStorage.getItem("token");
-      const res = await fetch("http://localhost:3000/api/inbox", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setInboxCards(data);
-      }
-    } catch (err) {
-      console.error("Lỗi tải inbox:", err);
-    }
-  };
+  if (!currentUserId) {
+    console.error("Không tìm thấy Current User ID");
+    return;
+  }
+  const token = sessionStorage.getItem("token");
+  const inboxBoardId = `inbox_${currentUserId}`;
 
-  // Gọi fetchInbox khi mount
+  try {
+    const res = await fetch(`http://localhost:3000/api/boards/${inboxBoardId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      console.log("Inbox Data:", data); // Kiểm tra xem data có lists không
+      setInboxBoard(data);
+      updateBoardState(inboxBoardId, data);
+    } else {
+      console.error("Lỗi API Inbox:", res.status);
+    }
+  } catch (err) {
+    console.error("Lỗi kết nối Inbox:", err);
+  }
+};
+
+
   useEffect(() => {
-    fetchInbox();
-  }, []);
+    if (openPanel.inbox) fetchInbox();
+  }, [openPanel.inbox, currentUserId]);
+
+
+
+  // // Gọi fetchInbox khi mount
+  // useEffect(() => {
+  //   fetchInbox();
+  // }, []);
 
   // Add Card to Inbox
-  const handleAddInboxCard = async (cardTitle) => {
-    if (!cardTitle.trim()) return;
+  const handleAddInboxCard = async (listId, cardTitle) => {
+    if (!cardTitle.trim() || !inboxBoard) return;
 
     const tempId = `temp_${Date.now()}`;
+
     const optimisticCard = {
-        id: tempId,
-        title: cardTitle,
-        state: "Inbox",
-        isGlobalInbox: true
+      id: tempId,
+      title: cardTitle,
+      state: "Inbox",
+      isGlobalInbox: true,
     };
 
-    setInboxCards((prev) => [optimisticCard, ...prev]);
+    //Optimistic update – CẬP NHẬT TRỰC TIẾP inboxBoard
+    setInboxBoard(prev => ({
+      ...prev,
+      lists: prev.lists.map(list =>
+        list.id === listId
+          ? { ...list, cards: [optimisticCard, ...list.cards] }
+          : list
+      ),
+    }));
+
     setNewCardTitle("");
-    setAddingCard((prev) => ({ ...prev, inbox: false }));
+    setAddingCard(prev => ({ ...prev, inbox: false }));
 
     try {
       const token = sessionStorage.getItem("token");
-      const res = await fetch("http://localhost:3000/api/inbox/cards", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title: cardTitle }),
-      });
 
-      if (res.ok) {
-        const newCard = await res.json();
-        // Cập nhật UI Inbox ngay lập tức
-        setInboxCards((prev) => 
-            prev.map(c => c.id === tempId ? newCard : c)
-        );
-      } else {
-        setInboxCards((prev) => prev.filter(c => c.id !== tempId));
-        alert("Lỗi kết nối: Không thể thêm thẻ vào Inbox");
-      }
+      const res = await fetch(
+        `http://localhost:3000/api/boards/${inboxBoard.id}/lists/${listId}/cards`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title: cardTitle }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Create card failed");
+
+      const newCard = await res.json();
+
+      //Replace temp card bằng card thật
+      setInboxBoard(prev => ({
+        ...prev,
+        lists: prev.lists.map(list =>
+          list.id === listId
+            ? {
+              ...list,
+              cards: list.cards.map(c =>
+                c.id === tempId ? newCard : c
+              ),
+            }
+            : list
+        ),
+      }));
     } catch (err) {
       console.error("Lỗi thêm thẻ vào inbox:", err);
+
+      //Rollback optimistic
+      setInboxBoard(prev => ({
+        ...prev,
+        lists: prev.lists.map(list =>
+          list.id === listId
+            ? {
+              ...list,
+              cards: list.cards.filter(c => c.id !== tempId),
+            }
+            : list
+        ),
+      }));
     }
   };
 
@@ -194,29 +286,41 @@ const BoardPage = () => {
 
   // Socket.io
   useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
+    if (!socket.connected) socket.connect();
 
     socket.emit("join-board", boardId);
 
+    // Khi có bất kỳ ai cập nhật toàn bộ board
     socket.on("board_updated", (updatedBoardData) => {
-      if (updatedBoardData.id === Number(boardId)) {
+      if (String(updatedBoardData.id) === String(boardId)) {
         setBoard(updatedBoardData);
         updateBoardToStorage(updatedBoardData);
-        fetchInbox();
       }
     });
 
-    socket.on("notification_received", (noti) => {
-      setToast({ message: noti.message, type: "info" });
+    // Khi có người di chuyển thẻ hoặc list (Realtime DND)
+    socket.on("board_moved", (updatedBoardData) => {
+      setBoard(updatedBoardData);
+    });
+
+    // Khi có người sửa chi tiết 1 card cụ thể
+    socket.on("CARD_UPDATED", ({ listId, card }) => {
+      setBoard((prev) => {
+        if (!prev) return prev;
+        const newLists = prev.lists.map((l) =>
+          l.id === listId
+            ? { ...l, cards: l.cards.map((c) => (c.id === card.id ? card : c)) }
+            : l
+        );
+        return { ...prev, lists: newLists };
+      });
     });
 
     return () => {
       socket.emit("leave-board", boardId);
       socket.off("board_updated");
-      socket.off("board_member_added");
-      socket.off("notification_received");
+      socket.off("board_moved");
+      socket.off("CARD_UPDATED");
     };
   }, [boardId]);
 
@@ -301,6 +405,7 @@ const BoardPage = () => {
 
       setBoard(updatedBoard);
       updateBoardToStorage(updatedBoard);
+      socket.emit("board_updated", updatedBoard);
       setRenamingList(null);
       setNewListName("");
     } catch {
@@ -350,6 +455,7 @@ const BoardPage = () => {
 
       setBoard(newBoard);
       updateBoardToStorage(newBoard);
+      socket.emit("board_updated", newBoard);
 
       setNewCardTitle("");
       setAddingCard((prev) => ({ ...prev, [listId]: false }));
@@ -360,39 +466,72 @@ const BoardPage = () => {
     }
   };
 
+
+  ///Cập nhật card
+
+  const selectedCard = board?.lists
+    ?.flatMap(l => l.cards)
+    ?.find(c => c.id === selectedCardId) || null;
+
+  const selectedList = board?.lists
+    ?.find(l => l.id === selectedListId) || null;
+
+
   const handleUpdateCard = async (updatedCard, listId) => {
-    setBoard((prevBoard) => {
-      const newLists = prevBoard.lists.map((list) =>
-        list.id === listId
+    // Optimistic UI
+    setBoard((prev) => {
+      const lists = prev.lists.map((l) =>
+        l.id === listId
           ? {
-            ...list,
-            cards: list.cards.map((c) =>
+            ...l,
+            cards: l.cards.map((c) =>
               c.id === updatedCard.id ? updatedCard : c
             ),
           }
-          : list
+          : l
       );
-
-      const updatedBoard = { ...prevBoard, lists: newLists };
-      updateBoardToStorage(updatedBoard);
-      return updatedBoard;
+      return { ...prev, lists };
     });
-    try {
-      await fetch(
-        `http://localhost:3000/api/boards/${board.id}/lists/${listId}/cards/${updatedCard.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(updatedCard),
-        }
-      );
-    } catch (err) {
-      console.error("Update card failed:", err);
-    }
+
+    // Gửi request lên server
+    await fetch(
+      `http://localhost:3000/api/boards/${board.id}/lists/${listId}/cards/${updatedCard.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(updatedCard),
+      }
+    );
   };
+
+
+  ///đông bộ card khi có sự kiện từ server
+  useEffect(() => {
+    const handler = ({ listId, card }) => {
+      setBoard((prev) => {
+        const lists = prev.lists.map((l) =>
+          l.id === listId
+            ? {
+              ...l,
+              cards: l.cards.map((c) =>
+                c.id === card.id ? card : c
+              ),
+            }
+            : l
+        );
+        return { ...prev, lists };
+      });
+    };
+
+    socket.on("CARD_UPDATED", handler);
+
+    return () => socket.off("CARD_UPDATED", handler);
+  }, []);
+
+
 
   const handleAddMember = async () => {
     if (!email) {
@@ -427,6 +566,7 @@ const BoardPage = () => {
         if (data.board) {
           setBoard(data.board);
           updateBoardToStorage(data.board);
+          socket.emit("board_updated", data.board);
         } else {
           setBoard((prev) => ({
             ...prev,
@@ -526,18 +666,18 @@ const BoardPage = () => {
                 {openPanel.inbox && (
                   <div className="side-panel-content">
                     <InboxPanel
-                      inboxCards={inboxCards}
-                      setInboxCards={setInboxCards}
-                      board={board}
-                      setBoard={setBoard}
+                      inboxBoard={inboxBoard}
+                      setInboxBoard={(updated) => updateBoardState(inboxBoard.id, updated)}
                       addingCard={addingCard}
                       setAddingCard={setAddingCard}
                       newCardTitle={newCardTitle}
                       setNewCardTitle={setNewCardTitle}
-                      handleAddCard={handleAddCard}
                       onAddInboxCard={handleAddInboxCard}
-                      selectedCard={selectedCard}
-                      setSelectedCard={setSelectedCard}
+                      selectedCardId={selectedCardId}
+                      setSelectedCardId={setSelectedCardId}
+                      selectedListId={selectedListId}
+                      setSelectedListId={setSelectedListId}
+                      destBoardId={board.id}
                     />
                   </div>
                 )}
@@ -709,8 +849,10 @@ const BoardPage = () => {
                           handleRenameList={handleRenameList}
                           setAddingCard={setAddingCard}
                           addingCard={addingCard}
-                          selectedCard={selectedCard}
-                          setSelectedCard={setSelectedCard}
+                          selectedCardId={selectedCardId}
+                          setSelectedCardId={setSelectedCardId}
+                          selectedListId={selectedListId}
+                          setSelectedListId={setSelectedListId}
                           handleAddCard={handleAddCard}
                           newCardTitle={newCardTitle}
                           setNewCardTitle={setNewCardTitle}
@@ -742,19 +884,21 @@ const BoardPage = () => {
                     )}
                   </div>
 
-                  {selectedCard && (
+                  {selectedCard && selectedList && (
                     <CardModal
                       board={board}
-                      card={selectedCard}
-                      list={board.lists.find(
-                        (l) => l.id === selectedCard.listId
-                      )}
-                      boardId={selectedCard.boardId}
-                      listId={selectedCard.listId}
+                      card={selectedCard}   // ✅ LUÔN MỚI
+                      list={selectedList}
+                      boardId={board.id}
+                      listId={selectedListId}
                       onUpdate={handleUpdateCard}
-                      onClose={() => setSelectedCard(null)}
+                      onClose={() => {
+                        setSelectedCardId(null);
+                        setSelectedListId(null);
+                      }}
                     />
                   )}
+
                 </>
               )}
             </div>

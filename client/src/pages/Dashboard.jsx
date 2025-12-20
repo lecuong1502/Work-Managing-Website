@@ -21,6 +21,8 @@ const Dashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
+  const [inboxBoard, setInboxBoard] = useState(null);
+
   const token = sessionStorage.getItem("token");
   console.log("Token bên dashb", token);
 
@@ -53,7 +55,6 @@ const Dashboard = () => {
       return;
     }
 
-    // Chưa chạy BackEnd thì dùng "Board.json"
     fetch("http://localhost:3000/api/boards", {
       method: "GET",
       headers: {
@@ -73,6 +74,10 @@ const Dashboard = () => {
           });
 
           const merged = Array.from(map.values());
+          sessionStorage.setItem(
+            "inboxBoard",
+            JSON.stringify(merged.find((b) => b.id === `inbox_${userId}`))
+          );
           sessionStorage.setItem("boards", JSON.stringify(merged));
           return merged;
         });
@@ -134,50 +139,50 @@ const Dashboard = () => {
     }
   };
 
-  const filteredBoards = boards.filter((b) =>
-    b.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredBoards = boards.filter(
+    (b) =>
+      b.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      b.id !== `inbox_${userId}` //Ko hiện board inbox
   );
   // dùng template -> tạo board + list + cảd
   const handleUseTemplate = async (template) => {
-    if (!template) return;
-
-    const token = sessionStorage.getItem("token");
-    if (!token) {
-      alert("Bạn cần đăng nhập lại");
-      return;
-    }
-    const safeJson = async (res) => {
-      try {
-        return await res.json();
-      } catch (e) {
-        console.error("Không parse được JSON:", e);
-        return null;
-      }
-    };
+    if (!template?.board) return;
 
     try {
-      // 1. Tạo board mới
+      // 1. CREATE BOARD
       const boardRes = await fetch("http://localhost:3000/api/boards", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(template.board),
+        body: JSON.stringify({
+          name: template.board.name || template.title,
+          description: template.board.description || "",
+          color:
+            template.board.color || "linear-gradient(135deg, #667eea, #764ba2)",
+          visibility: template.board.visibility || "Private",
+        }),
       });
 
-      const boardData = await safeJson(boardRes);
-
-      if (!boardRes.ok || !boardData) {
-        alert((boardData && boardData.message) || "Lỗi tạo board từ template");
+      const boardData = await boardRes.json();
+      if (!boardRes.ok) {
+        alert(boardData.message || "Không thể tạo board từ template");
         return;
       }
 
-      const fullBoard = { ...boardData, lists: [] };
+      const boardId = boardData.id;
+      if (!boardId) {
+        alert("Lỗi: Board ID không hợp lệ");
+        return;
+      }
 
+      socket.emit("join-board", boardId);
+
+      // 3. CREATE LISTS + CARDS
       for (const listCfg of template.lists || []) {
         const listRes = await fetch(
-          `http://localhost:3000/api/boards/${boardData.id}/lists`,
+          `http://localhost:3000/api/boards/${boardId}/lists`,
           {
             method: "POST",
             headers: {
@@ -188,17 +193,15 @@ const Dashboard = () => {
           }
         );
 
-        const listData = await safeJson(listRes);
-        if (!listRes.ok || !listData) {
-          console.error("Lỗi tạo list:", listData && listData.message);
+        const listData = await listRes.json();
+        if (!listRes.ok) {
+          console.error("❌ Tạo list thất bại:", listData);
           continue;
         }
 
-        const fullList = { ...listData, cards: [] };
-
         for (const cardCfg of listCfg.cards || []) {
           const cardRes = await fetch(
-            `http://localhost:3000/api/boards/${boardData.id}/lists/${listData.id}/cards`,
+            `http://localhost:3000/api/boards/${boardId}/lists/${listData.id}/cards`,
             {
               method: "POST",
               headers: {
@@ -211,27 +214,26 @@ const Dashboard = () => {
               }),
             }
           );
-          const cardData = await safeJson(cardRes);
-          if (!cardRes.ok || !cardData) {
-            console.error("Lỗi tạo card:", cardData && cardData.message);
-            continue;
+
+          if (!cardRes.ok) {
+            const err = await cardRes.json();
+            console.error(" Tạo card thất bại:", err);
           }
-
-          fullList.cards.push(cardData);
         }
-
-        fullBoard.lists.push(fullList);
       }
-      // 3. Lưu vào state + sessionStorage
       setBoards((prev) => {
-        const updated = [...prev, fullBoard];
-        sessionStorage.setItem("boards", JSON.stringify(updated));
-        return updated;
+        const updatedBoards = [...prev, boardData];
+        sessionStorage.setItem("boards", JSON.stringify(updatedBoards));
+        return updatedBoards;
       });
 
-      navigate(`/board/${fullBoard.id}`);
+      // 4. ĐỢI SOCKET SYNC RỒI MỚI NAVIGATE
+      setTimeout(() => {
+        navigate(`/board/${boardId}`);
+      }, 300);
     } catch (err) {
-      console.error("Lỗi không xác định khi sử dụng template:", err);
+      console.error("Template error:", err);
+      alert("Có lỗi xảy ra khi dùng template");
     }
   };
 
