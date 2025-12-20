@@ -162,17 +162,17 @@ CREATE TABLE notifications (
 
 CREATE TABLE calendar_events (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
-    board_id VARCHAR(255) NOT NULL,
+    user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     start_time DATETIME NOT NULL,
     end_time DATETIME NOT NULL,
-    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (board_id) REFERENCES boards(board_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- INSERT INTO calendar_events (board_id, title, start_time, end_time, description)
--- VALUES (1, "Sample Event", "2024-12-01 10:00:00", "2024-12-01 12:00:00", "This is a sample calendar event.");
+-- INSERT INTO calendar_events (user_id, title, start_time, end_time)
+-- VALUES (1, "Sample Event", "2024-12-01 10:00:00", "2024-12-01 12:00:00");
 
 CREATE TABLE checklists (
     checklist_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -212,18 +212,3 @@ CREATE TABLE card_activities (
 
 -- INSERT INTO card_activities (activity_id, actor_id, card_id, board_id, message, type)
 -- VALUE ("act_1", 1, 1, 1, "Change", "Change");
-
-
-
--- tạo lịch
-CREATE TABLE user_events (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    date DATE NOT NULL,
-    start TIME NOT NULL,
-    end TIME NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
