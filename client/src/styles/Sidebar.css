@@ -78,3 +78,24 @@
   color: #2563eb;
   font-weight: 600;
 }
+.sidebar {
+  background: #ffffff;
+  border-right: 1px solid #eee;
+}
+
+.sidebar-item {
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin: 6px 8px;
+  transition: background 0.2s ease;
+}
+
+.sidebar-item:hover {
+  background: #f0f5ff;
+}
+
+.sidebar-item.active {
+  background: #e6f0ff;
+  font-weight: 600;
+  color: #1677ff;
+}

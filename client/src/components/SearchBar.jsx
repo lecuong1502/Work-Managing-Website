@@ -1,20 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import "../styles/SearchBar.css";
 import { Link, useNavigate } from "react-router-dom";
 import Toast from "./Toast";
-import { useState } from "react";
+import { BellIcon } from "@heroicons/react/24/outline";
+import Notification from "./Notification";
 
 const SearchBar = ({ searchTerm, setSearchTerm }) => {
   const navigate = useNavigate();
-  const [showAlert, setShowAlert] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const isLoggedIn = sessionStorage.getItem("loggedIn") === "true";
 
   const handleLogout = () => {
     sessionStorage.removeItem("loggedIn");
     setToast({ message: "Đăng xuất thành công!", type: "success" });
+
     setTimeout(() => {
-      setShowAlert(false);
       navigate("/");
       window.location.reload();
     }, 2000);
@@ -23,7 +25,7 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
   return (
     <div className="search-bar-container">
       <div className="logo">
-        <img src="/assets/Logo.png" className="logo-img" />
+        <img src="/assets/Logo.png" className="logo-img" alt="logo" />
         <Link to="/">TaskManager</Link>
       </div>
 
@@ -37,18 +39,27 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
         />
       </div>
 
-      <div
-        className="avatar-container"
-        onClick={() => setDropdownOpen(!dropdownOpen)}
-      >
-        <img src="/assets/avatar.avif" className="avatar-img" alt="avatar" />
-        {dropdownOpen && (
-          <div className="dropdown-menu">
-            <p onClick={handleLogout}>Logout</p>
-            {}
+      {isLoggedIn && (
+        <div className="right-actions">
+          <Notification />
+          <div
+            className="avatar-container"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+          >
+            <img
+              src="/assets/avatar.avif"
+              className="avatar-img"
+              alt="avatar"
+            />
+
+            {dropdownOpen && (
+              <div className="dropdown-menu">
+                <p onClick={handleLogout}>Logout</p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {toast && (
         <Toast

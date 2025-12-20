@@ -1,0 +1,92 @@
+.notification-wrapper {
+  position: relative;
+}
+
+.notification-bell {
+  position: relative;
+  cursor: pointer;
+}
+
+.bell-icon {
+  width: 24px;
+  height: 24px;
+  color: #444;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: red;
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 50%;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  width: 320px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  z-index: 999;
+}
+
+.notification-header {
+  padding: 10px;
+  font-weight: bold;
+  border-bottom: 1px solid #eee;
+}
+
+.notification-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.notification-item.unread {
+  background: #f0f6ff;
+}
+
+.notification-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.notification-message {
+  margin: 0;
+  font-size: 14px;
+}
+
+.notification-time {
+  font-size: 11px;
+  color: gray;
+}
+
+.notification-empty {
+  padding: 12px;
+  text-align: center;
+  color: gray;
+}
+.notification-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.notification-bell {
+  position: relative;
+  cursor: pointer;
+  margin-right: 12px;
+}
+
+.bell-icon {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
