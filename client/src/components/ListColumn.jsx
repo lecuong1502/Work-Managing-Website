@@ -180,13 +180,13 @@ const ListColumn = ({
   const VISIBLE_CARD_STATES = ["Inprogress", "Done"];
 
   const handleArchiveCard = (card) => {
-    onUpdateCard({ ...card, state: "Archived" }, list.id);
+    onUpdateCard({ ...card, state: "Archived" }, list.id, board.id);
   };
 
   const handleToggleCardState = (card) => {
     const nextState = card.state === "Done" ? "Inprogress" : "Done";
 
-    onUpdateCard({ ...card, state: nextState }, list.id);
+    onUpdateCard({ ...card, state: nextState }, list.id, board.id);
   };
 
   return (

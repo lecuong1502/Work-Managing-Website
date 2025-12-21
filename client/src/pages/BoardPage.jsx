@@ -681,6 +681,18 @@ const BoardPage = () => {
     }));
   };
 
+  // Hàm mở Visibility Menu
+  const handleToggleVisibility = () => {
+    setShowVisibilityMenu(prev => !prev);
+    setShowShareForm(false); // Tắt Share Form nếu đang mở
+  };
+
+  // Hàm mở Share Form
+  const handleToggleShareForm = () => {
+    setShowShareForm(prev => !prev);
+    setShowVisibilityMenu(false); // Tắt Visibility Menu nếu đang mở
+  };
+
 
 
 
@@ -770,7 +782,7 @@ const BoardPage = () => {
                   <div style={{ position: "relative" }}>
                     <button
                       className="change-visibility-btn"
-                      onClick={() => setShowVisibilityMenu(!showVisibilityMenu)}
+                      onClick={handleToggleVisibility}
                     >
                       {board.visibility === "Workspace" ? (
                         <>
@@ -789,11 +801,18 @@ const BoardPage = () => {
                       <div className="visibility-menu">
                         <div onClick={() => handleChangeVisibility("Workspace")}>
                           <UsersIcon className="icon" />
-                          Workspace
+                          <div className="visibility-option-text">
+                            <span className="visibility-option-title">Workspace</span>
+                            <span className="visibility-option-desc">Mọi người trong nhóm có thể xem và sửa.</span>
+                          </div>
                         </div>
+
                         <div onClick={() => handleChangeVisibility("Private")}>
                           <LockClosedIcon className="icon" />
-                          Private
+                          <div className="visibility-option-text">
+                            <span className="visibility-option-title">Private</span>
+                            <span className="visibility-option-desc">Chỉ những người được mời mới có thể xem.</span>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -802,7 +821,7 @@ const BoardPage = () => {
                   <div style={{ position: "relative" }}>
                     <button
                       className="add-member-btn"
-                      onClick={() => setShowShareForm(!showShareForm)}
+                      onClick={handleToggleShareForm}
                     >
                       <UserPlusIcon className="icon" />
                       Add Member

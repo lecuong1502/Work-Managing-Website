@@ -13,6 +13,7 @@ import BoardPage from "./pages/BoardPage";
 import RegisterPage from "./pages/Register-Page";
 import CalendarPage from "./pages/CalendarPage";
 import AdminUserPage from "./pages/AdminUserPage";
+import ProfilePage from "./pages/ProfilePage";
 
 function App() {
   const isLoggedIn = sessionStorage.getItem("loggedIn") === "true";
@@ -27,6 +28,7 @@ function App() {
           <Route path="/board/:boardId" element={<BoardPage />}>
             <Route path="calendar" element={<CalendarPage />} />
           </Route>
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       ) : (
@@ -37,6 +39,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Routes>
         </>
       )}

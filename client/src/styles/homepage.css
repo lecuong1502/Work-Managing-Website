@@ -170,3 +170,100 @@ body {
 .btn-register:hover {
   background-color: #3465d9;
 }
+/* Làm nổi bật tiêu đề Hero */
+.highlight {
+  background: linear-gradient(120deg, #3b82f6, #2563eb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+.btn-rainbow {
+  position: relative;
+  padding: 16px 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  outline: none;
+  
+  /* Dải màu 7 màu (Gradient cầu vồng) */
+  background: linear-gradient(
+    45deg, 
+    #942edd, #721fae, #cc92c0, #d14ba5, 
+    #c966bc, #002bff, #522a7c, #ff00c8, #962e77
+  );
+  
+  /* Kéo dãn nền để hiệu ứng chuyển động mượt hơn */
+  background-size: 400%;
+  z-index: 1;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease-in-out;
+}
+
+/* Hiệu ứng chuyển động dải màu */
+@keyframes rainbow_animation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.btn-rainbow:hover {
+  animation: rainbow_animation 3s linear infinite;
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Hiệu ứng "phát sáng" (Glow) dưới chân nút khi hover */
+.btn-rainbow::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: inherit;
+  background-size: 400%;
+  border-radius: 50px;
+  filter: blur(15px);
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  z-index: -1;
+}
+
+.btn-rainbow:hover::after {
+  opacity: 0.7;
+  animation: rainbow_animation 3s linear infinite;
+}
+
+/* Hiệu ứng khi nhấn nút */
+.btn-rainbow:active {
+  transform: scale(0.95);
+}
+
+/* Feature Showcase Modernization */
+.feature-showcase {
+  background: rgba(255, 255, 255, 0.7); /* Hiệu ứng trong suốt nhẹ */
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.feature-img {
+  /* Thêm viền trắng mỏng giúp ảnh nổi bật trên nền xám */
+  border: 8px solid rgb(163, 21, 139);
+}
+
+.intro-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Căn giữa nội dung */
+  text-align: center;
+}
+
+.intro-box h3::before {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
