@@ -125,7 +125,7 @@ const BoardPage = () => {
     const inboxBoardId = `inbox_${currentUserId}`;
 
     try {
-      const res = await fetch(`http://localhost:3000/api/boards/${inboxBoardId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/boards/${inboxBoardId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -176,7 +176,7 @@ const BoardPage = () => {
       const token = sessionStorage.getItem("token");
 
       const res = await fetch(
-        `http://localhost:3000/api/boards/${inboxBoard.id}/lists/${listId}/cards`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/boards/${inboxBoard.id}/lists/${listId}/cards`,
         {
           method: "POST",
           headers: {
@@ -247,7 +247,7 @@ const BoardPage = () => {
       // 2. GỌI API LẤY DỮ LIỆU MỚI NHẤT TỪ SERVER (QUAN TRỌNG)
       try {
         const token = sessionStorage.getItem("token");
-        const res = await fetch(`http://localhost:3000/api/boards/${boardId}`, {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/boards/${boardId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -333,7 +333,7 @@ const BoardPage = () => {
 
     try {
       const res = await fetch(
-        "http://localhost:3000/api/boards/" + board.id + "/lists",
+        `${import.meta.env.VITE_API_BASE_URL}/api/boards/${board.id}/lists`,
         {
           method: "POST",
           headers: {
@@ -374,7 +374,7 @@ const BoardPage = () => {
     };
     try {
       const res = await fetch(
-        "http://localhost:3000/api/boards/" + board.id + "/lists/" + listId,
+        `${import.meta.env.VITE_API_BASE_URL}/api/boards/${board.id}/lists/${listId}`,
         {
           method: "PUT",
           headers: {
@@ -420,11 +420,7 @@ const BoardPage = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        "http://localhost:3000/api/boards/" +
-        board.id +
-        "/lists/" +
-        listId +
-        "/cards",
+        `${import.meta.env.VITE_API_BASE_URL}/api/boards/${board.id}/lists/${listId}/cards`,
         {
           method: "POST",
           headers: {
@@ -522,7 +518,7 @@ const BoardPage = () => {
 
     // 3. API
     await fetch(
-      `http://localhost:3000/api/boards/${boardId}/lists/${listId}/cards/${updatedCard.id}`,
+      `${import.meta.env.VITE_API_BASE_URL}/api/boards/${boardId}/lists/${listId}/cards/${updatedCard.id}`,
       {
         method: "PUT",
         headers: {
@@ -568,7 +564,7 @@ const BoardPage = () => {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3000/api/boards/add-member", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/boards/add-member`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -616,7 +612,7 @@ const BoardPage = () => {
   const handleChangeVisibility = async (newVisibility) => {
     try {
       const res = await fetch(
-        `http://localhost:3000/api/boards/${board.id}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/boards/${board.id}`,
         {
           method: "PUT",
           headers: {
@@ -654,7 +650,7 @@ const BoardPage = () => {
       return updated;
     });
 
-    fetch("http://localhost:3000/api/boards/lists/move", {
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/boards/lists/move`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

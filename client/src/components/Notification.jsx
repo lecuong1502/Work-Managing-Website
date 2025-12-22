@@ -4,7 +4,7 @@ import { io } from "socket.io-client";
 import { BellIcon } from "@heroicons/react/24/outline";
 import "../styles/Notification.css";
 
-const API_URL = "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Notification = () => {
   const [notifications, setNotifications] = useState([]);

@@ -60,7 +60,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
         const fetchActivities = async () => {
             try {
                 const res = await fetch(
-                    `http://localhost:3000/api/cards/${card.id}/activities`,
+                    `${import.meta.env.VITE_API_BASE_URL}/api/cards/${card.id}/activities`,
                     {
                         headers: {
                             Authorization: `Bearer ${sessionStorage.getItem("token")}`,
@@ -86,7 +86,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
 
 
         try {
-            const res = await fetch(`http://localhost:3000/api/cards/${card.id}/comments`, {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/cards/${card.id}/comments`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -242,7 +242,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
         setLoadingChecklist(true);
         try {
             const res = await fetch(
-                `http://localhost:3000/api/cards/${card.id}/checklists`,
+                `${import.meta.env.VITE_API_BASE_URL}/api/cards/${card.id}/checklists`,
                 {
                     headers: {
                         Authorization: `Bearer ${sessionStorage.getItem("token")}`,
@@ -283,7 +283,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
         if (!newChecklistTitle.trim()) return;
 
         try {
-            const res = await fetch(`http://localhost:3000/api/cards/${card.id}/checklists`, {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/cards/${card.id}/checklists`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -329,7 +329,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
 
         // Gọi API ngầm
         try {
-            await fetch(`http://localhost:3000/api/checklist-items/${itemId}/toggle`, {
+            await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/checklist-items/${itemId}/toggle`, {
                 method: "PUT",
                 headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` },
             });
@@ -345,7 +345,7 @@ const CardModal = ({ board, card, list, boardId, listId, onUpdate, onClose, curr
 
         try {
             const res = await fetch(
-                `http://localhost:3000/api/checklists/${checklistId}/items`,
+                `${import.meta.env.VITE_API_BASE_URL}/api/checklists/${checklistId}/items`,
                 {
                     method: "POST",
                     headers: {

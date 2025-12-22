@@ -55,7 +55,7 @@ const Dashboard = () => {
       return;
     }
 
-    fetch("http://localhost:3000/api/boards", {
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/boards`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -109,7 +109,7 @@ const Dashboard = () => {
     };
 
     try {
-      const res = await fetch("http://localhost:3000/api/boards", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/boards`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -150,7 +150,7 @@ const Dashboard = () => {
 
     try {
       // 1. CREATE BOARD
-      const boardRes = await fetch("http://localhost:3000/api/boards", {
+      const boardRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/boards`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -182,7 +182,7 @@ const Dashboard = () => {
       // 3. CREATE LISTS + CARDS
       for (const listCfg of template.lists || []) {
         const listRes = await fetch(
-          `http://localhost:3000/api/boards/${boardId}/lists`,
+          `${import.meta.env.VITE_API_BASE_URL}/api/boards/${boardId}/lists`,
           {
             method: "POST",
             headers: {
@@ -201,7 +201,7 @@ const Dashboard = () => {
 
         for (const cardCfg of listCfg.cards || []) {
           const cardRes = await fetch(
-            `http://localhost:3000/api/boards/${boardId}/lists/${listData.id}/cards`,
+            `${import.meta.env.VITE_API_BASE_URL}/api/boards/${boardId}/lists/${listData.id}/cards`,
             {
               method: "POST",
               headers: {

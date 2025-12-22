@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 
-const API_URL = "http://localhost:3000";
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 
 const AdminUserPage = () => {
   const [users, setUsers] = useState([]);

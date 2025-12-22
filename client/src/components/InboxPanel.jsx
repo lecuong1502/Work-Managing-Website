@@ -78,7 +78,7 @@ const InboxPanel = ({
     // 3. GỌI API (Chỉ gọi nếu đích đến là Inbox, 
     // nếu kéo sang Main thì hàm moveCard của ListColumn sẽ lo phần API của nó)
     if (!isLeavingInbox) {
-      fetch("http://localhost:3000/api/cards/move", {
+      fetch(`${import.meta.env.VITE_API_BASE_URL}/api/cards/move`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
