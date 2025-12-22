@@ -20,11 +20,16 @@ const Dashboard = () => {
   const [activeMenu, setActiveMenu] = useState("boards");
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [recentBoards, setRecentBoards] = useState([]);
 
   const [inboxBoard, setInboxBoard] = useState(null);
 
   const token = sessionStorage.getItem("token");
   console.log("Token bên dashb", token);
+  useEffect(() => {
+    const saved = JSON.parse(sessionStorage.getItem("recentBoards")) || [];
+    setRecentBoards(saved);
+  }, []);
 
   useEffect(() => {
     const handleBoardJoined = (board) => {
@@ -91,6 +96,26 @@ const Dashboard = () => {
   }, [navigate]);
 
   const handleBoardClick = (boardId) => {
+    const board = boards.find((b) => b.id === boardId);
+    if (!board) return;
+
+    let recent = JSON.parse(sessionStorage.getItem("recentBoards")) || [];
+
+    // bỏ trùng
+    recent = recent.filter((b) => b.id !== board.id);
+
+    // thêm lên đầu
+    recent.unshift({
+      id: board.id,
+      name: board.name,
+      color: board.color,
+    });
+
+    // tối đa 5 board
+    recent = recent.slice(0, 5);
+
+    sessionStorage.setItem("recentBoards", JSON.stringify(recent));
+
     navigate(`/board/${boardId}`);
   };
 
@@ -367,13 +392,48 @@ const Dashboard = () => {
                     <div
                       key={board.id}
                       className="board-card"
-                      style={{ background: board.color || "#fff" }}
                       onClick={() => handleBoardClick(board.id)}
+                      role="button"
+                      tabIndex={0}
                     >
-                      {board.name}
+                      <div
+                        className="board-cover"
+                        style={{
+                          background:
+                            board.color ||
+                            "linear-gradient(135deg,#7c7cff,#6a5acd)",
+                        }}
+                      />
+                      <div className="board-title">{board.name}</div>
                     </div>
                   ))}
                 </div>
+                {/* ===== RECENTLY VIEWED BOARDS ===== */}
+                {recentBoards.length > 0 && (
+                  <div className="recent-section">
+                    <h2 className="section-title"> Đã xem gần đây</h2>
+
+                    <div className="recent-board-list">
+                      {recentBoards.map((board) => (
+                        <div
+                          key={board.id}
+                          className="board-card recent-board"
+                          onClick={() => handleBoardClick(board.id)}
+                        >
+                          <div
+                            className="board-cover"
+                            style={{
+                              background:
+                                board.color ||
+                                "linear-gradient(135deg,#7c7cff,#6a5acd)",
+                            }}
+                          />
+                          <div className="board-title">{board.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {showUserManager && (
                   <div style={{ marginTop: 30 }}>

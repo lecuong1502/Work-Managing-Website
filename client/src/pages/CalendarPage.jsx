@@ -1,9 +1,5 @@
 import React, { useEffect, useState } from "react";
 import "../styles/Calendar.css";
-
-// ======================
-// CONSTANTS
-// ======================
 const TIMES = Array.from({ length: 48 }, (_, i) => {
   const hour = Math.floor(i / 2);
   const min = i % 2 === 0 ? 0 : 30;
@@ -27,9 +23,7 @@ const getWeekStart = (date = new Date()) => {
   return d;
 };
 
-// ======================
 // COMPONENT
-// ======================
 export default function CalendarPage() {
   const token = sessionStorage.getItem("token");
 
@@ -38,10 +32,9 @@ export default function CalendarPage() {
   const [drag, setDrag] = useState(null);
   const [dragEnd, setDragEnd] = useState(null);
   const [editBox, setEditBox] = useState(null);
-
-  // ======================
-  // FETCH EVENTS
-  // ======================
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newEventName, setNewEventName] = useState("");
+  const [newEventInfo, setNewEventInfo] = useState(null);
   useEffect(() => {
     if (!token) return;
 
@@ -109,8 +102,15 @@ export default function CalendarPage() {
     const endHour = Math.floor(endIdx / 2);
     const endMin = endIdx % 2 === 0 ? 0 : 30;
 
-    const title = prompt("Tên sự kiện:");
-    if (!title) return;
+    setNewEventInfo({
+      dayIndex,
+      startHour,
+      startMin,
+      endHour,
+      endMin,
+    });
+
+    setShowCreateModal(true);
 
     const date = days[dayIndex].toISOString().split("T")[0];
 
@@ -257,6 +257,78 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
+      {showCreateModal && (
+        <div className="popup-overlay">
+          <div className="popup-modal">
+            <h2>Tạo sự kiện</h2>
+
+            <input
+              placeholder="Tên sự kiện"
+              value={newEventName}
+              onChange={(e) => setNewEventName(e.target.value)}
+            />
+
+            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+              <button
+                onClick={() => {
+                  if (!newEventName.trim() || !newEventInfo) return;
+
+                  const { dayIndex, startHour, startMin, endHour, endMin } =
+                    newEventInfo;
+
+                  const date = days[dayIndex].toISOString().split("T")[0];
+
+                  fetch("http://localhost:3000/api/events", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                      title: newEventName,
+                      start_time: `${date}T${pad(startHour)}:${pad(
+                        startMin
+                      )}:00.000Z`,
+                      end_time: `${date}T${pad(endHour)}:${pad(
+                        endMin
+                      )}:00.000Z`,
+                    }),
+                  })
+                    .then((res) => res.json())
+                    .then((e) => {
+                      setEvents((prev) => [
+                        ...prev,
+                        {
+                          id: e.event_id,
+                          name: e.title,
+                          date: e.start_time.split("T")[0],
+                          start: e.start_time.slice(11, 16),
+                          end: e.end_time.slice(11, 16),
+                        },
+                      ]);
+                    });
+
+                  setNewEventName("");
+                  setNewEventInfo(null);
+                  setShowCreateModal(false);
+                }}
+              >
+                Lưu
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewEventName("");
+                  setNewEventInfo(null);
+                }}
+              >
+                Huỷ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editBox && (
         <div className="popup-overlay">

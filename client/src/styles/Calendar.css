@@ -2,25 +2,26 @@ html,
 body {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  height: 100%;
   background: white;
   font-family: "Roboto", sans-serif;
 }
 
 .wcal {
   width: 100%;
-  background: white;
   display: flex;
   flex-direction: column;
+  background: white;
 }
 
 .wcal-header {
-  padding: 12px 20px;
+  height: 52px;
+  padding: 0 20px;
   background: #fafafa;
   border-bottom: 1px solid #ddd;
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
 }
 
 .wcal-header button {
@@ -40,38 +41,38 @@ body {
 .wcal-grid {
   display: flex;
   width: 100%;
+  height: calc(100vh - 52px);
+  overflow: hidden;
 }
 
 .wcal-hours {
   width: 70px;
-  background: white;
   border-right: 1px solid #ddd;
   box-sizing: border-box;
 }
 
 .wcal-hour {
-  height: 60px;
-  min-height: 60px;
-  max-height: 60px;
+  height: 60px; /* 1h = 60px */
   display: flex;
   justify-content: flex-end;
-  align-items: center;
-  padding-right: 6px;
+  align-items: flex-start;
+  padding: 4px 6px 0 0;
   font-size: 13px;
   color: #555;
   border-top: 1px solid #eee;
   box-sizing: border-box;
 }
+
 .wcal-days {
   flex: 1;
-  background: white;
+  display: flex;
+  flex-direction: column;
 }
 
 .wcal-days-header {
-  display: flex;
-  background: white;
-  border-bottom: 1px solid #ddd;
   height: 52px;
+  display: flex;
+  border-bottom: 1px solid #ddd;
 }
 
 .wcal-day-head {
@@ -83,24 +84,21 @@ body {
 }
 
 .wcal-days-body {
+  flex: 1;
   display: flex;
+  overflow-y: auto;
 }
 
 .wcal-day-col {
   flex: 1;
-  border-right: 1px solid #f0f0f0;
   position: relative;
-  height: calc(48 * 30px);
+  border-right: 1px solid #f0f0f0;
+  height: 1440px; /* 24h * 60px */
   box-sizing: border-box;
 }
 
 .wcal-cell {
-  height: 30px;
-  min-height: 30px;
-  max-height: 30px;
-  line-height: 30px;
-  padding: 0;
-  margin: 0;
+  height: 30px; /* 30 phút */
   border-top: 1px solid #f3f3f3;
   box-sizing: border-box;
 }
@@ -117,13 +115,17 @@ body {
   position: absolute;
   left: 6px;
   right: 6px;
+
+  /* QUAN TRỌNG */
+  box-sizing: border-box;
+
   background: #e3f0ff;
   border-left: 4px solid #1a73e8;
   border-radius: 8px;
   padding: 6px 8px;
   font-size: 13px;
   color: #333;
-  box-sizing: border-box;
+  cursor: pointer;
 }
 
 .popup-overlay {
@@ -150,60 +152,127 @@ body {
   font-weight: 600;
 }
 
-.form-group label {
-  margin-bottom: 6px;
-  font-size: 14px;
-  color: #444;
-}
-
-.form-group input[type="text"],
-.form-group input[type="time"] {
+.popup-modal input {
   width: 100%;
   padding: 8px 10px;
+  margin-bottom: 10px;
   border: 1px solid #ddd;
   border-radius: 6px;
   font-size: 14px;
 }
 
-.form-group input:focus {
-  border-color: #1a73e8;
-}
-
-.form-row {
-  display: flex;
-  gap: 12px;
-}
-
-input[type="time"]::-webkit-datetime-edit-ampm-field {
-  display: none !important;
-}
-
-.popup-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.btn {
-  padding: 8px 16px;
+.popup-modal button {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px;
   border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
   border: none;
+  cursor: pointer;
+  font-size: 14px;
 }
 
-.btn.save {
+.popup-modal button:nth-child(4) {
   background: #1a73e8;
   color: white;
 }
 
-.btn.delete {
+.popup-modal button:nth-child(5) {
   background: #e53935;
   color: white;
 }
 
-.btn.close {
+.popup-modal button:last-child {
   background: #777;
   color: white;
+}
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.popup-modal {
+  background: #ffffff;
+  padding: 26px 28px;
+  width: 420px;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.popup-modal h2 {
+  margin: 0 0 18px 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #111;
+}
+
+.popup-modal input {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 15px;
+  box-sizing: border-box;
+}
+
+.popup-modal input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+.popup-modal input[type="time"] {
+  width: 180px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.popup-modal input[type="time"]:nth-of-type(2) {
+  margin-right: 12px;
+}
+
+.popup-modal button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.popup-modal button:nth-child(4) {
+  background: #e53935;
+  color: white;
+}
+
+.popup-modal button:nth-child(4):hover {
+  background: #d32f2f;
+}
+
+.popup-modal button:nth-child(5) {
+  background: #f1f1f1;
+  color: #333;
+}
+
+.popup-modal button:nth-child(5):hover {
+  background: #e0e0e0;
+}
+
+/* Đóng */
+.popup-modal button:last-child {
+  background: #7a7a7a;
+  color: white;
+}
+
+.popup-modal button:last-child:hover {
+  background: #666;
 }
