@@ -47,11 +47,17 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-  })
-);
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",
+    "https://task-manager-beta-eight-59.vercel.app",
+    "https://client-opal-ten.vercel.app"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 
 // --- CẤU HÌNH KẾT NỐI DATABASE ---
 const pool = mysql.createPool({
@@ -612,7 +618,7 @@ app.post("/api/boards", authMiddleware, async (req, res) => {
 
   const connection = await pool.getConnection();
   try {
-    connection.beginTransaction();
+    await connection.beginTransaction();
 
     const boardId = `board_${Date.now()}_${Math.random()
       .toString(36)
@@ -686,7 +692,7 @@ app.put("/api/boards/:id", authMiddleware, async (req, res) => {
 
   const connection = await pool.getConnection();
   try {
-    connection.beginTransaction();
+    await connection.beginTransaction();
 
     if (visibility == "Private") {
       await connection.query(
@@ -773,7 +779,7 @@ app.post("/api/boards/:boardId/lists", authMiddleware, async (req, res) => {
 
   const connection = await pool.getConnection();
   try {
-    connection.beginTransaction();
+    await connection.beginTransaction();
     // Lấy vị trí lớn nhất hiện tại để gán cho list mới nằm cuối
     const [rows] = await connection.query(
       "SELECT MAX(position) as maxPos FROM lists WHERE board_id = ?",
@@ -798,7 +804,7 @@ app.post("/api/boards/:boardId/lists", authMiddleware, async (req, res) => {
     await connection.commit();
     //Socket.io
     const io = req.app.get("socketio");
-    io.to(boardId).emit("board_updated", getBoardById(boardId));
+    io.to(boardId.toString()).emit("board_updated", getBoardById(boardId));
   } catch (err) {
     await connection.rollback();
     console.error(err);
@@ -837,7 +843,7 @@ app.put(
 
     const connection = await pool.getConnection();
     try {
-      connection.beginTransaction();
+      await connection.beginTransaction();
       // Cập nhật thông tin list
       await connection.query("UPDATE lists SET title = ? WHERE list_id = ?", [
         title,
@@ -879,7 +885,7 @@ app.delete(
 
     const connection = await pool.getConnection();
     try {
-      connection.beginTransaction();
+      await connection.beginTransaction();
 
       await connection.query("DELETE FROM lists WHERE list_id = ?", [listId]);
       res.status(200).json({ message: "Đã xóa list" });
@@ -930,7 +936,7 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
 
   const connection = await pool.getConnection();
   try {
-    connection.beginTransaction();
+    await connection.beginTransaction();
 
     const [sourceBoards] = await connection.query(
       "SELECT * FROM lists WHERE board_id = ?",
@@ -970,16 +976,16 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
     }
 
     // Đánh số lại position cho các board trong destBoard trong database
-    destBoard.lists.forEach((list, orderIndex) => {
-      connection.query(
+    destBoard.lists.forEach(async (list, orderIndex) => {
+      await connection.query(
         "UPDATE lists SET position = ?, board_id = ? WHERE list_id = ?",
         [orderIndex, destBoardId, list.id]
       );
     });
 
     // Đánh số lại position cho các board trong sourceBoard trong database
-    sourceBoard.lists.forEach((list, orderIndex) => {
-      connection.query(
+    sourceBoard.lists.forEach(async (list, orderIndex) => {
+      await connection.query(
         "UPDATE lists SET position = ?, board_id = ? WHERE list_id = ?",
         [orderIndex, sourceBoardId, list.id]
       );
@@ -1067,7 +1073,7 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
   try {
     // Trong thực tế, cần tính lại position dựa trên index.
 
-    connection.beginTransaction();
+    await connection.beginTransaction();
     const [sourceBoards] = await connection.query(
       "SELECT * FROM lists WHERE board_id = ?",
       [sourceBoardId]
@@ -1120,16 +1126,16 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
     }
 
     // Đánh số lại position cho các card trong destList trong database
-    destList.cards.forEach((card, orderIndex) => {
-      connection.query(
+    destList.cards.forEach( async (card, orderIndex) => {
+      await connection.query(
         "UPDATE cards SET position = ?, list_id = ? WHERE card_id = ?",
         [orderIndex, destListId, card.id]
       );
     });
 
     // Đánh số lại position cho các card trong sourceList trong database
-    sourceList.cards.forEach((card, orderIndex) => {
-      connection.query(
+    sourceList.cards.forEach(async (card, orderIndex) => {
+      await connection.query(
         "UPDATE cards SET position = ?, list_id = ? WHERE card_id = ?",
         [orderIndex, sourceListId, card.id]
       );
@@ -1142,19 +1148,29 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
     );
 
     //Socket.io
+    const payload = {
+      movedCard,
+      sourceListId,
+      destListId,
+      sourceBoardId,
+      destBoardId,
+      index,
+    };
     const io = req.app.get("socketio");
+    io.to(String(sourceBoardId)).emit("CARD_MOVED", payload);
     io.to(String(sourceBoardId)).emit(
       "board_updated",
       getBoardById(sourceBoardId)
     );
     if (String(destBoardId) !== String(sourceBoardId)) {
+      io.to(String(destBoardId)).emit("CARD_MOVED", payload);
       io.to(String(destBoardId)).emit(
         "board_updated",
         getBoardById(destBoardId)
       );
     }
   } catch (err) {
-    connection.rollback();
+    await connection.rollback();
     console.error(err);
     res.status(500).json({ message: "Lỗi di chuyển card" });
   } finally {
@@ -1243,13 +1259,13 @@ const sendActivity = async ({ actorId, cardId, boardId, message, type }) =>  {
     message,
     createdAt: new Date(),
     sender: {
-      id: actorId,
-      name: actor[0].name,
+      id: actorId.toString(),
+      name: actor[0].username,
       avatar: actor[0].avatar_url,
     },
     target: {
-      boardId: boardId,
-      cardId: cardId,
+      boardId: boardId.toString(),
+      cardId: cardId.toString(),
     },
   };
   try {
@@ -1259,7 +1275,7 @@ const sendActivity = async ({ actorId, cardId, boardId, message, type }) =>  {
     );
 
     // emit realtime cho tất cả user đang mở board
-    io.to(boardId).emit("activity_created", activity);
+    io.to(boardId.toString()).emit("activity_created", activity);
   } catch (e) {
     console.log(e);
   }
@@ -1460,6 +1476,8 @@ app.put(
         card: updatedCard
       });
 
+      console.log("card edit", listId, updatedCard);
+
     } catch (err) {
       await connection.rollback();
       console.error(err);
@@ -1633,7 +1651,7 @@ app.get("/api/events", authMiddleware, async (req, res) => {
   // Lọc sự kiện thuộc về user_id từ "bảng" calendarEvents
   const connection = await pool.getConnection();
   try {
-    connection.beginTransaction();
+    await connection.beginTransaction();
     const [events] = await connection.query(
       "SELECT * FROM calendar_events WHERE user_id = ?",
       [userId]
@@ -1653,7 +1671,7 @@ app.get("/api/events", authMiddleware, async (req, res) => {
     // Socket.io
     io.emit("SERVER_EVENT_CREATED", events);
   } catch (e) {
-    connection.rollback();
+    await connection.rollback();
     console.log(e);
     res.status(500).json({ message: "Lỗi server" });
   } finally {
@@ -1678,7 +1696,7 @@ app.post("/api/events", authMiddleware, async (req, res) => {
       [userId, title, start_time.slice(0, 19).replace('T', ' '), end_time.slice(0, 19).replace('T', ' ')]
     );
 
-    connection.commit();
+    await connection.commit();
     res.status(201).json({
       event_id: result.insertId,
       user_id: userId,
@@ -1687,7 +1705,7 @@ app.post("/api/events", authMiddleware, async (req, res) => {
       end_time,
     });
   } catch (err) {
-    connection.rollback();
+    await connection.rollback();
     console.error("Lỗi POST /api/events:", err);
     res.status(500).json({ message: "Lỗi tạo lịch" });
   } finally {
@@ -1728,7 +1746,7 @@ app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
 
   const connection = await pool.getConnection();
   try {
-    connection.beginTransaction();
+    await connection.beginTransaction();
     await connection.query(
       "UPDATE calendar_events SET title = ?, start_time = ?, end_time = ? WHERE event_id = ?",
       [
@@ -1738,7 +1756,7 @@ app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
         eventId
       ]
     );
-    connection.commit();
+    await connection.commit();
     //Socket.io
     io.emit("SERVER_EVENT_UPDATED", updatedEvent);
 
@@ -1746,7 +1764,7 @@ app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
     res.status(200).json(updatedEvent);
   } catch (e) {
     console.log(e);
-    connection.rollback();
+    await connection.rollback();
     res.status(500).json({ message: "Lỗi server" });
   } finally {
     connection.release();
@@ -1759,7 +1777,7 @@ app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
   const eventId = req.params.eventId;
 
   // Tìm event trong "bảng" calendarEvents
-  const [eventIndex] = pool.query(
+  const [eventIndex] =await pool.query(
     "SELECT * FROM calendar_events WHERE event_id = ?",
     [eventId]
   );
@@ -1772,11 +1790,11 @@ app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
   // Xóa
   const connection = await pool.getConnection();
   try {
-    connection.beginTransaction();
+    await connection.beginTransaction();
     await connection.query(`DELETE FROM calendar_events WHERE event_id = ?`, [
       eventId,
     ]);
-    connection.commit();
+    await connection.commit();
     //Socket.io
     io.emit("SERVER_EVENT_DELETED", { event_id: eventId });
 
@@ -1784,7 +1802,7 @@ app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
     res.status(200).json({ message: "Đã xóa sự kiện thành công." });
   } catch (e) {
     console.log(e);
-    connection.rollback();
+    await connection.rollback();
     res.status(500).json({ message: "Lỗi server" });
   } finally {
     connection.release();
@@ -2333,9 +2351,9 @@ async function ensureInbox(userId) {
     }
 
     //console.log(`Inbox đảm bảo cho user ${userId}`);
-    connection.commit();
+    await connection.commit();
   } catch (err) {
-    connection.rollback();
+    await connection.rollback();
     console.error("Lỗi tạo inbox:", err);
   } finally {
     connection.release();
