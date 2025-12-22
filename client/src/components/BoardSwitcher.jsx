@@ -17,11 +17,13 @@ const BoardSwitcher = ({ isOpen, onClose, onSelectBoard }) => {
       }
     }
   }, [isOpen]);
-  
 
-  const filteredBoards = boards.filter((b) =>
-    b.name.toLowerCase().includes(search.toLowerCase())
-  );
+
+  const filteredBoards = boards
+    .filter((b) => !b.id.startsWith("inbox_"))
+    .filter((b) =>
+      b.name.toLowerCase().includes(search.toLowerCase())
+    );
 
   if (!isOpen) return null;
 
@@ -38,25 +40,27 @@ const BoardSwitcher = ({ isOpen, onClose, onSelectBoard }) => {
           className="board-switcher-search"
         />
 
-        <h4 className="board-switcher-section-title">Gần đây</h4>
+        <div className="board-content">
+          <h4 className="board-switcher-section-title">Gần đây</h4>
 
-        <div>
-          {filteredBoards.map((board) => (
-            <div
-              key={board.id}
-              style={{background: board.color}}
-              onClick={() => onSelectBoard(board)}
-              className="board-item"
-            >
-              {board.name}
-            </div>
-          ))}
+          <div>
+            {filteredBoards.map((board) => (
+              <div
+                key={board.id}
+                style={{ background: board.color }}
+                onClick={() => onSelectBoard(board)}
+                className="board-item"
+              >
+                {board.name}
+              </div>
+            ))}
 
-          {filteredBoards.length === 0 && (
-            <div className="board-switcher-empty">
-              Không tìm thấy bảng nào
-            </div>
-          )}
+            {filteredBoards.length === 0 && (
+              <div className="board-switcher-empty">
+                Không tìm thấy bảng nào
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </>

@@ -118,7 +118,7 @@ httpServer.listen(PORT, () => {
 });
 
 // Truy vấn ban đầu để lấy toàn bộ dữ liệu board với lists, cards, labels, members
-async function getBoardById(boardId) {
+async function getBoardById(boardId, userId = null) {
   try {
     // Lấy thông tin board
     const [boardRows] = await pool.query(
@@ -139,11 +139,13 @@ async function getBoardById(boardId) {
     board.members = memberRows;
 
     // Lấy events của board
-    const [eventRows] = await pool.query(
-      "SELECT event_id AS event_id, title, start_time, end_time, description FROM calendar_events WHERE board_id = ?",
-      [boardId]
-    );
-    board.events = eventRows;
+    if (userId) {
+      const [eventRows] = await pool.query(
+        "SELECT event_id AS event_id, title, start_time, end_time FROM calendar_events WHERE user_id = ?",
+        [userId]
+      );
+      board.events = eventRows;
+    } else board.events = [];
 
     // Lấy lists
     const [listRows] = await pool.query(
@@ -324,6 +326,7 @@ async function getCardById(cardId) {
 }
 
 import dayjs from "dayjs";
+import { log } from "console";
 // MySQL -> React
 const convertDateBtoF = (date) => {
   //console.log("B - F", date);
@@ -347,7 +350,7 @@ app.get("/", async (req, res) => {
     const boards = [];
     const [boardIds] = await pool.query("SELECT board_id FROM boards");
     for (const boardId of boardIds) {
-      const boardData = await getBoardById(boardId.board_id);
+      const boardData = await getBoardById(boardId);
       //console.log("Lấy board cho user:", boardId.board_id, boardData);
       if (boardData) boards.push(boardData);
     }
@@ -675,6 +678,12 @@ app.put("/api/boards/:id", authMiddleware, async (req, res) => {
     return res.status(403).json({ message: "Bạn không có quyền chỉnh sửa." });
   }
 
+  // Preserve existing values if not provided or null
+  const newName = name !== undefined && name !== null ? name : currentBoard.title;
+  const newDescription = description !== undefined && description !== null ? description : currentBoard.description;
+  const newColor = color !== undefined && color !== null ? color : currentBoard.color;
+  const newVisibility = visibility !== undefined ? visibility : currentBoard.visibility;
+
   const connection = await pool.getConnection();
   try {
     connection.beginTransaction();
@@ -689,7 +698,7 @@ app.put("/api/boards/:id", authMiddleware, async (req, res) => {
     // Cập nhật thông tin board
     await connection.query(
       "UPDATE boards SET title = ?, description = ?, color = ?, visibility = ? WHERE board_id = ?",
-      [name, description, color, visibility, boardId]
+      [newName, newDescription, newColor, newVisibility, boardId]
     );
 
     await connection.commit();
@@ -1226,20 +1235,25 @@ app.post(
 );
 
 // Card activity
-const sendActivity = ({ actorId, cardId, boardId, message, type }) =>  {
+const sendActivity = async ({ actorId, cardId, boardId, message, type }) =>  {
+  const [actor] = await pool.query(`SELECT * FROM users WHERE user_id = ?`, [actorId]);
   const activity = {
     id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     type,
     message,
     createdAt: new Date(),
-    sender: actorId,
+    sender: {
+      id: actorId,
+      name: actor[0].name,
+      avatar: actor[0].avatar_url,
+    },
     target: {
       boardId: boardId,
       cardId: cardId,
     },
   };
   try {
-    pool.query(
+    await pool.query(
       `INSERT INTO card_activities (activity_id, actor_id, card_id, board_id, message, type) VALUE (?, ?, ?, ?, ?, ?)`,
       [activity.id, actorId, cardId, boardId, message, type]
     );
@@ -1253,7 +1267,8 @@ const sendActivity = ({ actorId, cardId, boardId, message, type }) =>  {
 
 app.get("/api/cards/:cardId/activities", authMiddleware, async (req, res) => {
   const { cardId } = req.params;
-
+  //console.log("activities change");
+  
   const [users] = await pool.query(`SELECT * FROM users`);
   //Check activity trong database
   const [rawActivities] = await pool.query(
@@ -1278,6 +1293,7 @@ app.get("/api/cards/:cardId/activities", authMiddleware, async (req, res) => {
       },
     };
   });
+  //console.log(cardId, activities);
   res.json(activities);
 });
 
@@ -1435,6 +1451,15 @@ app.put(
 
       const updatedCard = await getCardById(cardId);
       res.json(updatedCard);
+
+      // Socket 
+      io.to(boardId.toString()).emit("board_updated", getBoardById(boardId));
+
+      io.to(boardId.toString()).emit("CARD_UPDATED", {
+        listId,
+        card: updatedCard
+      });
+
     } catch (err) {
       await connection.rollback();
       console.error(err);
@@ -1490,100 +1515,8 @@ app.delete(
 );
 //
 
-// API CALENDAR / EVENTS
-app.get("/api/events", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const [rows] = await pool.query(
-      "SELECT * FROM events WHERE user_id = ? ORDER BY date, start",
-      [userId]
-    );
-
-    res.json(rows);
-  } catch (err) {
-    console.error("Lỗi GET /api/events:", err);
-    res.status(500).json({ message: "Lỗi lấy lịch" });
-  }
-});
-//tạo sk mới
-app.post("/api/events", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const { name, date, start, end } = req.body;
-
-  if (!name || !date || !start || !end) {
-    return res.status(400).json({ message: "Thiếu dữ liệu lịch" });
-  }
-
-  try {
-    const [result] = await pool.query(
-      "INSERT INTO events (user_id, name, date, start, end) VALUES (?, ?, ?, ?, ?)",
-      [userId, name, date, start, end]
-    );
-
-    res.status(201).json({
-      id: result.insertId,
-      user_id: userId,
-      name,
-      date,
-      start,
-      end,
-    });
-  } catch (err) {
-    console.error("Lỗi POST /api/events:", err);
-    res.status(500).json({ message: "Lỗi tạo lịch" });
-  }
-});
-//cập nhật sk
-app.put("/api/events/:id", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const { id } = req.params;
-  const { name, date, start, end } = req.body;
-
-  try {
-    const [result] = await pool.query(
-      `
-      UPDATE events 
-      SET name = ?, date = ?, start = ?, end = ?
-      WHERE id = ? AND user_id = ?
-      `,
-      [name, date, start, end, id, userId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Không tìm thấy lịch" });
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Lỗi PUT /api/events/:id:", err);
-    res.status(500).json({ message: "Lỗi cập nhật lịch" });
-  }
-});
-//xóa sk
-app.delete("/api/events/:id", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
-  const { id } = req.params;
-
-  try {
-    const [result] = await pool.query(
-      "DELETE FROM events WHERE id = ? AND user_id = ?",
-      [id, userId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Không tìm thấy lịch" });
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Lỗi DELETE /api/events/:id:", err);
-    res.status(500).json({ message: "Lỗi xoá lịch" });
-  }
-});
-
 // API get notifications
-app.get("api/notifications", authMiddleware, async (req, res) => {
+app.get("/api/notifications", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     // Lấy thông báo và thông tin người gửi (actor)
@@ -1693,31 +1626,32 @@ app.delete("/api/users/:id", async (req, res) => {
 
 // CALENDAR API ENDPOINTS
 
-// Lấy danh sách sự kiện của một board
-app.get("/api/boards/:boardId/events", authMiddleware, async (req, res) => {
-  const userId = Number(req.user.id);
-  const boardId = Number(req.params.boardId);
+// Lấy danh sách sự kiện của một user
+app.get("/api/events", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
 
-  // Kiểm tra quyền sở hữu trong board_members
-  if (!(await checkBoardMembership(userId, boardID))) {
-    return res
-      .status(403)
-      .json({ message: "Board không tồn tại hoặc không có quyền." });
-  }
-
-  // Lọc sự kiện thuộc board_id này từ "bảng" calendarEvents
+  // Lọc sự kiện thuộc về user_id từ "bảng" calendarEvents
   const connection = await pool.getConnection();
   try {
     connection.beginTransaction();
     const [events] = await connection.query(
-      "SELECT * FROM calendar_events WHERE board_id = ?",
-      [boardId]
+      "SELECT * FROM calendar_events WHERE user_id = ?",
+      [userId]
     );
-    res.status(201).json(events);
+    const formattedEvents = events.map(event => {
+      return {
+        ...event, // Copy existing properties
+        // Check if time exists, then format: '2025-12-19T02:00:00.000Z'
+        start_time: event.start_time ? new Date(event.start_time + 'Z').toISOString() : null,
+        end_time: event.end_time ? new Date(event.end_time + 'Z').toISOString() : null
+      };
+    });
+    res.status(201).json(formattedEvents);
+    //console.log(formattedEvents);
     connection.commit;
 
     // Socket.io
-    io.emit("SERVER_EVENT_CREATED", newEvent);
+    io.emit("SERVER_EVENT_CREATED", events);
   } catch (e) {
     connection.rollback();
     console.log(e);
@@ -1727,28 +1661,61 @@ app.get("/api/boards/:boardId/events", authMiddleware, async (req, res) => {
   }
 });
 
+// Tạo sự kiện mới 
+app.post("/api/events", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const { title, start_time, end_time } = req.body;
+
+  if (!title || !start_time || !end_time) {
+    return res.status(400).json({ message: "Thiếu dữ liệu lịch" });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.query(
+      "INSERT INTO calendar_events (user_id, title, start_time, end_time) VALUES (?, ?, ?, ?)",
+      [userId, title, start_time.slice(0, 19).replace('T', ' '), end_time.slice(0, 19).replace('T', ' ')]
+    );
+
+    connection.commit();
+    res.status(201).json({
+      event_id: result.insertId,
+      user_id: userId,
+      title,
+      start_time,
+      end_time,
+    });
+  } catch (err) {
+    connection.rollback();
+    console.error("Lỗi POST /api/events:", err);
+    res.status(500).json({ message: "Lỗi tạo lịch" });
+  } finally {
+    connection.release();
+  }
+});
+
 // Cập nhật sự kiện (Kéo thả lịch, đổi tên, v.v.)
 app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
-  const userId = Number(req.user.id);
-  const eventId = Number(req.params.eventId);
-  const { title, start_time, end_time, description } = req.body;
+  const userId = req.user.id;
+  const eventId = req.params.eventId;
+  const { title, start_time, end_time } = req.body;
+
+  console.log(eventId);
 
   // Tìm event trong "bảng" calendarEvents
-  const [eventIndex] = pool.query(
-    "SELECT * FROM calendar_events WHERE event_id = ?",
+  const [eventIndex] = await pool.query(
+    `SELECT * FROM calendar_events WHERE event_id = ?`,
     [eventId]
   );
   if (eventIndex.length === 0) {
     return res.status(404).json({ message: "Sự kiện không tồn tại." });
   }
 
-  const event = calendarIndex[0];
+  const event = eventIndex[0];
 
-  // Kiểm tra quyền sở hữu trong board_members
-  if (!(await checkBoardMembership(userId, event.board_id))) {
-    return res
-      .status(403)
-      .json({ message: "Board không tồn tại hoặc không có quyền." });
+  if (event.user_id != userId) {
+    return res.status(403).json({ message: "Không có thẩm quyền." });
   }
 
   // Cập nhật
@@ -1756,21 +1723,19 @@ app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
     ...event,
     title: title || event.title,
     start_time: start_time || event.start_time,
-    end_time: end_time || event.end_time,
-    description: description !== undefined ? description : event.description,
+    end_time: end_time || event.end_time
   };
 
   const connection = await pool.getConnection();
   try {
     connection.beginTransaction();
     await connection.query(
-      `UPDATE calendar_events 
-                SET title = ?, start_time = ?, end_time = ?, description = ? WHERE event_id = ?`,
+      "UPDATE calendar_events SET title = ?, start_time = ?, end_time = ? WHERE event_id = ?",
       [
         updatedEvent.title,
-        updatedEvent.start_time,
-        updatedEvent.end_time,
-        updatedEvent.description,
+        updatedEvent.start_time.slice(0, 19).replace('T', ' '),
+        updatedEvent.end_time.slice(0, 19).replace('T', ' '),
+        eventId
       ]
     );
     connection.commit();
@@ -1790,8 +1755,8 @@ app.put("/api/events/:eventId", authMiddleware, async (req, res) => {
 
 // Delete events
 app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
-  const userId = Number(req.user.id);
-  const eventId = Number(req.params.eventId);
+  const userId = req.user.id;
+  const eventId = req.params.eventId;
 
   // Tìm event trong "bảng" calendarEvents
   const [eventIndex] = pool.query(
@@ -1802,14 +1767,7 @@ app.delete("/api/events/:eventId", authMiddleware, async (req, res) => {
     return res.status(404).json({ message: "Sự kiện không tồn tại." });
   }
 
-  const event = calendarIndex[0];
-
-  // Kiểm tra quyền sở hữu trong board_members
-  if (!(await checkBoardMembership(userId, event.board_id))) {
-    return res
-      .status(403)
-      .json({ message: "Board không tồn tại hoặc không có quyền." });
-  }
+  const event = eventIndex[0];
 
   // Xóa
   const connection = await pool.getConnection();
@@ -2590,6 +2548,62 @@ app.delete("/api/inbox/cards/:cardId", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Lỗi xóa card", error: err.message });
+  }
+});
+
+// API Comment
+// Post new comments into cards
+app.post("/api/cards/:cardId/comments", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const { cardId } = req.params;
+  const { content, boardId, listId } = req.body;
+
+  if (!content) {
+    return res.status(400).json({ message: "Comment content is required" });
+  }
+
+  // Check if user has access to the board
+  if (!(await checkBoardMembership(userId, boardId))) {
+    return res.status(403).json({ message: "Board not found or no access" });
+  }
+
+  // Check if card exists
+  const [cardRows] = await pool.query(
+    "SELECT card_id FROM cards WHERE card_id = ?",
+    [cardId]
+  );
+  if (cardRows.length === 0) {
+    return res.status(404).json({ message: "Card not found" });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Insert comment into database
+    const [result] = await connection.query(
+      "INSERT INTO card_comments (card_id, user_id, comment) VALUES (?, ?, ?)",
+      [cardId, userId, content]
+    );
+
+    await connection.commit();
+
+    // Send activity
+    sendActivity({
+      actorId: userId,
+      cardId: cardId,
+      boardId: boardId,
+      message: content,
+      type: "comment",
+    });
+
+    res.status(201).json({ message: "Comment added"});
+  } catch (err) {
+    await connection.rollback();
+    console.error(err);
+    res.status(500).json({ message: "Error adding comment" });
+  } finally {
+    connection.release();
   }
 });
 

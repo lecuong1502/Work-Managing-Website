@@ -220,7 +220,7 @@ const Dashboard = () => {
 
         const listData = await listRes.json();
         if (!listRes.ok) {
-          console.error("❌ Tạo list thất bại:", listData);
+          console.error("Tạo list thất bại:", listData);
           continue;
         }
 

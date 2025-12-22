@@ -41,3 +41,31 @@
   color: #555;
 }
 
+.add-card-btn {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px dashed #cbd5e1;
+  background: transparent;
+  color: #1e464d;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.add-card-btn:hover {
+  background: #f1f7f9;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+.add-card-form-actions button:last-child {
+  background: #3182ce;
+  border: 1px solid #3182ce;
+  color: white;
+}
+
+.add-card-form-actions button:hover {
+  opacity: 0.8;
+}

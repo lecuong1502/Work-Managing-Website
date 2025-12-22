@@ -146,41 +146,36 @@ const InboxPanel = ({
 
         />
       ))}
-
       {addingCard["inbox"] ? (
         <div className="add-card-form">
           <input
             type="text"
             value={newCardTitle}
             onChange={(e) => setNewCardTitle(e.target.value)}
-            placeholder="Card title..."
+            placeholder="What is your task today?"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSubmit();
             }}
           />
-
-          <button
-            onClick={() => {
-              setNewCardTitle("");
-              setAddingCard(prev => ({ ...prev, inbox: false }));
-            }}
-          >
-            Cancel
-          </button>
-
-          <button onClick={() => handleSubmit()}>
-            Add
-          </button>
+          <div className="add-card-form-actions"> 
+            <button
+              onClick={() => {
+                setNewCardTitle("");
+                setAddingCard((prev) => ({ ...prev, inbox: false }));
+              }}
+            >
+              Cancel
+            </button>
+            <button onClick={() => handleSubmit()}> Add </button>
+          </div>
         </div>
       ) : (
         <button
           className="add-card-btn"
-          onClick={() =>
-            setAddingCard(prev => ({ ...prev, inbox: true }))
-          }
+          onClick={() => setAddingCard((prev) => ({ ...prev, inbox: true }))}
         >
-          + Add a card
+          +Add a Card
         </button>
       )}
     </div>

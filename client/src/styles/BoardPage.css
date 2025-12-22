@@ -41,6 +41,7 @@
   align-items: center;
   justify-content: space-between;
   background-color: rgba(255, 255, 255, 0.3);
+  /* Giữ nguyên blur */
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   padding: 15px 20px;
@@ -49,6 +50,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   height: fit-content;
   flex-shrink: 0;
+  position: relative;
+  /* Tạo context để z-index có tác dụng */
+  z-index: 100;
+  /* Đảm bảo Header luôn nằm trên các List bên dưới */
 }
 
 .board-header h2 {
@@ -66,24 +71,43 @@
 .add-member-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background-color: rgba(255, 255, 255, 0.15);
-  color: rgb(104, 86, 86);
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
+  gap: 8px; 
+  background-color: rgba(255, 255, 255, 0.2); 
+  backdrop-filter: blur(4px); 
+  
+  /* Màu chữ Slate đậm cho chuyên nghiệp */
+  color: #334155; 
+  
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 14px;
+  border-radius: 8px; /* Bo góc đồng bộ với các phần khác */
+  
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Đổ bóng cực nhẹ để nút có khối */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .add-member-btn:hover {
-  background-color: rgba(255, 255, 255, 0.55);
+  background-color: rgba(255, 255, 255, 0.5);
+  color: #1e293b; /* Đậm hơn khi hover */
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px); /* Nảy nhẹ lên */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.add-member-btn:active {
+  transform: translateY(0); /* Nhấn xuống khi click */
 }
 
 .add-member-btn .icon {
   width: 18px;
   height: 18px;
+  stroke-width: 2px; /* Làm icon nét hơn nếu dùng Heroicons */
+  color: #64748b; /* Màu icon nhạt hơn màu chữ một chút */
 }
 
 .lists-container {
@@ -255,90 +279,130 @@
   height: 100%;
 }
 
+/* Container chính của Popup Share */
 .share-board-popup {
   position: absolute;
-  top: 45px;
+  top: 50px;
   right: 0;
-  width: 420px;
-
-  background: #fff;
-  border-radius: 10px;
-  padding: 16px 20px;
-  border: 1px solid #ddd;
-  box-shadow: 0px 4px 18px rgba(0, 0, 0, 0.12);
-  z-index: 50;
+  width: 400px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  /* Đổ bóng 2 lớp để tạo chiều sâu */
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  animation: slideDown 0.2s ease-out;
 }
 
+/* Tiêu đề popup */
 .share-header {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 16px;
 }
 
+/* Hàng nhập Email và Role */
 .share-input-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 24px;
 }
 
 .share-input-row input {
   flex: 1;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  min-width: 180px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
   font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
+.share-input-row input:focus {
+  border-color: #3b82f6;
+}
+
+/* Select chọn quyền */
 .share-role-select {
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background-color: #f8fafc;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  outline: none;
 }
 
+/* Nút Share */
 .share-input-row button {
-  background: #0a66e8;
+  background: #2563eb;
   color: white;
   border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.share-input-row button:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .share-input-row button:disabled {
-  opacity: 0.6;
+  background: #94a3b8;
   cursor: not-allowed;
 }
 
+/* Section danh sách thành viên */
 .share-members-section {
-  margin-top: 20px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 16px;
 }
 
 .share-section-title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  margin-bottom: 12px;
 }
 
+/* Từng item thành viên */
 .share-member-item {
   display: flex;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+  gap: 12px;
 }
 
+.share-member-item:not(:last-child) {
+  border-bottom: 1px solid #f8fafc;
+}
+
+/* Avatar chữ cái đầu */
 .share-member-avatar {
-  width: 38px;
-  height: 38px;
-  background: #e1e4e8;
+  width: 36px;
+  height: 36px;
+  background: #eff6ff;
+  color: #2563eb;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  margin-right: 12px;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 14px;
+  border: 1px solid #dbeafe;
 }
 
 .share-member-info {
@@ -347,63 +411,131 @@
 
 .share-member-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .share-member-email {
   font-size: 12px;
-  color: #666;
+  color: #64748b;
 }
 
-.share-role-select {
-  padding: 6px 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
+/* Select role bên trong list member (nhỏ hơn) */
+.share-member-item .share-role-select {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+}
+
+.share-member-item .share-role-select:hover {
+  background: #f1f5f9;
+}
+
+/* Hiệu ứng xuất hiện */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .change-visibility-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background-color: rgba(255, 255, 255, 0.15);
-  color: rgb(104, 86, 86);
-  border: none;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #475569;
+  border: 1px solid transparent;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .change-visibility-btn:hover {
-  background-color: rgba(255, 255, 255, 0.55);
+  background-color: rgba(255, 255, 255, 0.5);
+  color: #1e293b; /* Đậm hơn khi hover */
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px); /* Nảy nhẹ lên */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
+
+.change-visibility-btn .icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2px;
+}
+
 
 .visibility-menu {
   position: absolute;
-  top: 36px;
-  left: 0;
-  background: white;
-  border-radius: 6px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-  z-index: 10;
+  top: 45px;
+  right: 0;
+  width: 240px; /* Độ rộng vừa phải để chứa mô tả */
+  background: #ffffff;
+  border-radius: 12px;
+  backdrop-filter: blur(4px); 
+  padding: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 1001; /* Cao hơn các thành phần khác */
+  animation: slideDown 0.15s ease-out;
 }
 
-.icon {
-  width: 16px;
-  height: 16px;
-}
 
 .visibility-menu div {
   display: flex;
-  z-index: 60;
-  padding: 8px 12px;
+  align-items: flex-start; /* Căn trên để icon khớp với dòng đầu */
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  color: #1e293b;
 }
 
 .visibility-menu div:hover {
-  background: #f0f0f0;
+  background-color: #f1f5f9;
+}
+
+/* Icon bên trong menu */
+.visibility-menu .icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: #64748b; /* Màu icon mặc định */
+}
+
+/* Highlight màu sắc khi chọn */
+.visibility-menu div:hover .icon {
+  color: #2563eb; /* Icon chuyển xanh khi hover */
+}
+
+/* Tinh chỉnh text bên trong menu */
+.visibility-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.visibility-option-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.visibility-option-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 .board-header-actions {

@@ -1,30 +1,107 @@
+/* Lớp phủ làm mờ nền */
 .board-switcher-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(15, 23, 42, 0.6); /* Xanh đen sâu hơn */
   z-index: 2000;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px); /* Tăng độ mờ nền */
+  animation: fadeIn 0.2s ease-out;
 }
 
+/* Popup chính */
 .board-switcher-popup {
   position: fixed;
-  top: 48%;
+  top: 40%; /* Đẩy lên cao hơn một chút để cân đối mắt nhìn */
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 420px;
-  max-height: 75vh;
+  width: 500px; /* Tăng chiều rộng một chút */
+  max-height: 60vh;
   background: #ffffff;
-  border-radius: 12px;
-  padding: 18px 20px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
-  animation: fadeInScale 0.15s ease-out;
+  border-radius: 16px;
+  padding: 0; /* Xóa padding để input ôm sát trên đầu */
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  animation: modalEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 2001;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-@keyframes fadeInScale {
+/* Input tìm kiếm kiểu Search Bar hiện đại */
+.board-switcher-search {
+  width: 100%;
+  padding: 18px 24px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 16px;
+  color: #1e293b;
+  outline: none;
+  background: transparent;
+}
+
+.board-switcher-search::placeholder {
+  color: #94a3b8;
+}
+
+/* Vùng chứa nội dung danh sách */
+.board-content {
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.board-switcher-section-title {
+  font-size: 12px;
+  color: #64748b;
+  margin: 8px 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Item từng bảng */
+.board-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #334155;
+  background: transparent; 
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.board-item:hover {
+  background: #f8fafc;
+  color: #939aac;
+  padding-left: 20px; 
+}
+
+.board-item::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 12px;
+  background: currentColor; 
+}
+
+
+.board-switcher-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* Animation */
+@keyframes modalEnter {
   from {
     opacity: 0;
-    transform: translate(-50%, -48%) scale(0.95);
+    transform: translate(-50%, -45%) scale(0.98);
   }
   to {
     opacity: 1;
@@ -32,52 +109,15 @@
   }
 }
 
-.board-switcher-search {
-  width: 100%;
-  border-radius: 8px;
-  padding: 10px 12px;
-  border: 1px solid #cfd6dd;
-  font-size: 15px;
-  margin-bottom: 16px;
-  transition: 0.15s;
-  box-sizing: border-box; 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.board-switcher-search:focus {
-  border-color: #388bff;
-  box-shadow: 0 0 0 2px rgba(56, 139, 255, 0.2);
-  outline: none;
+.board-content::-webkit-scrollbar {
+  width: 6px;
 }
-
-.board-switcher-section-title {
-  font-size: 14px;
-  color: #5f6b7c;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  font-weight: 600;
-}
-
-.board-item {
-  padding: 14px 16px;
+.board-content::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
   border-radius: 10px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  font-weight: 500;
-  background: #f4f5f7;
-  border: 1px solid transparent;
-  transition: transform 0.15s ease, box-shadow 0.15s ease,
-              background 0.15s, border-color 0.15s;
-}
-
-.board-item:hover {
-  background: #e9ebf0;
-  transform: translateX(3px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-}
-
-.board-switcher-empty {
-  padding: 12px;
-  text-align: center;
-  color: #7a869a;
-  font-style: italic;
 }

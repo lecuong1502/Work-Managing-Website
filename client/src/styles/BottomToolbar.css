@@ -1,48 +1,93 @@
 .bottom-toolbar {
   position: fixed;
-  bottom: 6px;
+  bottom: 15px; 
   left: 50%;
   transform: translateX(-50%);
-  width: 50%;
-  background: #ffffff;
-  padding: 8px 12px;    
+  
+  min-width: 450px;
+  max-width: fit-content;
+  
+ 
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px); 
+  -webkit-backdrop-filter: blur(12px);
+  
+  padding: 5px;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  border-radius: 12px;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.12);
-  z-index: 100;
+  gap: 8px; 
+  
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04);
+  
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hiệu ứng khi lướt chuột vào dock */
+.bottom-toolbar:hover {
+  bottom: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
 }
 
 .bottom-btn {
-  background: #f4f5f7;
+  background: transparent;
   border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 15px;        
+  padding: 10px 18px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
   cursor: pointer;
-  transition: 0.2s;
-  font-weight: 500;
+  transition: all 0.2s ease;
 
   display: flex;
+  flex-direction: row; 
   align-items: center;
-  gap: 8px;               
-}
-
-.bottom-btn:hover {
-  background: #e3e4e8;
+  gap: 10px;
+  white-space: nowrap;
 }
 
 .bottom-btn svg {
-  width: 18px;    
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  stroke-width: 2px;
+  transition: transform 0.2s ease;
 }
 
+.bottom-btn:hover {
+  background: rgba(226, 232, 240, 0.5);
+  color: #1e293b;
+}
+
+.bottom-btn:hover svg {
+  transform: translateY(-1px); 
+}
+
+
 .bottom-btn.active {
-  background: #3b82f6;   
-  color: white;
+  background: #2563eb; 
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .bottom-btn.active svg {
-  stroke: white;  
+  stroke: #ffffff;
+}
+
+@media (max-width: 600px) {
+  .bottom-toolbar {
+    width: 90%;
+    min-width: auto;
+    bottom: 10px;
+  }
+  .bottom-btn {
+    padding: 10px;
+    font-size: 0; 
+  }
+  .bottom-btn svg {
+    margin: 0;
+  }
 }
