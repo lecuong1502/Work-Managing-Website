@@ -30,6 +30,9 @@ const ListColumn = ({
   onUpdateCard,
   onMoveCardOutOfInbox,
   inboxBoardId,
+  inboxBoard,
+  setInboxBoard,
+  setToast,
 }) => {
   const moveCard = (cardId, fromListId, toListId, toIndex, sourceBoardId, cardData) => {
     // console.group(">>> [DEBUG MOVE_CARD]");
@@ -40,6 +43,15 @@ const ListColumn = ({
     // console.log("5. Dest Board ID (Đích):", board.id);
     // console.log("6. Card Data:", cardData);
     // console.groupEnd();
+
+    const previousBoardState = { ...board };
+    const previousInboxState = { ...inboxBoard };
+
+    const isFromInbox = String(sourceBoardId) === String(inboxBoardId);
+
+    if (isFromInbox && String(board.id) !== String(inboxBoardId)) {
+      onMoveCardOutOfInbox(cardId, fromListId);
+    }
 
     if (!fromListId || !toListId || !sourceBoardId) {
       console.error("!!! LỖI NGHIÊM TRỌNG: Một trong các ID bị undefined. Backend sẽ tèo!");
@@ -129,9 +141,30 @@ const ListColumn = ({
         index: apiIndex,
       }),
     })
-      .then((res) => res.json())
-      .then((data) => console.log("Backend sync success:", data.message))
-      .catch((err) => console.error("API Error:", err));
+      .then(async (res) => {
+        if (!res.ok) {
+          // A. Lấy thông tin lỗi từ server
+          const errorData = await res.json();
+          
+          // B. Bắn alert cảnh báo (Ví dụ: 403 Forbidden)
+          setToast({ message: "Không được quyền sửa!", type: "error" });
+          
+          // C. HOÀN TÁC (ROLLBACK) UI
+          setBoard(previousBoardState);
+
+          if (isFromInbox) {
+            setInboxBoard(previousInboxState); // Trả Inbox về trạng thái cũ (hiện lại thẻ vừa mất)
+          }
+        } else {
+          console.log("Backend sync success");
+        }
+      })
+      .catch((err) => {
+        console.error("API Error:", err);
+        alert("Lỗi kết nối server. Thẻ sẽ được trả về vị trí cũ.");
+        setBoard(previousBoardState); // Rollback nếu lỗi mạng
+        if (isFromInbox) setInboxBoard(previousInboxState);
+      });
   };
 
   const listRef = React.useRef(null);

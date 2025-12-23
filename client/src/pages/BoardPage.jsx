@@ -918,6 +918,8 @@ const BoardPage = () => {
                           onUpdateCard={handleUpdateCard}
                           onMoveCardOutOfInbox={handleMoveCardOutOfInbox}
                           inboxBoardId={inboxBoard?.id}
+                          setToast={setToast}
+                          setInboxBoard={setInboxBoard}
                         />
                       ))}
 

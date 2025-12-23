@@ -30,6 +30,7 @@ const InboxPanel = ({
 
   const moveCard = (cardId, fromListId, toListId, toIndex, sourceBoardId, cardData) => {
     // 1. Xác định hướng di chuyển
+    const previousBoardState = { ...inboxBoard };
     const isEnteringInbox = sourceBoardId && String(sourceBoardId) !== String(inboxBoard.id);
     const isInternalInbox = String(sourceBoardId) === String(inboxBoard.id) && String(toListId).startsWith("list_inbox");
     const isLeavingInbox = String(sourceBoardId) === String(inboxBoard.id) && !String(toListId).startsWith("list_inbox");
@@ -93,8 +94,22 @@ const InboxPanel = ({
           index: toIndex || 0,
         }),
       })
-        .then(res => res.json())
-        .catch(err => console.error("Lỗi đồng bộ Inbox:", err));
+        .then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json();
+          
+          // BẮN CẢNH BÁO
+          alert(`Thất bại: ${errorData.message || "Bạn không có quyền thực hiện hành động này!"}`);
+
+          // HOÀN TÁC (ROLLBACK) UI VỀ TRẠNG THÁI CŨ
+          setInboxBoard(previousBoardState);
+        }
+      })
+      .catch((err) => {
+        console.error("Lỗi đồng bộ:", err);
+        alert("Lỗi kết nối máy chủ. Thao tác không được lưu.");
+        setInboxBoard(previousBoardState); // Rollback khi mất mạng
+      });
     }
   };
 
