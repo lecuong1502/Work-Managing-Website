@@ -24,28 +24,50 @@ const PORT = process.env.PORT || 3000;
 process.env.JWT_SECRET = "4_ong_deu_ten_Cuong";
 
 io.use((socket, next) => {
-  const token = socket.handshake.auth.token;
-  if (!token) return next(new Error("Authentication error"));
+  // Log ra để kiểm tra xem Token nằm ở đâu
+  console.log("--- DEBUG SOCKET HANDSHAKE ---");
+  console.log("Auth Token:", socket.handshake.auth.token);
+  console.log("Query Token:", socket.handshake.query.token);
+
+  // Chấp nhận Token từ cả 2 nguồn để chắc chắn
+  const token = socket.handshake.auth.token || socket.handshake.query.token;
+
+  if (!token) {
+    console.log("-> LỖI: Không tìm thấy token!");
+    return next(new Error("Authentication error: Token missing"));
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.user = decoded;
+    console.log("-> Success: User", decoded.id);
     next();
   } catch (err) {
-    next(new Error("Authentication error"));
+    console.log("-> LỖI: Token không hợp lệ:", err.message);
+    next(new Error("Authentication error: Invalid token"));
   }
 });
 
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.user.name} (ID: ${socket.user.id})`);
+  console.log(`User connected: ${socket.user.id}`);
 
-  // Join user vào room riêng theo ID của họ
   socket.join(`user_${socket.user.id}`);
 
+  socket.on("join-board", (boardId) => {
+    socket.join(boardId.toString());
+    console.log(`User ${socket.user.id} joined board ${boardId}`);
+  });
+
+  socket.on("leave-board", (boardId) => {
+    socket.leave(boardId.toString());
+  });
+
   socket.on("disconnect", () => {
-    console.log("User disconnected");
+    console.log("User disconnected", socket.user.id);
   });
 });
+
+app.set("socketio", io);
 
 const corsOptions = {
   origin: [
@@ -333,6 +355,7 @@ async function getCardById(cardId) {
 
 import dayjs from "dayjs";
 import { log } from "console";
+import { constants } from "buffer";
 // MySQL -> React
 const convertDateBtoF = (date) => {
   //console.log("B - F", date);
@@ -344,6 +367,10 @@ const convertDateFtoB = (date) => {
   //console.log("F - B",date);
   return date ? dayjs(date).format("YYYY-MM-DD") : null;
 };
+
+const shortenDateB = (date) => {
+  return date ? dayjs(date).format("YYYY-MM-DD") : null;
+}
 
 // --- ROUTE (API ENDPOINTS) ---
 
@@ -727,7 +754,7 @@ app.put("/api/boards/:id", authMiddleware, async (req, res) => {
 app.delete("/api/boards/:id", authMiddleware, async (req, res) => {
   const boardId = req.params.id;
   const userId = req.user.id;
-  const currentBoard = getBoardById(boardId);
+  const currentBoard = await getBoardById(boardId);
   const ownerIdOfBoard = currentBoard.userId;
 
   // CHECK QUYỀN: CHỈ OWNER ĐƯỢC XÓA
@@ -804,7 +831,7 @@ app.post("/api/boards/:boardId/lists", authMiddleware, async (req, res) => {
     await connection.commit();
     //Socket.io
     const io = req.app.get("socketio");
-    io.to(boardId.toString()).emit("board_updated", getBoardById(boardId));
+    io.to(boardId.toString()).emit("board_updated", await getBoardById(boardId));
   } catch (err) {
     await connection.rollback();
     console.error(err);
@@ -856,7 +883,7 @@ app.put(
 
       //Socket.io
       const io = req.app.get("socketio");
-      io.to(boardId).emit("board_updated", getBoardById(boardId));
+      io.to(boardId.toString()).emit("board_updated", await getBoardById(boardId));
     } catch (err) {
       await connection.rollback();
       console.error(err);
@@ -892,7 +919,7 @@ app.delete(
       await connection.commit();
       //Socket.io
       const io = req.app.get("socketio");
-      io.to(boardId).emit("LIST_DELETED", { listId });
+      io.to(boardId.toString()).emit("LIST_DELETED", { listId });
     } catch (err) {
       await connection.rollback();
       console.error(err);
@@ -954,7 +981,7 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
 
     // Board nguồn và đích
     const sourceBoard = await getBoardById(sourceBoardId);
-    const destBoard = await getBoardById(destBoardId);
+    const destBoard = (String(destBoardId) === String(sourceBoardId) ? sourceBoard : await getBoardById(destBoardId));
 
     const listIndex = sourceBoard.lists.findIndex((l) => l.id == listId);
     if (listIndex === -1) {
@@ -983,18 +1010,19 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
       );
     });
 
-    // Đánh số lại position cho các board trong sourceBoard trong database
-    sourceBoard.lists.forEach(async (list, orderIndex) => {
-      await connection.query(
-        "UPDATE lists SET position = ?, board_id = ? WHERE list_id = ?",
-        [orderIndex, sourceBoardId, list.id]
-      );
-    });
+    if (String(sourceBoardId) !== String(destBoardId)) {
+      // Đánh số lại position cho các board trong sourceBoard trong database
+      sourceBoard.lists.forEach(async (list, orderIndex) => {
+        await connection.query(
+          "UPDATE lists SET position = ?, board_id = ? WHERE list_id = ?",
+          [orderIndex, sourceBoardId, list.id]
+        );
+      });
+    }
 
     await connection.commit();
     res.status(200).json({ message: "Di chuyển list thành công" });
     //Socket.io
-    const io = req.app.get("socketio");
     if (io) {
       const payload = {
         movedList,
@@ -1012,7 +1040,7 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
       io.to(String(sourceBoardId)).emit("board_updated", sourceBoard);
 
       if (String(destBoardId) !== String(sourceBoardId)) {
-        io.to(String(destBoardId)).emit("board_updated", destBoard);
+        io.to(String(destBoardId)).emit("board_updated", destBoard);        
       }
     }
   } catch (err) {
@@ -1157,16 +1185,16 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
       index,
     };
     const io = req.app.get("socketio");
-    io.to(String(sourceBoardId)).emit("CARD_MOVED", payload);
-    io.to(String(sourceBoardId)).emit(
+    await io.to(String(sourceBoardId)).emit("CARD_MOVED", payload);
+    await io.to(String(sourceBoardId)).emit(
       "board_updated",
-      getBoardById(sourceBoardId)
+      await getBoardById(sourceBoardId)
     );
     if (String(destBoardId) !== String(sourceBoardId)) {
       io.to(String(destBoardId)).emit("CARD_MOVED", payload);
       io.to(String(destBoardId)).emit(
         "board_updated",
-        getBoardById(destBoardId)
+        await getBoardById(destBoardId)
       );
     }
   } catch (err) {
@@ -1441,10 +1469,10 @@ app.put(
         });
       }
       const newDueDate =
-        dueDate !== undefined ? convertDateFtoB(dueDate) : oldCard.due_date;
+        dueDate !== undefined ? dueDate : oldCard.due_date;
       if (
         dueDate !== undefined &&
-        convertDateFtoB(dueDate) !== oldCard.due_date
+        dueDate !== shortenDateB(oldCard.due_date)
       ) {
         sendActivity({
           actorId: userId,
@@ -1469,14 +1497,14 @@ app.put(
       res.json(updatedCard);
 
       // Socket 
-      io.to(boardId.toString()).emit("board_updated", getBoardById(boardId));
+      io.to(boardId.toString()).emit("board_updated", await getBoardById(boardId));
 
       io.to(boardId.toString()).emit("CARD_UPDATED", {
         listId,
         card: updatedCard
       });
 
-      console.log("card edit", listId, updatedCard);
+      //console.log("card edit", listId, updatedCard);
 
     } catch (err) {
       await connection.rollback();
@@ -2471,12 +2499,12 @@ app.put("/api/inbox/cards/:cardId", authMiddleware, async (req, res) => {
     // Xóa label cũ liên kết với card
     await connection.query("DELETE FROM labels WHERE card_id = ?", cardId);
     // Thêm label mới liên kết với card
-    labels.forEach(async (label) => {
+    for (const label of labels) {
       await connection.query(
         "INSERT INTO labels (card_id, name, color) VALUES (?, ?, ?)",
         [cardId, label.name, label.color]
       );
-    });
+    }
 
     // Lấy card cũ để so sánh
     const [oldCards] = await connection.query(

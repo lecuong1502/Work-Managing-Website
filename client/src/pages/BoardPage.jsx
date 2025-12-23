@@ -57,6 +57,7 @@ const BoardPage = () => {
 
   const updateBoardState = (boardId, updatedBoardData) => {
     // 1. Cập nhật state Boards tổng quát
+    console.log("current boards ", boards, ", board after update ", updatedBoardData);
     setBoards(prev => {
       const newBoards = prev.map(b => b.id === boardId ? updatedBoardData : b);
       sessionStorage.setItem("boards", JSON.stringify(newBoards));
@@ -258,7 +259,7 @@ const BoardPage = () => {
         if (res.ok) {
           const serverBoardData = await res.json();
           setBoard(serverBoardData);
-          updateBoardToStorage(serverBoardData); // Cập nhật lại cache cho lần sau
+          updateBoardToStorage(serverBoardData.id, serverBoardData); // Cập nhật lại cache cho lần sau
         } else {
           // Xử lý lỗi nếu không có quyền hoặc board không tồn tại
           if (res.status === 403) {
@@ -280,44 +281,39 @@ const BoardPage = () => {
   }, [boardId, navigate]);
 
   // Socket.io
+  // Gộp logic lắng nghe Socket vào useEffect chính (cái có [boardId])
   useEffect(() => {
     if (!socket.connected) socket.connect();
-
     socket.emit("join-board", boardId);
 
-    // Khi có bất kỳ ai cập nhật toàn bộ board
+    // 1. Khi toàn bộ Board thay đổi
     socket.on("board_updated", (updatedBoardData) => {
       if (String(updatedBoardData.id) === String(boardId)) {
         setBoard(updatedBoardData);
-        updateBoardToStorage(updatedBoardData);
+      } else if (inboxBoard && String(updatedBoardData.id) === String(inboxBoard.id)) {
+        setInboxBoard(updatedBoardData);
       }
     });
 
-    // Khi có người di chuyển thẻ hoặc list (Realtime DND)
-    socket.on("board_moved", (updatedBoardData) => {
-      setBoard(updatedBoardData);
-    });
-
-    // Khi có người sửa chi tiết 1 card cụ thể
-    socket.on("CARD_UPDATED", ({ listId, card }) => {
-      setBoard((prev) => {
-        if (!prev) return prev;
-        const newLists = prev.lists.map((l) =>
-          l.id === listId
-            ? { ...l, cards: l.cards.map((c) => (c.id === card.id ? card : c)) }
-            : l
-        );
-        return { ...prev, lists: newLists };
-      });
+    // 2. Khi chỉ có 1 Card thay đổi (Quan trọng!)
+    socket.on("CARD_UPDATED", ({ listId, card, sourceBoardId }) => {
+      // Nếu card thuộc Board đang mở
+      if (String(sourceBoardId || boardId) === String(boardId)) {
+        setBoard(prev => prev ? updateCardInBoard(prev, card, listId) : null);
+      }
+      
+      // Nếu card thuộc Inbox
+      if (inboxBoard && String(sourceBoardId) === String(inboxBoard.id)) {
+        setInboxBoard(prev => prev ? updateCardInBoard(prev, card, listId) : null);
+      }
     });
 
     return () => {
       socket.emit("leave-board", boardId);
       socket.off("board_updated");
-      socket.off("board_moved");
       socket.off("CARD_UPDATED");
     };
-  }, [boardId]);
+  }, [boardId, inboxBoard?.id]); // Thêm ID vào dependency
 
   const handleBoardClick = (boardId) => {
     navigate(`/board/${boardId}`);
@@ -354,7 +350,7 @@ const BoardPage = () => {
       };
 
       setBoard(updatedBoard);
-      updateBoardToStorage(updatedBoard);
+      updateBoardToStorage(updatedBoard.id, updatedBoard);
       setNewListTitle("");
       setAddingList(false);
     } catch (err) {
@@ -399,7 +395,7 @@ const BoardPage = () => {
       };
 
       setBoard(updatedBoard);
-      updateBoardToStorage(updatedBoard);
+      updateBoardToStorage(updatedBoard.id, updatedBoard);
       socket.emit("board_updated", updatedBoard);
       setRenamingList(null);
       setNewListName("");
@@ -445,7 +441,7 @@ const BoardPage = () => {
       const newBoard = { ...board, lists: newList };
 
       setBoard(newBoard);
-      updateBoardToStorage(newBoard);
+      updateBoardToStorage(newBoard.id, newBoard);
       socket.emit("board_updated", newBoard);
 
       setNewCardTitle("");
@@ -502,19 +498,20 @@ const BoardPage = () => {
 
 
   const handleUpdateCard = async (updatedCard, listId, boardId) => {
+    const isInbox = inboxBoard && String(boardId) === String(inboxBoard.id);
+
     // 1. Optimistic UI
-    if (boardId === inboxBoard.id) {
-      setInboxBoard(prev => updateCardInBoard(prev, updatedCard, listId));
+    if (isInbox) {
+      setInboxBoard(prev => prev ? updateCardInBoard(prev, updatedCard, listId) : null);
     } else {
-      setBoard(prev => updateCardInBoard(prev, updatedCard, listId));
+      setBoard(prev => prev ? updateCardInBoard(prev, updatedCard, listId) : null);
     }
 
-    // 2. Persist
-    updateBoardToStorage(boardId,
-      boardId === inboxBoard.id
-        ? updateCardInBoard(inboxBoard, updatedCard, listId)
-        : updateCardInBoard(board, updatedCard, listId)
-    );
+    // 2. Persist (Lưu vào Storage)
+    // const boardToSave = isInbox ? inboxBoard : board;
+    // if (boardToSave) {
+    //     updateBoardToStorage(boardId, updateCardInBoard(boardToSave, updatedCard, listId));
+    // }
 
     // 3. API
     await fetch(
@@ -588,7 +585,7 @@ const BoardPage = () => {
 
         if (data.board) {
           setBoard(data.board);
-          updateBoardToStorage(data.board);
+          updateBoardToStorage(data.board.id, data.board);
           socket.emit("board_updated", data.board);
         } else {
           setBoard((prev) => ({
@@ -629,7 +626,7 @@ const BoardPage = () => {
       const updatedBoard = await res.json();
 
       setBoard(updatedBoard);
-      updateBoardToStorage(updatedBoard);
+      updateBoardToStorage(updatedBoard.id, updatedBoard);
 
       setShowVisibilityMenu(false);
     } catch (err) {
@@ -646,7 +643,7 @@ const BoardPage = () => {
       newLists.splice(toIndex, 0, moved);
 
       const updated = { ...prev, lists: newLists };
-      sessionStorage.setItem("boards", JSON.stringify(updated));
+      //sessionStorage.setItem("boards", JSON.stringify(updated));
       return updated;
     });
 

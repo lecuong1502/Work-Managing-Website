@@ -105,7 +105,7 @@ const ListColumn = ({
       }
 
       const updatedBoard = { ...prevBoard, lists: newLists };
-      sessionStorage.setItem("boards", JSON.stringify(updatedBoard));
+      //sessionStorage.setItem("boards", JSON.stringify(updatedBoard));
       return updatedBoard;
     });
 
