@@ -10,8 +10,20 @@ import { Server } from "socket.io";
 
 dotenv.config();
 
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",
+    "https://task-manager-beta-eight-59.vercel.app",
+    "https://client-opal-ten.vercel.app"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+};
+
 const app = express();
 app.use(express.json());
+app.use(cors(corsOptions));
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: corsOptions,
@@ -65,18 +77,6 @@ io.on("connection", (socket) => {
 });
 
 app.set("socketio", io);
-
-const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "https://task-manager-beta-eight-59.vercel.app",
-    "https://client-opal-ten.vercel.app"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-};
-
-app.use(cors(corsOptions));
 
 // --- CẤU HÌNH KẾT NỐI DATABASE ---
 const pool = mysql.createPool({
