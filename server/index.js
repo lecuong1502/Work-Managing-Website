@@ -24,7 +24,8 @@ process.env.JWT_SECRET = "4_ong_deu_ten_Cuong";
 const corsOptions = {
   origin: [
     "http://localhost:5173",
-    "https://task-manager-beta-eight-59.vercel.app"
+    "https://task-manager-beta-eight-59.vercel.app",
+    "https://client-opal-ten.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
@@ -1520,6 +1521,7 @@ app.put(
       card,
     });
 
+    console.log("edit card",board,listId, card);
     res.json(card);
   }
 );

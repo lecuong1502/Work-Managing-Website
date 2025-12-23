@@ -126,7 +126,7 @@ const ListColumn = ({
     const destListRef = board.lists.find((l) => l.id === toListId);
     const apiIndex = toIndex !== undefined ? toIndex : (destListRef?.cards.length || 0);
 
-    fetch("http://localhost:3000/api/cards/move", {
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/cards/move`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

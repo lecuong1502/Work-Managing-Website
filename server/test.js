@@ -575,6 +575,16 @@ async function checkBoardMembership(userId, boardId) {
   return rows.length > 0;
 }
 
+// Should be after checkBoardMembership
+async function checkEditPermission(userId, boardId) {
+  const [board] = await pool.query(
+    "SELECT * FROM boards WHERE board_id = ?",
+    [boardId]
+  );
+  if (board.length == 0 ) return false;
+  return (board[0].user_id != userId && board[0].visibility == "Private" ? false : true);
+}
+
 // --- BOARDS API ---
 
 // Get All Boards
@@ -702,11 +712,18 @@ app.put("/api/boards/:id", authMiddleware, async (req, res) => {
       .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
   }
 
+  // Nếu board private và bạn ko phải chủ board
+  if (!(await checkEditPermission(userId, boardId))) {
+    return res
+      .status(403)
+      .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
+  }
+
   const currentBoard = await getBoardById(boardId);
   const ownerId = currentBoard.userId;
-  if (userId != ownerId && currentBoard.visibility == "Private") {
-    return res.status(403).json({ message: "Bạn không có quyền chỉnh sửa." });
-  }
+  // if (userId != ownerId && currentBoard.visibility == "Private") {
+  //   return res.status(403).json({ message: "Bạn không có quyền chỉnh sửa." });
+  // }
 
   // Preserve existing values if not provided or null
   const newName = name !== undefined && name !== null ? name : currentBoard.title;
@@ -801,6 +818,13 @@ app.post("/api/boards/:boardId/lists", authMiddleware, async (req, res) => {
       .json({ message: "Board không tồn tại hoặc không có quyền." });
   }
 
+  // Nếu board private và bạn ko phải chủ board
+  if (!(await checkEditPermission(userId, boardId))) {
+    return res
+      .status(403)
+      .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
+  }
+
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -852,6 +876,13 @@ app.put(
       return res
         .status(403)
         .json({ message: "Board không tồn tại hoặc không có quyền." });
+    }
+    
+    // Nếu board private và bạn ko phải chủ board
+    if (!(await checkEditPermission(userId, boardId))) {
+      return res
+        .status(403)
+        .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
     }
 
     // Kiểm tra tồn tại list
@@ -907,6 +938,13 @@ app.delete(
         .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
+    // Nếu board private và bạn ko phải chủ board
+    if (!(await checkEditPermission(userId, boardId))) {
+      return res
+        .status(403)
+        .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
+    }
+
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -945,6 +983,13 @@ app.put("/api/boards/lists/move", authMiddleware, async (req, res) => {
     return res
       .status(403)
       .json({ message: "Board không tồn tại hoặc không có quyền." });
+  }
+
+  // Nếu board private và bạn ko phải chủ board
+  if (!(await checkEditPermission(userId, sourceBoardId)) || !(await checkEditPermission(userId, destBoardId))) {
+    return res
+      .status(403)
+      .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
   }
 
   // Kiểm tra tồn tại list trong source board
@@ -1081,6 +1126,13 @@ app.put("/api/cards/move", authMiddleware, async (req, res) => {
     return res
       .status(403)
       .json({ message: "Board không tồn tại hoặc không có quyền." });
+  }
+
+  // Nếu board private và bạn ko phải chủ board
+  if (!(await checkEditPermission(userId, sourceBoardId)) || !(await checkEditPermission(userId, destBoardId))) {
+    return res
+      .status(403)
+      .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
   }
 
   // Kiểm tra tồn tại card trong source list
@@ -1222,6 +1274,13 @@ app.post(
         .json({ message: "Board không tồn tại hoặc không có quyền." });
     }
 
+    // Nếu board private và bạn ko phải chủ board
+    if (!(await checkEditPermission(userId, boardId))) {
+      return res
+        .status(403)
+        .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
+    }
+
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -1352,6 +1411,13 @@ app.put(
       return res
         .status(403)
         .json({ message: "Board không tồn tại hoặc không có quyền." });
+    }
+
+    // Nếu board private và bạn ko phải chủ board
+    if (!(await checkEditPermission(userId, boardId))) {
+      return res
+        .status(403)
+        .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
     }
 
     // Kiểm tra tồn tại card
@@ -1528,6 +1594,13 @@ app.delete(
       return res
         .status(403)
         .json({ message: "Board không tồn tại hoặc không có quyền." });
+    }
+
+    // Nếu board private và bạn ko phải chủ board
+    if (!(await checkEditPermission(userId, boardId))) {
+      return res
+        .status(403)
+        .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
     }
 
     // Kiểm tra tồn tại card
@@ -1860,6 +1933,13 @@ app.post("/api/boards/add-member", authMiddleware, async (req, res) => {
     return res
       .status(403)
       .json({ message: "Board không tồn tại hoặc không có quyền." });
+  }
+
+  // Nếu board private và bạn ko phải chủ board
+  if (!(await checkEditPermission(currentUserId, boardId))) {
+    return res
+      .status(403)
+      .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
   }
 
   const connection = await pool.getConnection();
@@ -2608,6 +2688,13 @@ app.post("/api/cards/:cardId/comments", authMiddleware, async (req, res) => {
   // Check if user has access to the board
   if (!(await checkBoardMembership(userId, boardId))) {
     return res.status(403).json({ message: "Board not found or no access" });
+  }
+
+  // Nếu board private và bạn ko phải chủ board
+  if (!(await checkEditPermission(userId, boardId))) {
+    return res
+      .status(403)
+      .json({ message: "Board không tồn tại hoặc bạn không có quyền." });
   }
 
   // Check if card exists

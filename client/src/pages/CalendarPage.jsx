@@ -278,7 +278,7 @@ export default function CalendarPage() {
 
                   const date = days[dayIndex].toISOString().split("T")[0];
 
-                  fetch("http://localhost:3000/api/events", {
+                  fetch(`${import.meta.env.VITE_API_BASE_URL}/api/events`, {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",

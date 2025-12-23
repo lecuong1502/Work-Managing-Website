@@ -57,7 +57,7 @@ const BoardPage = () => {
 
   const updateBoardState = (boardId, updatedBoardData) => {
     // 1. Cập nhật state Boards tổng quát
-    console.log("current boards ", boards, ", board after update ", updatedBoardData);
+    //console.log("current boards ", boards, ", board after update ", updatedBoardData);
     setBoards(prev => {
       const newBoards = prev.map(b => b.id === boardId ? updatedBoardData : b);
       sessionStorage.setItem("boards", JSON.stringify(newBoards));
